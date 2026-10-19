@@ -150,7 +150,7 @@ await page.click('#cal-events .x');
 await page.waitForFunction(() => document.querySelectorAll('#cal-events .item').length === 0);
 check('予定を削除できる(2回タップ)', true);
 
-// お月さま・気分の記録
+// 生理・気分の記録
 const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
 await page.click('.tab[data-v="cal"]');
@@ -164,7 +164,7 @@ await page.locator('#sheet .tags button', { hasText: 'おなかが痛い' }).cli
 await page.fill('#sheet textarea', 'テストメモ');
 await page.click('#sheet .primary');
 await page.waitForSelector('#sheet', { state: 'hidden' });
-check('お月さまの日が塗られ、気分の点が付く', await page.locator('#month button.period em.mood').count() === 1);
+check('生理の日が塗られ、気分の点が付く', await page.locator('#month button.period em.mood').count() === 1);
 const dayDocs = await page.evaluate(() => JSON.stringify(window.__fake.dy));
 check('日の記録は暗号文だけで、保存名にも日付が出ない', !dayDocs.includes('テストメモ') && !dayDocs.includes('おなかが痛い') && !/2026/.test(dayDocs) && !/"id":"[^"]*20\d\d-/.test(dayDocs));
 await page.click('#day-record');
@@ -185,7 +185,7 @@ await page.waitForFunction(() => /平均の周期は\s*28日/.test(document.quer
 check('2回分で、平均の周期が出る', true);
 await page.click('.tab[data-v="home"]');
 await page.waitForFunction(() => /あと\d+日/.test(document.querySelector('#next-moon').textContent));
-check('ホームに「次のお月さま」が出る', (await page.textContent('#next-moon')).includes('次のお月さま(予想)'));
+check('ホームに「次の生理」が出る', (await page.textContent('#next-moon')).includes('次の生理(予想)'));
 check('ホームの最近の気分に出る', (await page.textContent('#home-mood')).includes('おなかが痛い'));
 await page.click('.tab[data-v="cal"]');
 await page.click('#past-record');

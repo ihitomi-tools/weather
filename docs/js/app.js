@@ -18,7 +18,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city',
 };
-const VERSION = '2026.10.19-5';
+const VERSION = '2026.10.19-6';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -418,12 +418,12 @@ function renderNextMoon() {
   const box = $('#next-moon');
   const cyc = predict(periodDays(), ymd(new Date()));
   if (!cyc.next) {
-    box.replaceChildren(h('small', {}, '次のお月さま'), h('p', { class: 'msg' }, '記録が2回分たまると、予想が出ます'), h('small', { class: 'fine' }, '予定タブの「過去の記録」から入力できます'));
+    box.replaceChildren(h('small', {}, '次の生理'), h('p', { class: 'msg' }, '記録が2回分たまると、予想が出ます'), h('small', { class: 'fine' }, '予定タブの「過去の記録」から入力できます'));
     return;
   }
   const { start, diff } = cyc.next;
   const tail = diff > 0 ? `あと${diff}日` : diff === 0 ? '今日の予定' : `${-diff}日過ぎ`;
-  box.replaceChildren(h('small', {}, '次のお月さま(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)), h('small', { class: 'fine' }, 'ふたりの画面に同じものが出ます。予想は、過去の記録から出した目安です。'));
+  box.replaceChildren(h('small', {}, '次の生理(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)), h('small', { class: 'fine' }, 'ふたりの画面に同じものが出ます。予想は、過去の記録から出した目安です。'));
 }
 
 function moodItem(r) {
@@ -505,7 +505,7 @@ function renderCalendar() {
     }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
-  $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、お月さまの期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
+  $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
   const list = state.events.filter((e) => e.date === sel).sort(byDate);
@@ -578,7 +578,7 @@ function closeSheet() {
   $('#sheet-body').replaceChildren();
 }
 
-/* ================= お月さま・気分の記録 ================= */
+/* ================= 生理・気分の記録 ================= */
 const emptyRec = (r) => !r.p && !r.l && !(r.t && r.t.length) && !r.m;
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
 
@@ -603,7 +603,7 @@ function openDaySheet(date) {
   const draft = { p: !!rec.p, l: rec.l || 0, t: [...(rec.t || [])] };
   const d = parseYmd(date);
 
-  const period = h('input', { type: 'checkbox', class: 'sw', 'aria-label': 'この日はお月さま' });
+  const period = h('input', { type: 'checkbox', class: 'sw', 'aria-label': 'この日は生理' });
   period.checked = draft.p;
   period.addEventListener('change', () => { draft.p = period.checked; });
 
@@ -647,7 +647,7 @@ function openDaySheet(date) {
 
   openSheet(
     h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`),
-    h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日はお月さま', h('small', {}, '連続した日が、ひとまとまりになります')), period),
+    h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日は生理', h('small', {}, '連続した日が、ひとまとまりになります')), period),
     h('div', {}, h('p', { class: 'lab' }, '今日の調子(新月 → 満月)'), scale),
     h('div', {}, h('p', { class: 'lab' }, '気分(いくつでも)'), tags),
     memo,
@@ -698,7 +698,7 @@ function openPastSheet() {
   });
 
   openSheet(
-    h('h2', {}, 'お月さまの記録'),
+    h('h2', {}, '生理の記録'),
     h('p', { class: 'lock' }, '入力した日付は、この端末で暗号化されてから保存されます。ふたり以外には読めません。チャットなどには書かないでください。'),
     h('div', { class: 'pair' }, h('label', {}, 'はじまった日', start), h('label', {}, 'おわった日', end)),
     err,

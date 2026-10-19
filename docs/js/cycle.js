@@ -1,4 +1,4 @@
-// お月さま(周期)の記録から、次の予想を出す。日付は 'YYYY-MM-DD' の文字列で扱う。
+// 生理(周期)の記録から、次の予想を出す。日付は 'YYYY-MM-DD' の文字列で扱う。
 const DAY = 864e5;
 
 export const dayNum = (key) => {
