@@ -63,7 +63,8 @@ await ctx.route(`${base}/js/store.js`, (r) => r.fulfill({ body: fakeStore, conte
 
 const tap = async (names) => { for (const n of names) await page.locator('#cities button', { hasText: n }).click(); };
 
-// --- 設定なし: パターンで開くと「設定がまだ」
+// --- 設定なし: パターンで開くと「設定がまだ」(本物の設定値が入っていても、ここでは未設定を再現する)
+await ctx.route(`${base}/js/config.js`, (r) => r.fulfill({ body: "export const firebaseConfig = { apiKey: 'YOUR_API_KEY' }; export const isConfigured = false;", contentType: 'text/javascript' }));
 await page.goto(base);
 await page.waitForSelector('#temp:not(:text("--"))');
 check('天気が表示される', (await page.textContent('#temp')) === '18' && (await page.textContent('#cond')) === 'くもり');
@@ -113,6 +114,14 @@ await page.waitForSelector('.row.mine .bub');
 check('メッセージが表示される(HTMLは解釈されない)', (await page.textContent('.row.mine .bub')) === '土曜はパスタがいいな <b>テスト</b>' && (await page.locator('.row.mine .bub b').count()) === 0);
 const stored = await page.evaluate(() => window.__fake.msg[0]);
 check('サーバーに渡るのは暗号文だけ', !JSON.stringify(stored).includes('パスタ') && stored.v === 1 && stored.ct.length > 10);
+
+// スタンプ
+await page.click('#stamp-btn');
+check('スタンプ一覧が開く', await page.locator('#stamps').isVisible() && (await page.locator('#stamps button').count()) >= 40);
+await page.locator('#stamps button', { hasText: '🍝' }).click();
+await page.waitForSelector('.row.mine .bub.stamp');
+check('スタンプが大きく表示され、一覧は閉じる', (await page.textContent('.row.mine .bub.stamp')) === '🍝' && !(await page.locator('#stamps').isVisible()));
+check('スタンプも暗号文だけが保存される', !JSON.stringify(await page.evaluate(() => window.__fake.msg[1])).includes('🍝'));
 
 // 予定
 await page.click('.tab[data-v="cal"]');

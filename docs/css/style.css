@@ -123,6 +123,13 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .row.theirs .bub { background: var(--mint); color: var(--on-mint); border-bottom-left-radius: 5px; }
 .row.mine .bub { background: var(--pink); color: var(--on-pink); border-bottom-right-radius: 5px; }
 .row .bub.bad { opacity: .6; font-style: italic; }
+.row .bub.stamp { background: none; padding: 0 2px; font-size: 52px; line-height: 1.15; border-radius: 0; }
+.stamps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 8px 10px; border-top: 1px solid var(--line); max-height: 190px; overflow-y: auto; background: var(--surface); }
+.stamps button { border: 0; background: none; font-size: 26px; line-height: 1; padding: 8px 0; border-radius: 12px; cursor: pointer; }
+.stamps button:active { background: var(--line); }
+.plus { border: 0; background: var(--surface); color: var(--muted); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
+.plus svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.plus[aria-expanded="true"] { background: var(--mint); color: var(--on-mint); }
 .meta { font-size: 10px; color: var(--muted); line-height: 1.3; flex: none; font-variant-numeric: tabular-nums; }
 .composer { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: center; }
 .composer input { flex: 1; border-radius: 99px; padding: 10px 14px; }

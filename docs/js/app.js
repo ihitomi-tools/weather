@@ -16,6 +16,16 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city',
 };
+// スタンプ(絵文字)。送るのはこの一覧にあるものだけで、受け取った側も一覧にあるものだけを表示する
+const STAMPS = [
+  '😊', '😂', '🥹', '😭', '😍', '🥰', '😘', '😋',
+  '😴', '🤔', '😳', '😅', '🥺', '😎', '🤗', '🙄',
+  '❤️', '💕', '💗', '✨', '🎉', '🎁', '💐', '🌸',
+  '👍', '🙏', '👏', '🙌', '💪', '✌️', '👋', '🤝',
+  '🍝', '🍣', '🍙', '🍜', '🍰', '☕', '🍺', '🍓',
+  '☀️', '☁️', '☔', '🌈', '⛄', '🌙', '⭐', '🔥',
+  '🐱', '🐶', '🐰', '🐻', '🚃', '🏠', '🛏️', '📞',
+];
 const EXPIRE_MS = { '24h': 24 * 3600e3, '7d': 7 * 24 * 3600e3, off: 0 };
 
 // 子要素は textContent で入れる(相手が送った文字をHTMLとして解釈しない)
@@ -323,7 +333,8 @@ function startWatching() {
       const ck = `m:${m.id}`;
       if (!cache.has(ck)) cache.set(ck, await decrypt('messages', m));
       const p = cache.get(ck);
-      out.push({ ...m, body: p ? p.body : null });
+      const isStamp = p && p.t === 'stamp';
+      out.push({ ...m, body: p && !isStamp ? p.body : null, stamp: isStamp && STAMPS.includes(p.s) ? p.s : null });
     }
     if (my !== seq.msg) return;
     state.messages = out;
@@ -399,7 +410,9 @@ function renderChat() {
     }
     const mine = m.from === myUid();
     nodes.push(h('div', { class: `row ${mine ? 'mine' : 'theirs'}` },
-      h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body),
+      m.stamp
+        ? h('div', { class: 'bub stamp' }, m.stamp)
+        : h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body),
       h('div', { class: 'meta' }, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));
   });
   if (!nodes.length) nodes.push(h('span', { class: 'dayline' }, 'メッセージはまだありません'));
@@ -456,6 +469,11 @@ function buildCalendar() {
   });
 }
 
+async function sendPayload(payload) {
+  const expire = EXPIRE_MS[LS.get(K.expire) || '7d'];
+  await state.store.sendMessage(await C.encryptJson(state.key, 'messages', payload), expire);
+}
+
 function buildChat() {
   $('#chat-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -463,9 +481,21 @@ function buildChat() {
     const body = input.value.trim();
     if (!body) return;
     input.value = '';
-    const expire = EXPIRE_MS[LS.get(K.expire) || '7d'];
-    await state.store.sendMessage(await C.encryptJson(state.key, 'messages', { body }), expire);
+    await sendPayload({ body });
   });
+
+  const tray = $('#stamps');
+  const btn = $('#stamp-btn');
+  const setTray = (open) => {
+    tray.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  };
+  STAMPS.forEach((s) => tray.append(h('button', {
+    type: 'button',
+    'aria-label': `スタンプ ${s}`,
+    onclick: async () => { setTray(false); await sendPayload({ t: 'stamp', s }); },
+  }, s)));
+  btn.addEventListener('click', () => setTray(tray.hidden));
 }
 
 /* ================= 設定 ================= */
