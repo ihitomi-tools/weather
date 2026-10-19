@@ -6,6 +6,7 @@ import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayloa
 import { canRecord as canRecordNow, unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
+import { buildExport } from './export.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -22,7 +23,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk',
 };
-const VERSION = '2026.10.20-14';
+const VERSION = '2026.10.20-15';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1001,7 +1002,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js',
 ];
 
 async function refreshApp(btn) {
@@ -1057,6 +1058,16 @@ function renderSettings() {
   bdM.addEventListener('change', saveBd);
   bdD.addEventListener('change', saveBd);
 
+  const exportBtn = h('button', { class: 'act', type: 'button' }, '書き出す');
+  exportBtn.addEventListener('click', () => {
+    if (!confirm('暗号化されていない、読める形のファイルが端末に保存されます。人に見られない場所で保管してください。')) return;
+    const text = buildExport({ me: myName(), partner: partnerName(), myUid: myUid(), messages: state.messages.map((m) => ({ ...m, ts: m.ts && m.ts.toMillis ? m.ts.toMillis() : m.ts })), events: state.events, days: state.days, qcards: state.qcards, answers: state.answers, boxes: state.boxes, items: state.items });
+    const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })), download: `記録の書き出し-${ymd(new Date())}.txt` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+  });
+
   const cardBtn = h('button', { class: 'act', type: 'button' }, '設定');
   cardBtn.addEventListener('click', openCardSheet);
 
@@ -1110,6 +1121,7 @@ function renderSettings() {
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
     row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
+    row('データの書き出し', '読める文章のファイルで保存します(暗号化されません)', exportBtn),
     row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
     row('キーの確認番号', '同じ番号か見比べます', showFp),
     row('ログアウト', null, out),
