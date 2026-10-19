@@ -45,6 +45,10 @@ export function sendMessage(payload, expireAfterMs) {
 
 export const removeMessage = (id) => deleteDoc(doc(db, 'messages', id));
 
+// 既読: 「ここまで読んだ」という、相手のメッセージの時刻を、1人1件だけ置く
+export const watchReads = (cb) => watchPlain('reads', cb);
+export const saveRead = (at) => setDoc(doc(db, 'reads', auth.currentUser.uid), { at, from: auth.currentUser.uid });
+
 function watchPlain(name, cb) {
   return onSnapshot(collection(db, name), (snap) => {
     cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));

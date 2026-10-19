@@ -94,6 +94,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['box', 'from']);
       allow update, delete: if false;
     }
+    // 既読: 自分の分だけ書ける(相手がどこまで読んだかの印)。
+    match /reads/{uid} {
+      allow read: if isUs();
+      allow write: if isUs() && request.auth.uid == uid
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.at is number
+        && request.resource.data.keys().hasOnly(['at', 'from']);
+    }
     match /shared/{id} {
       allow read, write: if isUs();
     }

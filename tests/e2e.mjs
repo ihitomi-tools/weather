@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], rd: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -40,6 +40,8 @@ export const watchPats = watch('pt');
 export const savePat = async (id, payload) => { data.pt = data.pt.filter((x) => x.id !== id); data.pt.push({ id, ...payload, from: user.uid }); notify(); };
 export const removePat = async (id) => { data.pt = data.pt.filter((x) => x.id !== id); notify(); };
 export const removeDays = async (ids) => { data.dy = data.dy.filter((x) => !ids.includes(x.id)); notify(); };
+export const watchReads = watch('rd');
+export const saveRead = async (at) => { data.rd = data.rd.filter((x) => x.id !== user.uid); data.rd.push({ id: user.uid, at, from: user.uid }); notify(); };
 export const watchStock = watch('sk');
 export const addStock = async (payload) => { data.sk.push({ id: 's' + n++, ...payload, from: user.uid }); notify(); };
 export const removeStock = async (id) => { data.sk = data.sk.filter((x) => x.id !== id); notify(); };
@@ -237,6 +239,26 @@ await page.click('.tab[data-v="cal"]');
 check('カレンダーのその日にケーキの印が付く', (await page.locator('#month button em.cake').count()) >= 1);
 await page.click('.tab[data-v="set"]');
 await page.selectOption('select[aria-label="誕生日の月"]', String((nowD.getMonth() + 1) % 12 + 1));
+
+// 長押しで削除・既読
+await page.click('.tab[data-v="chat"]');
+await page.click('#talk-seg [data-t="chat"]');
+const nMine = await page.locator('.row.mine').count();
+const bb = await page.locator('.row.mine .bub').last().boundingBox();
+await page.mouse.move(bb.x + 5, bb.y + 5);
+await page.mouse.down();
+await page.waitForTimeout(700);
+await page.mouse.up();
+await page.waitForSelector('.row .del');
+check('自分のメッセージを長押しすると、削除が出る', true);
+await page.click('.row .del');
+await page.waitForFunction((n) => document.querySelectorAll('.row.mine').length === n - 1, nMine);
+check('削除するとメッセージが消える', true);
+check('相手のメッセージには、長押しで削除は出ない', (await page.locator('.row.theirs .del').count()) === 0);
+check('まだ既読は付かない', (await page.locator('.row.mine .meta span').count()) === 0);
+await page.evaluate(() => { window.__fake.rd.push({ id: 'u2', at: Date.now() + 5000, from: 'u2' }); window.__fake.notify(); });
+await page.waitForFunction(() => document.querySelectorAll('.row.mine .meta span').length === 1);
+check('相手が読むと、最後のメッセージに既読が付く', true);
 
 // 予定
 await page.click('.tab[data-v="cal"]');

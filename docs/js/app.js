@@ -21,9 +21,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt',
 };
-const VERSION = '2026.10.20-15';
+const VERSION = '2026.10.20-16';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -71,7 +71,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -431,6 +431,14 @@ function startWatching() {
     renderAll();
   }));
 
+  state.unsubs.push(s.watchReads((docs) => {
+    const d = docs.find((x) => x.id !== myUid());
+    state.readAt = d ? Number(d.at) || 0 : 0;
+    const mine = docs.find((x) => x.id === myUid());
+    if (mine) state.readSent = Math.max(state.readSent, Number(mine.at) || 0);
+    renderChat();
+  }));
+
   state.unsubs.push(s.watchPats(async (docs) => {
     const my = ++seq.pt;
     const next = new Map();
@@ -486,6 +494,7 @@ function setView(v) {
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v));
   renderAll();
   if (v === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; refreshItems(); }
+  markRead();
 }
 
 function renderAll() {
@@ -628,6 +637,7 @@ function renderChat() {
   let lastDay = '';
   const todayKey = ymd(new Date());
   const yesterdayKey = ymd(new Date(Date.now() - 864e5));
+  const lastRead = [...state.messages].reverse().find((m) => m.from === myUid() && m.ts <= state.readAt);
   state.messages.forEach((m) => {
     const d = new Date(m.ts);
     const key = ymd(d);
@@ -637,15 +647,39 @@ function renderChat() {
     }
     const mine = m.from === myUid();
     const big = m.stamp || (m.body != null && isEmojiOnly(m.body) ? m.body.trim() : null);
+    const bub = big
+      ? h('div', { class: 'bub stamp' }, big)
+      : h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body);
+    if (mine) holdToDelete(bub, m.id);
+    const del = mine && state.delId === m.id ? h('button', { class: 'del', type: 'button' }, '削除') : null;
+    if (del) del.addEventListener('click', (e) => { e.stopPropagation(); state.delId = null; state.store.removeMessage(m.id).catch(() => {}); });
     nodes.push(h('div', { class: `row ${mine ? 'mine' : 'theirs'}` },
-      big
-        ? h('div', { class: 'bub stamp' }, big)
-        : h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body),
-      h('div', { class: 'meta' }, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));
+      bub,
+      del,
+      h('div', { class: 'meta' }, mine && lastRead === m ? h('span', {}, '既読', h('br')) : null, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));
   });
   if (!nodes.length) nodes.push(h('span', { class: 'dayline' }, 'メッセージはまだありません'));
   chat.replaceChildren(...nodes);
   if (nearBottom || state.view === 'chat') chat.scrollTop = chat.scrollHeight;
+  markRead();
+}
+
+// 自分のメッセージを長押しすると「削除」が出る(押すと、相手の画面からも消える)
+function holdToDelete(el, id) {
+  let t = null;
+  const stop = () => { clearTimeout(t); t = null; };
+  el.addEventListener('pointerdown', () => { stop(); t = setTimeout(() => { state.delId = id; state.delAt = Date.now(); renderChat(); }, 500); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.addEventListener(ev, stop));
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+// 相手のメッセージを読める画面にいるとき、「ここまで読んだ」を伝える
+function markRead() {
+  if (LS.get(K.rcpt) === '0' || state.view !== 'chat' || state.talk !== 'chat' || document.hidden || !state.store) return;
+  const latest = Math.max(0, ...state.messages.filter((m) => m.from !== myUid()).map((m) => m.ts));
+  if (latest <= state.readSent) return;
+  state.readSent = latest;
+  state.store.saveRead(latest).catch(() => { state.readSent = 0; });
 }
 
 // 選んだ日に気分の記録があれば、内容を大きく見せる
@@ -1058,6 +1092,10 @@ function renderSettings() {
   bdM.addEventListener('change', saveBd);
   bdD.addEventListener('change', saveBd);
 
+  const rcpt = h('input', { type: 'checkbox', class: 'sw', 'aria-label': '既読を相手に伝える' });
+  rcpt.checked = LS.get(K.rcpt) !== '0';
+  rcpt.addEventListener('change', () => { LS.set(K.rcpt, rcpt.checked ? '1' : '0'); markRead(); });
+
   const exportBtn = h('button', { class: 'act', type: 'button' }, '書き出す');
   exportBtn.addEventListener('click', () => {
     if (!confirm('暗号化されていない、読める形のファイルが端末に保存されます。人に見られない場所で保管してください。')) return;
@@ -1119,6 +1157,7 @@ function renderSettings() {
     row('画面の色', '自動は、端末の設定に合わせます', theme),
     row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
+    row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
     row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
     row('データの書き出し', '読める文章のファイルで保存します(暗号化されません)', exportBtn),
@@ -1497,6 +1536,7 @@ function buildTalk() {
     ['chat', 'q', 'c', 'b'].forEach((k) => $(`#t-${k}`).classList.toggle('on', k === t));
     if (t === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; }
     renderTalk();
+    markRead();
   };
   $$('#talk-seg button').forEach((b) => b.addEventListener('click', () => set(b.dataset.t)));
   const saved = LS.get(K.talk);
@@ -1543,8 +1583,9 @@ function init() {
 
   // アプリを離れたら最初の画面に戻す
   const away = () => { if (LS.get(K.auto) !== '0' && $('#cover').hidden) lock(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else markRead(); });
   window.addEventListener('pagehide', away);
+  document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

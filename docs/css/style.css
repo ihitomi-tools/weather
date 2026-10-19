@@ -311,3 +311,6 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 
 @media (prefers-reduced-motion: no-preference) { .view.on { animation: in .2s ease; } @keyframes in { from { opacity: 0; transform: translateY(6px); } } }
 .tsub:not(#t-chat) { flex: 0 0 auto; }
+.row.mine .bub { -webkit-touch-callout: none; }
+.row .del { border: 0; background: var(--surface); color: var(--fg); border-radius: 99px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; align-self: center; }
+.row .meta span { color: var(--pink-deep); font-weight: 800; }
