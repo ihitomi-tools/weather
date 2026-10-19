@@ -60,9 +60,20 @@ export const removeEvent = (id) => deleteDoc(doc(db, 'events', id));
 export const watchDays = (cb) => watchPlain('days', cb);
 export function saveDays(list) {
   const batch = writeBatch(db);
-  list.forEach(({ id, payload }) => batch.set(doc(db, 'days', id), payload));
+  list.forEach(({ id, payload }) => batch.set(doc(db, 'days', id), { ...payload, owner: auth.currentUser.uid }));
   return batch.commit();
 }
+
+// 持ち主のいない古い記録を、自分のものにする
+export function claimDays(ids) {
+  const batch = writeBatch(db);
+  ids.forEach((id) => batch.update(doc(db, 'days', id), { owner: auth.currentUser.uid }));
+  return batch.commit();
+}
+
+export const watchPats = (cb) => watchPlain('pats', cb);
+export const savePat = (id, payload) => setDoc(doc(db, 'pats', id), { ...payload, from: auth.currentUser.uid });
+export const removePat = (id) => deleteDoc(doc(db, 'pats', id));
 export function removeDays(ids) {
   const batch = writeBatch(db);
   ids.forEach((id) => batch.delete(doc(db, 'days', id)));

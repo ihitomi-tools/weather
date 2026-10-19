@@ -3,6 +3,7 @@ import { loadWeather } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
+import { canRecord as canRecordNow, unseenPats } from './share.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -17,9 +18,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen',
 };
-const VERSION = '2026.10.19-12';
+const VERSION = '2026.10.19-13';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -67,7 +68,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -310,7 +311,7 @@ function startWatching() {
   if (state.unsubs.length) return;
   const s = state.store;
   const cache = new Map();
-  const seq = { msg: 0, ev: 0, dy: 0 };
+  const seq = { msg: 0, ev: 0, dy: 0, pt: 0 };
 
   state.unsubs.push(s.watchProfiles(async (docs) => {
     const next = {};
@@ -335,14 +336,38 @@ function startWatching() {
   state.unsubs.push(s.watchDays(async (docs) => {
     const my = ++seq.dy;
     const next = new Map();
+    const owners = new Set();
+    const legacy = [];
     for (const d of docs) {
       const ck = `d:${d.id}:${d.iv}`;
       if (!cache.has(ck)) cache.set(ck, await decrypt('days', d));
       const p = cache.get(ck);
-      if (p && p.d) next.set(p.d, p);
+      if (d.owner) owners.add(d.owner);
+      if (p && p.d) {
+        next.set(p.d, p);
+        if (!d.owner && p.by === myUid()) legacy.push(d.id); // 古い版で作った自分の記録
+      }
     }
     if (my !== seq.dy) return;
     state.days = next;
+    state.dayOwners = owners;
+    renderAll();
+    if (legacy.length && canRecord()) s.claimDays(legacy).catch(() => {});
+  }));
+
+  state.unsubs.push(s.watchPats(async (docs) => {
+    const my = ++seq.pt;
+    const next = new Map();
+    for (const d of docs) {
+      const ck = `p:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('pats', d));
+      const p = cache.get(ck);
+      if (!p || !p.d || p.by !== d.from) continue;
+      if (!next.has(p.d)) next.set(p.d, []);
+      next.get(p.d).push({ id: d.id, by: p.by, at: p.at || 0 });
+    }
+    if (my !== seq.pt) return;
+    state.pats = next;
     renderAll();
   }));
 
@@ -506,6 +531,7 @@ function buildCard() {
 function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
   renderCard();
+  renderPatBanner();
   renderNextMoon();
   const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
@@ -544,6 +570,30 @@ function renderChat() {
 }
 
 // 選んだ日に気分の記録があれば、内容を大きく見せる
+const canRecord = () => canRecordNow(state.dayOwners, myUid());
+
+const heartIcon = () => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = '<path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11z"/>';
+  return svg;
+};
+const timeLabel = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+// 「よしよし」を送る(もう一度押すと取り消す)。送れるのは、記録を見る側だけ。
+async function togglePat(date, mine) {
+  const id = await C.dayId(state.keyBytes, `pat|${date}|${myUid()}`);
+  try {
+    if (mine) await withTimeout(state.store.removePat(id), 5000);
+    else {
+      state.justPat = date;
+      await withTimeout(state.store.savePat(id, await C.encryptJson(state.key, 'pats', { d: date, by: myUid(), at: Date.now() })), 5000);
+    }
+  } catch (e) { /* 送れなかったときは、押す前の表示のまま */ }
+}
+
+// 選んだ日に気分の記録があれば、内容を大きく見せる
 function renderDayDetail(date) {
   const box = $('#day-detail');
   const rec = state.days.get(date);
@@ -551,15 +601,48 @@ function renderDayDetail(date) {
   if (!hasMood) { box.hidden = true; box.replaceChildren(); return; }
   const d = parseYmd(date);
   const level = LEVELS.find((x) => x[1] === rec.l);
-  const edit = h('button', { class: 'ghost sm', type: 'button' }, '編集');
-  edit.addEventListener('click', () => openDaySheet(date));
+  const mineRecord = canRecord();
+  const pats = state.pats.get(date) || [];
+  let edit = null;
+  if (mineRecord) {
+    edit = h('button', { class: 'ghost sm', type: 'button' }, '編集');
+    edit.addEventListener('click', () => openDaySheet(date));
+  }
+  let patArea = null;
+  if (!mineRecord) {
+    const mine = pats.find((p) => p.by === myUid());
+    const btn = h('button', { class: `pat${mine ? ' on' : ''}${state.justPat === date ? ' pop' : ''}`, type: 'button', 'aria-pressed': String(!!mine) }, heartIcon(), mine ? 'よしよししたよ' : 'よしよし');
+    btn.addEventListener('click', () => togglePat(date, mine));
+    patArea = btn;
+    state.justPat = null;
+  } else if (pats.length) {
+    patArea = h('div', { class: 'stack' }, pats.sort((a, b) => b.at - a.at).map((p) => h('div', { class: 'dd-pat' }, heartIcon(), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
+  }
   box.replaceChildren(
-    h('div', { class: 'dd-head' }, h('span', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
+    h('div', { class: 'dd-head' }, h('span', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})${mineRecord ? '' : `  ・ ${partnerName()}の記録`}`), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
     level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, moonIcon(level[1]), h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0])) : null,
     rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
     rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
+    patArea,
   );
   box.hidden = false;
+}
+
+// 他の人から届いた「よしよし」を、ホームに知らせる
+function renderPatBanner() {
+  const b = $('#pat-banner');
+  const all = [...state.pats.entries()].flatMap(([d, list]) => list.map((p) => ({ ...p, d })));
+  const unseen = unseenPats(all, myUid(), Number(LS.get(K.patSeen)) || 0);
+  if (!unseen.length || !canRecord()) { b.hidden = true; return; }
+  b.replaceChildren(heartIcon(), `${partnerName()}から よしよしが届いています(${unseen.length}件)`);
+  b.hidden = false;
+  b.onclick = () => {
+    LS.set(K.patSeen, String(Math.max(...unseen.map((p) => p.at))));
+    const dt = parseYmd(unseen[0].d);
+    state.cal = { y: dt.getFullYear(), m: dt.getMonth(), sel: unseen[0].d };
+    $('#ev-date').value = unseen[0].d;
+    setView('cal');
+  };
 }
 
 function renderCalendar() {
@@ -578,14 +661,16 @@ function renderCalendar() {
     const rec = state.days.get(key);
     const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', rec && rec.p ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
     const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
+    const hasPat = state.pats.has(key);
     cells.push(h('button', {
       type: 'button',
       class: classes,
       onclick: () => { state.cal.sel = key; $('#ev-date').value = key; renderCalendar(); },
-    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, dots.length ? h('i', {}, dots) : null));
+    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
+  $('.actions').hidden = !canRecord();
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
@@ -680,6 +765,7 @@ async function writeDays(changes) {
 const SAVE_ERROR = '保存できませんでした。通信と、アクセスルールの更新(days の許可)を確認してください。';
 
 function openDaySheet(date) {
+  if (!canRecord()) return;
   const rec = state.days.get(date) || { p: false, l: 0, t: [], m: '' };
   const draft = { p: !!rec.p, l: rec.l || 0, t: [...(rec.t || [])] };
   const d = parseYmd(date);
@@ -739,6 +825,7 @@ function openDaySheet(date) {
 }
 
 function openPastSheet() {
+  if (!canRecord()) return;
   const start = h('input', { type: 'date', 'aria-label': 'はじまった日' });
   const end = h('input', { type: 'date', 'aria-label': 'おわった日' });
   const err = h('p', { class: 'error', role: 'alert' });
@@ -833,7 +920,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js',
 ];
 
 async function refreshApp(btn) {

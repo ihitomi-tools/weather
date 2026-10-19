@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [], dy: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -34,12 +34,17 @@ export const watchEvents = watch('ev');
 export const saveEvent = async (id, payload) => { data.ev.push({ id: 'e' + n++, ...payload }); notify(); };
 export const removeEvent = async (id) => { data.ev = data.ev.filter((e) => e.id !== id); notify(); };
 export const watchDays = watch('dy');
-export const saveDays = async (list) => { list.forEach(({ id, payload }) => { data.dy = data.dy.filter((x) => x.id !== id); data.dy.push({ id, ...payload }); }); notify(); };
+export const saveDays = async (list) => { list.forEach(({ id, payload }) => { data.dy = data.dy.filter((x) => x.id !== id); data.dy.push({ id, ...payload, owner: user.uid }); }); notify(); };
+export const claimDays = async (ids) => { data.dy.forEach((x) => { if (ids.includes(x.id) && !x.owner) x.owner = user.uid; }); notify(); };
+export const watchPats = watch('pt');
+export const savePat = async (id, payload) => { data.pt = data.pt.filter((x) => x.id !== id); data.pt.push({ id, ...payload, from: user.uid }); notify(); };
+export const removePat = async (id) => { data.pt = data.pt.filter((x) => x.id !== id); notify(); };
 export const removeDays = async (ids) => { data.dy = data.dy.filter((x) => !ids.includes(x.id)); notify(); };
 export const watchProfiles = watch('pr');
 export const saveProfile = async (uid, payload) => { data.pr = data.pr.filter((p) => p.id !== uid); data.pr.push({ id: uid, ...payload }); notify(); };
 export const watchShared = watch('sh');
 export const saveShared = async (payload) => { data.sh = [{ id: 'main', ...payload }]; notify(); };
+data.asUser = (uid) => { user = { uid }; cb(user); };
 window.__fake = data;
 `;
 const fakeConfig = `export const firebaseConfig = { apiKey: 'x' }; export const isConfigured = true;`;
@@ -199,6 +204,34 @@ await page.locator('#sheet .mini-list .x').first().click();
 await page.waitForFunction((n) => document.querySelectorAll('#sheet .mini-list .item').length < n, before);
 check('記録を削除できる(2回タップ)', true);
 await page.click('#sheet-close');
+
+// 相手の画面(見るだけ)と「よしよし」
+await page.evaluate(() => window.__fake.asUser('u2'));
+await page.click('.tab[data-v="home"]');
+await page.click('.tab[data-v="cal"]');
+await page.locator('#month button', { hasText: /^5$/ }).click();
+check('相手の画面では、記録のボタンが出ない', !(await page.locator('#day-record').isVisible()) && !(await page.locator('#past-record').isVisible()) && (await page.locator('#day-detail .ghost').count()) === 0);
+check('相手の画面では、誰の記録かが出る', (await page.textContent('#day-detail')).includes('ひとみの記録'));
+check('相手の画面では、記録の内容は見られる', (await page.textContent('#day-detail')).includes('テストメモ'));
+await page.click('#day-detail .pat');
+await page.waitForSelector('#day-detail .pat.on');
+const patDocs = await page.evaluate(() => JSON.stringify(window.__fake.pt));
+check('よしよしを送れる。保存されるのは暗号文と送り主だけ', patDocs.includes('"from":"u2"') && !/2026|u1/.test(patDocs.replace('"from":"u2"', '')) && (await page.evaluate(() => window.__fake.pt.length)) === 1);
+await page.click('#day-detail .pat');
+await page.waitForFunction(() => window.__fake.pt.length === 0);
+check('もう一度押すと、取り消せる', true);
+await page.click('#day-detail .pat');
+await page.waitForFunction(() => window.__fake.pt.length === 1);
+await page.evaluate(() => window.__fake.asUser('u1'));
+await page.click('.tab[data-v="cal"]');
+await page.click('.tab[data-v="home"]');
+check('持ち主のホームに、よしよしが届いたと出る', await page.locator('#pat-banner').isVisible() && (await page.textContent('#pat-banner')).includes('よしよしが届いています(1件)'));
+await page.click('#pat-banner');
+await page.waitForSelector('#day-detail:not([hidden])');
+check('帯をタップすると、その日の記録に飛び、よしよしが見える', (await page.textContent('#day-detail')).includes('から よしよし') && (await page.locator('#day-detail .ghost').count()) === 1);
+check('よしよしが届いた日に、ハートの印が付く', (await page.locator('#month button em.pat-mark').count()) === 1);
+await page.click('.tab[data-v="home"]');
+check('見たあとは、帯が消える', !(await page.locator('#pat-banner').isVisible()));
 
 // ホームと設定
 await page.click('.tab[data-v="cal"]');

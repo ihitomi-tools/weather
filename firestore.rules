@@ -18,8 +18,27 @@ service cloud.firestore {
     match /events/{id} {
       allow read, write: if isUs();
     }
+    // 日ごとの記録: 読めるのはふたり。書き換え・削除は、記録の持ち主(owner)だけ。
     match /days/{id} {
-      allow read, write: if isUs();
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
+      allow update: if isUs()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner'])
+        && (!('owner' in resource.data) || resource.data.owner == request.auth.uid);
+      allow delete: if isUs()
+        && (!('owner' in resource.data) || resource.data.owner == request.auth.uid);
+    }
+    // よしよし: 送った本人だけが取り消せる。
+    match /pats/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'from']);
+      allow update: if false;
+      allow delete: if isUs() && resource.data.from == request.auth.uid;
     }
     match /shared/{id} {
       allow read, write: if isUs();

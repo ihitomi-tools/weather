@@ -243,6 +243,15 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dd-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .dd-tags span { background: var(--pink); color: var(--on-pink); border-radius: 99px; padding: 7px 14px; font-size: 15px; font-weight: 700; }
 .dd-memo { margin: 0; font-size: 18px; line-height: 1.75; overflow-wrap: anywhere; white-space: pre-wrap; }
+.pat-banner { margin: 0 18px 12px; width: calc(100% - 36px); border: 0; border-radius: 18px; padding: 13px 16px; background: var(--pink); color: var(--on-pink); font: inherit; font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; }
+.pat-banner svg, .pat svg, .dd-pat svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
+.pat { border: 0; border-radius: 99px; padding: 12px 18px; background: var(--pink); color: var(--on-pink); font: inherit; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+.pat.on { background: var(--screen); color: var(--pink-deep); box-shadow: inset 0 0 0 2px var(--pink-deep); }
+.pat.pop svg { animation: pat-pop .5s ease; }
+@keyframes pat-pop { 0% { transform: scale(1); } 40% { transform: scale(1.8); } 100% { transform: scale(1); } }
+.dd-pat { display: flex; align-items: center; gap: 8px; color: var(--pink-deep); font-weight: 800; font-size: 15px; }
+.dd-pat small { margin-left: auto; color: var(--muted); font-weight: 500; font-size: 12px; }
+.month button em.pat-mark { position: absolute; top: 3px; left: 6px; font-size: 9px; line-height: 1; color: var(--pink-deep); font-style: normal; }
 .mini-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
 
 @media (prefers-reduced-motion: no-preference) { .view.on { animation: in .2s ease; } @keyframes in { from { opacity: 0; transform: translateY(6px); } } }
