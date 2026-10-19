@@ -1,5 +1,5 @@
 // 画面のファイルだけを保存する。通信(天気・Firebase)には触れない。
-const CACHE = 'shell-v7';
+const CACHE = 'shell-v8';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/config.js', 'js/store.js',

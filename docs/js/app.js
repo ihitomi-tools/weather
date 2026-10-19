@@ -19,7 +19,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme',
 };
-const VERSION = '2026.10.19-9';
+const VERSION = '2026.10.19-10';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -810,6 +810,22 @@ function openCardSheet() {
   );
 }
 
+// アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
+const SHELL_FILES = [
+  'index.html', 'css/style.css', 'manifest.webmanifest',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js',
+];
+
+async function refreshApp(btn) {
+  btn.disabled = true;
+  btn.textContent = '更新中…';
+  try {
+    await Promise.all(SHELL_FILES.map((f) => fetch(f, { cache: 'reload' })));
+    if (window.caches) { const keys = await caches.keys(); await Promise.all(keys.map((k) => caches.delete(k))); }
+  } catch (e) { /* 取れなくても、再読み込みはする */ }
+  location.reload();
+}
+
 function applyTheme(v) {
   if (v === 'light' || v === 'dark') document.documentElement.dataset.theme = v;
   else delete document.documentElement.dataset.theme;
@@ -846,6 +862,9 @@ function renderSettings() {
     h('option', { value: 'auto' }, '自動'), h('option', { value: 'light' }, 'ライト'), h('option', { value: 'dark' }, 'ダーク'));
   theme.value = LS.get(K.theme) || 'auto';
   theme.addEventListener('change', () => { LS.set(K.theme, theme.value); applyTheme(theme.value); });
+
+  const refreshBtn = h('button', { class: 'act', type: 'button' }, '最新版にする');
+  refreshBtn.addEventListener('click', () => refreshApp(refreshBtn));
 
   const reseq = h('button', { class: 'act', type: 'button' }, '変更');
   reseq.addEventListener('click', () => startRecording('set'));
@@ -891,7 +910,7 @@ function renderSettings() {
     row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
     row('キーの確認番号', '同じ番号か見比べます', showFp),
     row('ログアウト', null, out),
-    row('バージョン', null, h('span', { class: 'lead' }, VERSION)),
+    row('バージョン', VERSION, refreshBtn),
     row('この端末からキーを消す', 'バックアップコードがないと、過去の会話は読めなくなります', wipe),
   );
 }

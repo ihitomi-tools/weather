@@ -17,7 +17,7 @@
   --sky-2: #6aa8e4;
   --sky-3: #9cc6ee;
   --m1: #7d8aa8; --m2: #8a74d0; --m3: #3f86d6; --m4: #e0892f; --m5: #d9b21c;
-  --card-a: #ffe3ee; --card-b: #d8f6ea; --card-base: #fcf6f9;
+  --card-bg: linear-gradient(135deg, #f1e4d5, #e6d2bd); --card-fg: #4d3a2c; --card-sub: #7d6755; --card-num: #7a5238; --card-dot: #bfa58f; --card-dot-on: #7a5238;
 }
 /* ダーク: 端末の設定に合わせる。設定で「ダーク」を選んだときも同じ色。 */
 @media (prefers-color-scheme: dark) {
@@ -27,7 +27,7 @@
     --on-pink: #44102b; --on-mint: #05352a;
     --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
     --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
-    --card-a: rgba(255,156,196,.5); --card-b: rgba(98,230,192,.38); --card-base: #2e3260;
+    --card-bg: linear-gradient(135deg, #ffffff, #f2efeb); --card-fg: #2b2d45; --card-sub: #666a8c; --card-num: #2b2d45; --card-dot: #b9bcd2; --card-dot-on: #2b2d45;
     color-scheme: dark;
   }
 }
@@ -37,7 +37,7 @@
     --on-pink: #44102b; --on-mint: #05352a;
     --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
     --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
-    --card-a: rgba(255,156,196,.5); --card-b: rgba(98,230,192,.38); --card-base: #2e3260;
+    --card-bg: linear-gradient(135deg, #ffffff, #f2efeb); --card-fg: #2b2d45; --card-sub: #666a8c; --card-num: #2b2d45; --card-dot: #b9bcd2; --card-dot-on: #2b2d45;
     color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -113,15 +113,15 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .head h1 { font-size: 18px; margin: 0; font-weight: 800; flex: 1; text-wrap: balance; }
 .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; flex: none; }
 .av.me { background: var(--pink); color: var(--on-pink); } .av.you { background: var(--mint); color: var(--on-mint); }
-.days { margin: 4px 18px 14px; padding: 18px 18px 14px; border-radius: 22px; background: radial-gradient(130% 150% at 0% 0%, var(--card-a), transparent 62%), radial-gradient(130% 150% at 100% 100%, var(--card-b), transparent 62%), var(--card-base); color: var(--fg); text-align: center; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; transition: transform .18s ease-in; min-height: 132px; }
+.days { margin: 4px 18px 14px; padding: 18px 18px 14px; border-radius: 22px; background: var(--card-bg); color: var(--card-fg); text-align: center; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; transition: transform .18s ease-in; min-height: 132px; }
 .days.flipping { transform: perspective(700px) rotateY(90deg); }
 .days .hint { margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.6; }
 .dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
-.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); opacity: .4; }
-.dots i.on { background: var(--pink-deep); opacity: 1; }
-.days small { font-size: 12px; font-weight: 700; display: block; color: var(--muted); }
-.days b { display: block; font-size: 44px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pink-deep); }
-.days b span { font-size: 16px; margin-left: 4px; color: var(--fg); }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--card-dot); }
+.dots i.on { background: var(--card-dot-on); }
+.days small { font-size: 12px; font-weight: 700; display: block; color: var(--card-sub); }
+.days b { display: block; font-size: 44px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--card-num); }
+.days b span { font-size: 16px; margin-left: 4px; color: var(--card-fg); }
 .days button { border: 0; background: rgba(255,255,255,.6); border-radius: 99px; padding: 8px 16px; font-weight: 800; color: var(--on-mint); cursor: pointer; margin-top: 6px; }
 .sec { padding: 0 18px; font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .08em; margin: 6px 0 8px; }
 .list { margin: 0 18px 14px; display: flex; flex-direction: column; gap: 8px; padding: 0; list-style: none; }

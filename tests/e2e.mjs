@@ -295,6 +295,13 @@ await tap(['金沢', '金沢', '那覇', '札幌', '仙台', '東京']);
 await page.waitForSelector('#app:not([hidden])');
 check('新しいパターンで開く', true);
 
+// 「最新版にする」で、ファイルを取り直して再読み込みする
+await page.click('.tab[data-v="set"]');
+const reloaded = page.waitForNavigation();
+await page.locator('#settings li', { hasText: 'バージョン' }).locator('button').click();
+await reloaded;
+check('「最新版にする」で再読み込みされ、天気の画面になる', await page.locator('#cover').isVisible());
+
 check('ブラウザのエラーなし', errors.length === 0, errors.join(' | '));
 await page.screenshot({ path: '/tmp/claude-0/-home-user-chat/47a10d62-f426-5480-9ae3-ef67e0150520/scratchpad/shot-app.png' });
 await browser.close();
