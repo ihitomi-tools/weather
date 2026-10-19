@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "node --test tests/crypto.test.mjs tests/weather.test.mjs tests/emoji.test.mjs tests/cycle.test.mjs"
+    "test": "node --test tests/crypto.test.mjs tests/weather.test.mjs tests/emoji.test.mjs tests/cycle.test.mjs tests/card.test.mjs"
   }
 }

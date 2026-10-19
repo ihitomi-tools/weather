@@ -2,6 +2,7 @@ import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
+import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -16,9 +17,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card',
 };
-const VERSION = '2026.10.19-6';
+const VERSION = '2026.10.19-7';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -66,7 +67,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), since: null, pastRender: null,
+  profiles: {}, messages: [], events: [], days: new Map(), ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -325,7 +326,9 @@ function startWatching() {
   state.unsubs.push(s.watchShared(async (docs) => {
     const d = docs.find((x) => x.id === 'main');
     const p = d && await decrypt('shared', d);
-    state.since = p ? p.since : null;
+    const shared = normalizeShared(p);
+    state.ann = shared.ann;
+    state.nl = shared.nl;
     renderAll();
   }));
 
@@ -435,16 +438,74 @@ function moodItem(r) {
     h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`));
 }
 
+// ホームのカード: 3つの面(記念日1・記念日2・次の「両方」の予定)。名前は設定で決める。
+const CARD_DEFAULTS = ['記念日1', '記念日2'];
+const NEXT_DEFAULT = '次の予定';
+
+function renderCard() {
+  const box = $('#days');
+  const today = ymd(new Date());
+  const face = state.card % 3;
+  let nodes;
+  if (face < 2) {
+    const a = state.ann[face];
+    const label = a.l || CARD_DEFAULTS[face];
+    if (a.d) {
+      const n = daysSince(a.d, today);
+      const next = nextMilestone(n);
+      nodes = [h('small', {}, `${label}から`), h('b', {}, String(n), h('span', {}, '日')), h('small', {}, n > 0 && next === n ? '今日は節目の日です' : `次の節目(${next}日)まであと${next - n}日`)];
+    } else {
+      nodes = [h('small', {}, label), h('p', { class: 'hint' }, '設定の「ホームのカード」で日付を入れると、日数を数えます')];
+    }
+  } else {
+    const label = state.nl || NEXT_DEFAULT;
+    const ev = nextJoint(state.events, today);
+    if (ev) {
+      const diff = dayNum(ev.date) - dayNum(today);
+      nodes = [h('small', {}, label), h('b', {}, diff === 0 ? '今日' : `あと${diff}`, diff === 0 ? null : h('span', {}, '日')), h('small', {}, `${ev.title}・${mdLabel(ev.date)}${ev.time ? ` ${ev.time}` : ''}`)];
+    } else {
+      nodes = [h('small', {}, label), h('p', { class: 'hint' }, 'カレンダーで「両方」を選んだ予定が、ここに出ます')];
+    }
+  }
+  box.replaceChildren(...nodes, h('div', { class: 'dots' }, [0, 1, 2].map((i) => h('i', { class: i === face ? 'on' : '' }))));
+}
+
+function flipCard(dir) {
+  state.card = (state.card + dir + 3) % 3;
+  LS.set(K.card, String(state.card));
+  const box = $('#days');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { renderCard(); return; }
+  box.classList.add('flipping');
+  setTimeout(() => { renderCard(); box.classList.remove('flipping'); }, 180);
+}
+
+function buildCard() {
+  state.card = Number(LS.get(K.card)) || 0;
+  const box = $('#days');
+  box.setAttribute('role', 'button');
+  box.setAttribute('aria-label', 'カードを切り替える');
+  box.tabIndex = 0;
+  let x0 = null;
+  let y0 = 0;
+  box.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; });
+  box.addEventListener('pointercancel', () => { x0 = null; });
+  box.addEventListener('pointerup', (e) => {
+    if (x0 == null) return;
+    const dx = e.clientX - x0;
+    const dy = e.clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) flipCard(dx < 0 ? 1 : -1); // 左へスライドで次へ
+    else if (Math.abs(dx) < 10 && Math.abs(dy) < 10) flipCard(1); // タップで次へ
+  });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); flipCard(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); flipCard(-1); }
+  });
+}
+
 function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
-  const days = $('#days');
-  if (state.since) {
-    const n = Math.floor((new Date().setHours(0, 0, 0, 0) - parseYmd(state.since)) / 864e5);
-    const next = Math.ceil((n + 1) / 100) * 100;
-    days.replaceChildren(h('small', {}, '開始日から'), h('b', {}, String(n), h('span', {}, '日')), h('small', {}, `次の節目(${next}日)まであと${next - n}日`));
-  } else {
-    days.replaceChildren(h('small', {}, '開始日を登録すると、日数を数えます'), h('button', { type: 'button', onclick: () => setView('set') }, '設定で登録'));
-  }
+  renderCard();
   renderNextMoon();
   const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
@@ -709,6 +770,46 @@ function openPastSheet() {
   render();
 }
 
+function openCardSheet() {
+  const field = (i) => {
+    const l = h('input', { type: 'text', maxlength: '14', placeholder: CARD_DEFAULTS[i], 'aria-label': `カード${i + 1}の名前` });
+    l.value = state.ann[i].l;
+    const d = h('input', { type: 'date', 'aria-label': `カード${i + 1}の日付` });
+    d.value = state.ann[i].d;
+    return { l, d };
+  };
+  const a = field(0);
+  const b = field(1);
+  const n = h('input', { type: 'text', maxlength: '14', placeholder: NEXT_DEFAULT, 'aria-label': 'カード3の名前' });
+  n.value = state.nl;
+  const err = h('p', { class: 'error', role: 'alert' });
+  const save = h('button', { class: 'primary', type: 'button' }, '保存');
+  save.addEventListener('click', async () => {
+    err.textContent = '';
+    save.disabled = true;
+    const payload = buildSharedPayload({
+      ann: [{ l: a.l.value.trim(), d: a.d.value }, { l: b.l.value.trim(), d: b.d.value }],
+      nl: n.value.trim(),
+    });
+    try {
+      await withTimeout(state.store.saveShared(await C.encryptJson(state.key, 'shared', payload)), 5000);
+      closeSheet();
+    } catch (e) {
+      err.textContent = '保存できませんでした。通信を確認してください。';
+      save.disabled = false;
+    }
+  });
+  openSheet(
+    h('h2', {}, 'ホームのカード'),
+    h('p', { class: 'lock' }, '名前と日付は暗号化されて保存され、相手の画面にも同じものが出ます。カードは、タップかスライドで切り替わります。'),
+    h('p', { class: 'lab' }, 'カード1(名前と日付)'), h('div', { class: 'stack' }, a.l, a.d),
+    h('p', { class: 'lab' }, 'カード2(名前と日付)'), h('div', { class: 'stack' }, b.l, b.d),
+    h('p', { class: 'lab' }, 'カード3(カレンダーで「両方」を選んだ、次の予定まで)'), n,
+    err,
+    save,
+  );
+}
+
 function row(title, note, control) {
   return h('li', {}, h('div', { class: 't' }, title, note ? h('small', {}, note) : null), control);
 }
@@ -733,11 +834,8 @@ function renderSettings() {
     saveName.textContent = '保存しました';
   });
 
-  const since = h('input', { type: 'date', value: state.since || '', 'aria-label': '開始日' });
-  since.addEventListener('change', async () => {
-    if (!since.value) return;
-    await state.store.saveShared(await C.encryptJson(state.key, 'shared', { since: since.value }));
-  });
+  const cardBtn = h('button', { class: 'act', type: 'button' }, '設定');
+  cardBtn.addEventListener('click', openCardSheet);
 
   const reseq = h('button', { class: 'act', type: 'button' }, '変更');
   reseq.addEventListener('click', () => startRecording('set'));
@@ -775,7 +873,7 @@ function renderSettings() {
   if (active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
     row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
-    row('開始日', 'ホームの日数に使います', since),
+    row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
     row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
@@ -792,6 +890,7 @@ function init() {
   buildCover();
   buildGate();
   buildCalendar();
+  buildCard();
   buildChat();
   $$('[data-hide]').forEach((b) => b.addEventListener('click', lock));
   $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.v)));

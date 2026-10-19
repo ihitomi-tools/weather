@@ -101,7 +101,12 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .head h1 { font-size: 18px; margin: 0; font-weight: 800; flex: 1; text-wrap: balance; }
 .av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; flex: none; }
 .av.me { background: var(--pink); color: var(--on-pink); } .av.you { background: var(--mint); color: var(--on-mint); }
-.days { margin: 4px 18px 14px; padding: 18px; border-radius: 22px; background: linear-gradient(135deg, var(--pink), var(--mint)); color: var(--on-mint); text-align: center; }
+.days { margin: 4px 18px 14px; padding: 18px 18px 14px; border-radius: 22px; background: linear-gradient(135deg, var(--pink), var(--mint)); color: var(--on-mint); text-align: center; cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; transition: transform .18s ease-in; min-height: 132px; }
+.days.flipping { transform: perspective(700px) rotateY(90deg); }
+.days .hint { margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.6; }
+.dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); }
+.dots i.on { background: var(--on-pink); }
 .days small { font-size: 12px; font-weight: 700; display: block; }
 .days b { display: block; font-size: 44px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--on-pink); }
 .days b span { font-size: 16px; margin-left: 4px; }
