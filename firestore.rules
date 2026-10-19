@@ -40,6 +40,60 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isUs() && resource.data.from == request.auth.uid;
     }
+    // 毎日のお題のストック: ふたりとも足せる。消せるのは、足した本人だけ。
+    match /stock/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'from']);
+      allow update: if false;
+      allow delete: if isUs() && resource.data.from == request.auth.uid;
+    }
+    // お題のカード: 番号ごとに1つだけ作れる(同時にできたときは、先のほうが残る)。
+    match /qcards/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'n', 'from']);
+      allow update, delete: if false;
+    }
+    // 答え: 自分の分を、1回だけ書ける(あとから書き換えられない)。
+    match /answers/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
+      allow update, delete: if false;
+    }
+    // ボックス(タイムカプセル・誕生日)。
+    match /boxes/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.openAt is timestamp
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'openAt', 'from']);
+      allow update: if false;
+      allow delete: if isUs() && resource.data.from == request.auth.uid && request.time < resource.data.openAt;
+    }
+    // ボックスの中身: 開く日まで、誰にも(入れた本人にも)読ませない。開く日のあとは、入れられない。
+    match /items/{id} {
+      allow read: if isUs() && request.time >= resource.data.openAt;
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.time < request.resource.data.openAt
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'box', 'openAt', 'from'])
+        && get(/databases/$(database)/documents/boxes/$(request.resource.data.box)).data.openAt == request.resource.data.openAt;
+      allow update: if false;
+      allow delete: if isUs() && resource.data.from == request.auth.uid && request.time < resource.data.openAt;
+    }
+    // 中身の件数の印(中身は入っていない)。
+    match /marks/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.keys().hasOnly(['box', 'from']);
+      allow update, delete: if false;
+    }
     match /shared/{id} {
       allow read, write: if isUs();
     }

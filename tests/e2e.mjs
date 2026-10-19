@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -40,10 +40,24 @@ export const watchPats = watch('pt');
 export const savePat = async (id, payload) => { data.pt = data.pt.filter((x) => x.id !== id); data.pt.push({ id, ...payload, from: user.uid }); notify(); };
 export const removePat = async (id) => { data.pt = data.pt.filter((x) => x.id !== id); notify(); };
 export const removeDays = async (ids) => { data.dy = data.dy.filter((x) => !ids.includes(x.id)); notify(); };
+export const watchStock = watch('sk');
+export const addStock = async (payload) => { data.sk.push({ id: 's' + n++, ...payload, from: user.uid }); notify(); };
+export const removeStock = async (id) => { data.sk = data.sk.filter((x) => x.id !== id); notify(); };
+export const watchQCards = watch('qc');
+export const createQCard = async (id, num, payload) => { if (data.qc.some((x) => x.id === id)) throw new Error('exists'); data.qc.push({ id, n: num, ...payload, from: user.uid }); notify(); };
+export const watchAnswers = watch('an');
+export const saveAnswer = async (id, payload) => { if (data.an.some((x) => x.id === id)) throw new Error('exists'); data.an.push({ id, ...payload, owner: user.uid }); notify(); };
+export const watchBoxes = watch('bx');
+export const createBox = async (id, payload, at) => { if (data.bx.some((x) => x.id === id)) throw new Error('exists'); data.bx.push({ id, ...payload, openAt: at, from: user.uid }); notify(); };
+export const removeBox = async (id) => { data.bx = data.bx.filter((x) => x.id !== id); notify(); };
+export const watchMarks = watch('mk');
+export const addItem = async (id, box, at, payload) => { data.it.push({ id, ...payload, box, openAt: at, from: user.uid }); data.mk.push({ id, box, from: user.uid }); notify(); };
+export const loadItems = async (until) => data.it.filter((x) => x.openAt <= until);
 export const watchProfiles = watch('pr');
 export const saveProfile = async (uid, payload) => { data.pr = data.pr.filter((p) => p.id !== uid); data.pr.push({ id: uid, ...payload }); notify(); };
 export const watchShared = watch('sh');
 export const saveShared = async (payload) => { data.sh = [{ id: 'main', ...payload }]; notify(); };
+data.notify = notify;
 data.asUser = (uid) => { user = { uid }; cb(user); };
 window.__fake = data;
 `;
@@ -64,7 +78,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 const ctx = await browser.newContext({ viewport: { width: 390, height: 780 }, serviceWorkers: 'block' });
 const page = await ctx.newPage();
 const errors = [];
-page.on('pageerror', (e) => errors.push(e.message));
+page.on("pageerror", (e) => { errors.push(e.message); console.log("PAGEERR", e.message); });
 await ctx.route('https://api.open-meteo.com/**', (r) => r.fulfill({ json: wx }));
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await ctx.route(`${base}/js/store.js`, (r) => r.fulfill({ body: fakeStore, contentType: 'text/javascript' }));
@@ -116,6 +130,7 @@ check('本体が開く', (await page.textContent('#home-title')).startsWith('ひ
 
 // チャット
 await page.click('.tab[data-v="chat"]');
+await page.click('#talk-seg [data-t="chat"]');
 await page.fill('#msg', '土曜はパスタがいいな <b>テスト</b>');
 await page.click('#chat-form .send');
 await page.waitForSelector('.row.mine .bub');
@@ -140,6 +155,88 @@ await page.fill('#msg', 'おいしかった😋');
 await page.click('#chat-form .send');
 await page.waitForFunction(() => [...document.querySelectorAll('.row.mine .bub:not(.stamp)')].some((e) => e.textContent === 'おいしかった😋'));
 check('文字が混じるメッセージは、ふつうの吹き出し', true);
+
+
+// おはなし: お題
+const enc = (kind, obj) => page.evaluate(async ([k, o]) => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); return C.encryptJson(key, k, o); }, [kind, obj]);
+await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const d = new Date(Date.now() + 5 * 864e5); const doc = await C.encryptJson(key, 'profiles', { name: 'ゆうき', bd: { m: d.getMonth() + 1, d: d.getDate() } }); window.__fake.pr.push({ id: 'u2', ...doc }); window.__fake.notify(); });
+await page.click('.tab[data-v="chat"]');
+await page.click('#talk-seg [data-t="q"]');
+await page.waitForSelector('#q-area form input');
+check('ストックが空だと、お題の入力を求められる', (await page.textContent('#q-area')).includes('ストックがありません'));
+await page.fill('#q-area form input', '最近うれしかったことは?');
+await page.click('#q-area form button[type=submit]');
+await page.waitForFunction(() => document.querySelector('#q-text').textContent === '最近うれしかったことは?');
+check('入力したお題がカードになる(自分の色)', (await page.getAttribute('#qcard', 'data-by')) === 'me');
+check('お題は暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.qc)).includes('うれしかった'));
+await page.fill('#q-area textarea', '友だちと会えたこと');
+await page.click('#q-area form button[type=submit]');
+await page.waitForSelector('#q-area .ans.me');
+check('答えたあとは、相手を待つ表示(相手の答えは見えない)', (await page.textContent('#q-area')).includes('ゆうきの答えを待っています') && (await page.locator('#q-area .ans.you').count()) === 0);
+check('答えは暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.an)).includes('友だち'));
+const partnerAns = await enc('answers', { n: 1, text: '新しい本を買った', at: Date.now(), t0: Date.now() - 600000, edits: 3 });
+await page.evaluate((doc) => { window.__fake.an.push({ id: 'pa1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerAns);
+await page.waitForSelector('#q-area .ans.you');
+const meta = await page.textContent('#q-area .ans.you .meta');
+check('ふたりそろうと答えが見える(悩んだ跡つき)', (await page.textContent('#q-area .ans.you')).includes('新しい本を買った') && meta.includes('考えた時間 10分') && meta.includes('書き直し3回'), meta);
+check('同じ日は、次のお題を待つ案内', (await page.textContent('#q-area')).includes('明日の0時'));
+
+// ストック(まとめて追加)
+await page.click('#stock-open');
+await page.fill('#sheet-body textarea', '行ってみたい場所は?\n好きな季節は?\n\n最近ハマってることは?');
+await page.locator('#sheet-body button', { hasText: 'まとめて追加' }).click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 3);
+check('ストックにまとめて追加できる', true);
+check('ストックも暗号文だけ', !JSON.stringify(await page.evaluate(() => window.__fake.sk)).includes('季節'));
+await page.click('#sheet-close');
+check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '3');
+
+// カード
+await page.click('#talk-seg [data-t="c"]');
+check('カードが並ぶ', (await page.locator('#c-grid .ccard').count()) === 1);
+await page.click('#c-grid .ccard');
+check('カードを開くと答えが見える', (await page.locator('#sheet-body .ans').count()) === 2);
+await page.click('#sheet-close');
+
+// ボックス(タイムカプセル)
+await page.click('#talk-seg [data-t="b"]');
+await page.fill('#cap-name', '来年のふたりへ');
+await page.fill('#cap-date', new Date(Date.now() + 864e5 * 2).toISOString().slice(0, 10).replace(/-0?/g, '-').replace(/^(\d+)-(\d+)-(\d+)$/, (m, y, mo, d) => `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`));
+await page.click('#cap-form button[type=submit]');
+await page.waitForSelector('#sheet-body textarea');
+await page.fill('#sheet-body textarea', '元気にしてるかな');
+await page.click('#sheet-body button[type=submit]');
+await page.waitForSelector('#b-list .bx');
+check('タイムカプセルができて、封をされる(あと〜日)', (await page.textContent('#b-list .bx')).includes('来年のふたりへ') && (await page.textContent('#b-list .bx')).includes('あと'));
+check('中身は暗号文だけ', !JSON.stringify(await page.evaluate(() => window.__fake.it)).includes('元気'));
+check('開く日の前は、中身を読む入口がない', (await page.locator('#b-list .bx .count small').textContent()).includes('1通'));
+await page.evaluate(() => { window.__fake.bx[0].openAt = Date.now() - 300000; window.__fake.it[0].openAt = Date.now() - 300000; window.__fake.notify(); });
+await page.waitForFunction(() => document.querySelector('#b-list .bx .count small')?.textContent === 'ひらく');
+await page.click('#b-list .bx');
+await page.waitForFunction(() => document.querySelector('#sheet-body').textContent.includes('元気にしてるかな'));
+check('開く日が来ると、中身が読める', true);
+await page.click('#sheet-close');
+
+// 誕生日
+await page.click('.tab[data-v="home"]');
+check('相手の誕生日の前に、ポップが出る', await page.locator('#bd-banner').isVisible() && (await page.textContent('#bd-banner')).includes('誕生日メッセージ'));
+await page.click('#bd-banner');
+await page.fill('#sheet-body textarea', 'おめでとう');
+await page.click('#sheet-body button[type=submit]');
+await page.waitForFunction(() => document.querySelector('#bd-banner').hidden);
+check('メッセージを入れるとポップが消える', true);
+check('誕生日ボックスは、相手あてで作られる', (await page.evaluate(() => window.__fake.bx.length)) === 2);
+await page.click('.tab[data-v="set"]');
+const nowD = new Date();
+await page.selectOption('select[aria-label="誕生日の月"]', String(nowD.getMonth() + 1));
+await page.selectOption('select[aria-label="誕生日の日"]', String(nowD.getDate()));
+await page.click('.tab[data-v="home"]');
+await page.waitForFunction(() => !document.querySelector('#bd-today').hidden);
+check('誕生日当日は、お祝いが出る', (await page.textContent('#bd-today')).includes('お誕生日おめでとう'));
+await page.click('.tab[data-v="cal"]');
+check('カレンダーのその日にケーキの印が付く', (await page.locator('#month button em.cake').count()) >= 1);
+await page.click('.tab[data-v="set"]');
+await page.selectOption('select[aria-label="誕生日の月"]', String((nowD.getMonth() + 1) % 12 + 1));
 
 // 予定
 await page.click('.tab[data-v="cal"]');

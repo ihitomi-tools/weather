@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, collection, doc, addDoc, setDoc, deleteDoc,
-  query, orderBy, limitToLast, onSnapshot, serverTimestamp, Timestamp, writeBatch,
+  query, orderBy, limitToLast, onSnapshot, serverTimestamp, Timestamp, writeBatch, getDocs, where,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 let auth;
@@ -78,6 +78,37 @@ export function removeDays(ids) {
   const batch = writeBatch(db);
   ids.forEach((id) => batch.delete(doc(db, 'days', id)));
   return batch.commit();
+}
+
+// ---- 毎日のお題 ----
+export const watchStock = (cb) => watchPlain('stock', cb);
+export const addStock = (payload) => addDoc(collection(db, 'stock'), { ...payload, from: auth.currentUser.uid });
+export const removeStock = (id) => deleteDoc(doc(db, 'stock', id));
+export const watchQCards = (cb) => watchPlain('qcards', cb);
+// 同じ番号のお題が、2つの端末から同時にできたときは、先にできたほうが残る(あとのほうは書き込めない)
+export const createQCard = (id, n, payload) => setDoc(doc(db, 'qcards', id), { ...payload, n, from: auth.currentUser.uid });
+export const watchAnswers = (cb) => watchPlain('answers', cb);
+export const saveAnswer = (id, payload) => setDoc(doc(db, 'answers', id), { ...payload, owner: auth.currentUser.uid });
+
+// ---- ボックス(タイムカプセル・誕生日) ----
+// 中身(items)は、開く日(openAt)まで、サーバーが読ませない。件数の印(marks)だけ、いつでも読める。
+export const watchBoxes = (cb) => watchPlain('boxes', cb);
+export const createBox = (id, payload, openAtMs) => setDoc(doc(db, 'boxes', id), { ...payload, openAt: Timestamp.fromMillis(openAtMs), from: auth.currentUser.uid });
+export const removeBox = (id) => deleteDoc(doc(db, 'boxes', id));
+export const watchMarks = (cb) => watchPlain('marks', cb);
+
+export function addItem(id, boxId, openAtMs, payload) {
+  const uid = auth.currentUser.uid;
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'items', id), { ...payload, box: boxId, openAt: Timestamp.fromMillis(openAtMs), from: uid });
+  batch.set(doc(db, 'marks', id), { box: boxId, from: uid });
+  return batch.commit();
+}
+
+// 開く日が来た中身だけを読む(開く日の範囲で絞らないと、ルールに断られる)
+export async function loadItems(untilMs) {
+  const snap = await getDocs(query(collection(db, 'items'), where('openAt', '<=', Timestamp.fromMillis(untilMs))));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export const watchProfiles = (cb) => watchPlain('profiles', cb);

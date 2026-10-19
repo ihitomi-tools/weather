@@ -4,6 +4,8 @@ import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
 import { canRecord as canRecordNow, unseenPats } from './share.js';
+import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer } from './qa.js';
+import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -18,9 +20,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk',
 };
-const VERSION = '2026.10.19-13';
+const VERSION = '2026.10.20-14';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -68,7 +70,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -305,13 +307,14 @@ async function decrypt(kind, doc) {
 function stopWatching() {
   state.unsubs.forEach((u) => u());
   state.unsubs = [];
+  state.loaded = {};
 }
 
 function startWatching() {
   if (state.unsubs.length) return;
   const s = state.store;
   const cache = new Map();
-  const seq = { msg: 0, ev: 0, dy: 0, pt: 0 };
+  const seq = { msg: 0, ev: 0, dy: 0, pt: 0, st: 0, qc: 0, an: 0, bx: 0, mk: 0 };
 
   state.unsubs.push(s.watchProfiles(async (docs) => {
     const next = {};
@@ -320,7 +323,8 @@ function startWatching() {
       if (p) next[d.id] = p;
     }
     state.profiles = next;
-    if (!next[myUid()]) s.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', { name: myName() }));
+    if (next[myUid()] && next[myUid()].bd && !LS.get(K.bd)) LS.set(K.bd, JSON.stringify(next[myUid()].bd));
+    if (!next[myUid()]) s.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', profilePayload()));
     renderAll();
   }));
 
@@ -353,6 +357,77 @@ function startWatching() {
     state.dayOwners = owners;
     renderAll();
     if (legacy.length && canRecord()) s.claimDays(legacy).catch(() => {});
+  }));
+
+  state.unsubs.push(s.watchStock(async (docs) => {
+    const my = ++seq.st;
+    const out = [];
+    for (const d of docs) {
+      const ck = `s:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('stock', d));
+      const p = cache.get(ck);
+      if (p && p.text) out.push({ id: d.id, text: p.text, from: d.from, at: p.at || 0 });
+    }
+    if (my !== seq.st) return;
+    state.stock = out.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
+    state.loaded.stock = true;
+    renderAll();
+    maybeAdvance();
+  }));
+
+  state.unsubs.push(s.watchQCards(async (docs) => {
+    const my = ++seq.qc;
+    const out = [];
+    for (const d of docs) {
+      const ck = `q:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('qcards', d));
+      const p = cache.get(ck);
+      if (p && p.text) out.push({ id: d.id, n: d.n, text: p.text, stockId: p.stockId || null, date: p.date, by: p.by || d.from });
+    }
+    if (my !== seq.qc) return;
+    state.qcards = out.sort((a, b) => a.n - b.n);
+    if (state.needInput && state.qcards.some((c) => c.n >= state.needInput)) state.needInput = null;
+    state.loaded.qcards = true;
+    renderAll();
+    maybeAdvance();
+  }));
+
+  state.unsubs.push(s.watchAnswers(async (docs) => {
+    const my = ++seq.an;
+    const next = new Map();
+    for (const d of docs) {
+      const ck = `a:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('answers', d));
+      const p = cache.get(ck);
+      if (p && typeof p.n === 'number' && d.owner) next.set(answerKey(p.n, d.owner), { ...p, owner: d.owner });
+    }
+    if (my !== seq.an) return;
+    state.answers = next;
+    state.loaded.answers = true;
+    renderAll();
+    maybeAdvance();
+  }));
+
+  state.unsubs.push(s.watchBoxes(async (docs) => {
+    const my = ++seq.bx;
+    const out = [];
+    for (const d of docs) {
+      const ck = `b:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('boxes', d));
+      const p = cache.get(ck);
+      if (p && d.openAt) out.push({ id: d.id, kind: p.kind, title: p.title || '', forUid: p.forUid || null, y: p.y || null, openAt: d.openAt.toMillis ? d.openAt.toMillis() : Number(d.openAt), from: d.from });
+    }
+    if (my !== seq.bx) return;
+    state.boxes = out;
+    renderAll();
+    refreshItems();
+  }));
+
+  state.unsubs.push(s.watchMarks((docs) => {
+    const next = new Map();
+    docs.forEach((d) => { if (!next.has(d.box)) next.set(d.box, []); next.get(d.box).push({ id: d.id, from: d.from }); });
+    state.marks = next;
+    renderAll();
   }));
 
   state.unsubs.push(s.watchPats(async (docs) => {
@@ -409,16 +484,18 @@ function setView(v) {
   $$('#app .view').forEach((el) => el.classList.toggle('on', el.id === `v-${v}`));
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v));
   renderAll();
-  if (v === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; }
+  if (v === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; refreshItems(); }
 }
 
 function renderAll() {
   if ($('#app').hidden) return;
   renderHome();
   renderChat();
+  renderTalk();
   renderCalendar();
   renderSettings();
   if (state.pastRender && !$('#sheet').hidden) state.pastRender();
+  if (state.sheetRender && !$('#sheet').hidden) state.sheetRender();
 }
 
 const kindOf = (ev) => (ev.who === 'both' ? 'both' : ((ev.who === 'me') === (ev.by === myUid()) ? 'me' : 'you'));
@@ -532,6 +609,7 @@ function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
   renderCard();
   renderPatBanner();
+  renderBirthdayHome();
   renderNextMoon();
   const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
@@ -662,11 +740,12 @@ function renderCalendar() {
     const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', rec && rec.p ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
     const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
     const hasPat = state.pats.has(key);
+    const hasCake = birthdayOn(parseYmd(key));
     cells.push(h('button', {
       type: 'button',
       class: classes,
       onclick: () => { state.cal.sel = key; $('#ev-date').value = key; renderCalendar(); },
-    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, dots.length ? h('i', {}, dots) : null));
+    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
@@ -675,7 +754,8 @@ function renderCalendar() {
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
   const list = state.events.filter((e) => e.date === sel).sort(byDate);
-  $('#cal-events').replaceChildren(...(list.length ? list.map((e) => eventItem(e, true)) : [h('li', { class: 'empty' }, 'この日の予定はありません')]));
+  const bdItems = birthdayNames(parseYmd(sel)).map((nm) => h('li', { class: 'item' }, h('span', { style: 'display:flex;width:20px;color:var(--pink-deep)' }, cakeIcon()), h('div', { class: 't' }, `${nm}の誕生日`)));
+  $('#cal-events').replaceChildren(...bdItems, ...(list.length ? list.map((e) => eventItem(e, true)) : bdItems.length ? [] : [h('li', { class: 'empty' }, 'この日の予定はありません')]));
 }
 
 function buildCalendar() {
@@ -740,6 +820,7 @@ function openSheet(...nodes) {
 }
 function closeSheet() {
   state.pastRender = null;
+  state.sheetRender = null;
   $('#sheet').hidden = true;
   $('#sheet-body').replaceChildren();
 }
@@ -920,7 +1001,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js',
 ];
 
 async function refreshApp(btn) {
@@ -958,9 +1039,23 @@ function renderSettings() {
     const v = name.value.trim();
     if (!v) return;
     LS.set(K.name, v);
-    await state.store.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', { name: v }));
+    await state.store.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', profilePayload()));
     saveName.textContent = '保存しました';
   });
+
+  const bd0 = myBd() || {};
+  const bdM = h('select', { 'aria-label': '誕生日の月' }, h('option', { value: '' }, '--'), ...Array.from({ length: 12 }, (_, i) => h('option', { value: String(i + 1) }, `${i + 1}月`)));
+  const bdD = h('select', { 'aria-label': '誕生日の日' }, h('option', { value: '' }, '--'), ...Array.from({ length: 31 }, (_, i) => h('option', { value: String(i + 1) }, `${i + 1}日`)));
+  bdM.value = bd0.m ? String(bd0.m) : '';
+  bdD.value = bd0.d ? String(bd0.d) : '';
+  const saveBd = async () => {
+    if (!bdM.value || !bdD.value) return;
+    LS.set(K.bd, JSON.stringify({ m: Number(bdM.value), d: Number(bdD.value) }));
+    await state.store.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', profilePayload()));
+    renderAll();
+  };
+  bdM.addEventListener('change', saveBd);
+  bdD.addEventListener('change', saveBd);
 
   const cardBtn = h('button', { class: 'act', type: 'button' }, '設定');
   cardBtn.addEventListener('click', openCardSheet);
@@ -1009,6 +1104,7 @@ function renderSettings() {
   if (active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
     row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
+    row('誕生日', '月と日だけ。相手にも見えます', h('span', { style: 'display:flex;gap:6px' }, bdM, bdD)),
     row('画面の色', '自動は、端末の設定に合わせます', theme),
     row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
@@ -1022,6 +1118,404 @@ function renderSettings() {
   );
 }
 
+/* ================= おはなし(お題・カード・ボックス・誕生日) ================= */
+const rid = () => crypto.randomUUID().replaceAll('-', '');
+const whoClass = (uid) => (uid === myUid() ? 'me' : 'you');
+const uidName = (uid) => (uid === myUid() ? myName() : partnerName());
+const mdText = (ms) => { const d = new Date(ms); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
+const myAnswer = (n) => state.answers.get(answerKey(n, myUid()));
+const otherAnswer = (n) => [...state.answers.values()].find((a) => a.n === n && a.owner !== myUid());
+const draft = new Map();
+let advancing = false;
+
+function svgOf(inner, cls) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('aria-hidden', 'true');
+  if (cls) s.setAttribute('class', cls);
+  s.innerHTML = inner;
+  return s;
+}
+const cakeIcon = () => svgOf('<path d="M12 2c.9 1 1.4 1.900 1.400 2.700A1.400 1.400 0 0 1 10.600 4.700C10.600 3.900 11.100 3 12 2ZM4 14a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1.500c-1.100 0-1.700.8-2.700.8s-1.600-.8-2.700-.8-1.600.8-2.600.8-1.600-.8-2.700-.8-1.600.8-2.700.8-1.700-.8-2.600-.8ZM4 17.500c1 0 1.500.8 2.600.8s1.600-.8 2.700-.8 1.600.8 2.700.8 1.600-.8 2.600-.8 1.600.8 2.700.8 1.600-.8 2.700-.8V20a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2ZM11 8h2v3h-2Z"/>', 'cake-icon');
+const capsuleIcon = () => svgOf('<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.600"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.600" stroke-linecap="round"/>');
+
+/* ---- 誕生日 ---- */
+function myBd() {
+  try { const v = JSON.parse(LS.get(K.bd)); return v && v.m && v.d ? v : null; } catch (e) { return null; }
+}
+const partnerBd = () => { const p = state.profiles[partnerUid()]; return p && p.bd && p.bd.m && p.bd.d ? p.bd : null; };
+const profilePayload = () => { const bd = myBd(); return bd ? { name: myName(), bd } : { name: myName() }; };
+const bdList = () => [[myUid(), myBd()], [partnerUid(), partnerBd()]].filter(([u, b]) => u && b);
+const birthdayNames = (date) => bdList().filter(([, b]) => isBirthdayOn(b.m, b.d, date)).map(([u]) => uidName(u));
+const birthdayOn = (date) => birthdayNames(date).length > 0;
+const boxById = (id) => state.boxes.find((b) => b.id === id);
+
+function giftBox() {
+  const bd = partnerBd();
+  if (!bd || !partnerUid()) return null;
+  const nb = nextBirthday(bd.m, bd.d, new Date());
+  return { ...nb, id: `b${nb.date.getFullYear()}-${partnerUid()}`, year: nb.date.getFullYear() };
+}
+
+function renderBirthdayHome() {
+  const banner = $('#bd-banner');
+  const today = $('#bd-today');
+  const gb = giftBox();
+  const written = gb && (state.marks.get(gb.id) || []).some((m) => m.from === myUid());
+  if (gb && gb.daysLeft >= 1 && gb.daysLeft <= POP_DAYS && !written) {
+    banner.replaceChildren(cakeIcon(), h('span', {}, 'お相手に誕生日メッセージをしたためておきましょう', h('br'), h('small', {}, '(当日、相手に届きます)')));
+    banner.onclick = () => openCompose(gb.id, gb);
+    banner.hidden = false;
+  } else banner.hidden = true;
+
+  const now = new Date();
+  const nodes = [];
+  bdList().forEach(([uid, b]) => {
+    if (!isBirthdayOn(b.m, b.d, now)) return;
+    const id = `b${now.getFullYear()}-${uid}`;
+    if (uid === myUid()) {
+      const msgs = (state.items.get(id) || []).filter((i) => i.from !== myUid());
+      nodes.push(h('div', { class: 'bd-today' }, cakeIcon(), h('b', {}, `${myName()}、お誕生日おめでとう`), h('span', {}, `${partnerName()}から、${msgs.length ? 'メッセージが届いています' : 'おめでとうのきもちが届いています'}`), ...msgs.map((i) => h('div', { class: 'ans you' }, h('small', {}, partnerName()), i.text))));
+    } else {
+      nodes.push(h('div', { class: 'bd-today' }, cakeIcon(), h('b', {}, `今日は${partnerName()}の誕生日`), h('span', {}, 'おめでとうを伝えよう')));
+    }
+  });
+  today.replaceChildren(...nodes);
+  today.hidden = !nodes.length;
+}
+
+/* ---- お題 ---- */
+async function createCard(n, text, stockId, by) {
+  const payload = await C.encryptJson(state.key, 'qcards', { text, stockId: stockId || null, date: ymd(new Date()), by: by || myUid() });
+  await state.store.createQCard(`q${n}`, n, payload);
+}
+
+async function makeNextCard(n) {
+  const pick = pickStock(availableStock(state.stock, state.qcards), n);
+  if (!pick) { state.needInput = n; renderTalk(); return; }
+  await createCard(n, pick.text, pick.id, pick.from);
+}
+
+async function maybeAdvance() {
+  if (advancing || !state.store || !state.key || !state.loaded.stock || !state.loaded.qcards || !state.loaded.answers) return;
+  const act = nextAction(state.qcards, state.answers, ymd(new Date()));
+  if (act.type !== 'create' || state.needInput === act.n) return;
+  advancing = true;
+  try { await makeNextCard(act.n); } catch (e) { /* 相手が先に出したとき。次の更新で表示される */ } finally { advancing = false; }
+}
+
+function answerForm(card) {
+  const t0Key = `app.t0.${card.n}`;
+  if (!LS.get(t0Key)) LS.set(t0Key, String(Date.now()));
+  let edits = 0;
+  const box = h('textarea', { rows: '4', maxlength: '500', placeholder: 'あなたの答え', 'aria-label': 'あなたの答え' });
+  box.value = draft.get(card.n) || '';
+  box.addEventListener('input', (e) => {
+    draft.set(card.n, box.value);
+    if (e.inputType && e.inputType.startsWith('delete')) edits += 1;
+    send.disabled = !box.value.trim();
+  });
+  const err = h('p', { class: 'error', role: 'alert' });
+  const send = h('button', { class: 'primary', type: 'submit' }, 'こたえる');
+  send.disabled = !box.value.trim();
+  const f = h('form', { class: 'stack' }, h('small', { class: 'lead' }, 'こたえると、あとから書き直せません。'), box, err, send);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = box.value.trim();
+    if (!text) return;
+    send.disabled = true;
+    try {
+      const payload = await C.encryptJson(state.key, 'answers', { n: card.n, text, at: Date.now(), t0: Number(LS.get(t0Key)) || 0, edits });
+      const id = await C.dayId(state.keyBytes, `ans|${card.n}|${myUid()}`);
+      await state.store.saveAnswer(id, payload);
+      draft.delete(card.n);
+      LS.del(t0Key);
+    } catch (x) { err.textContent = '送れませんでした。もう一度ためしてください。'; send.disabled = false; }
+  });
+  return f;
+}
+
+function answersBlock(n) {
+  const mine = myAnswer(n);
+  const theirs = otherAnswer(n);
+  const bubble = (a, cls, who) => h('div', { class: `ans ${cls}` }, h('small', {}, who), a.text, h('span', { class: 'meta' }, describeAnswer(a)));
+  if (mine && theirs) return [bubble(mine, 'me flip-in', myName()), bubble(theirs, 'you flip-in', partnerName())];
+  if (mine) return [bubble(mine, 'me', myName()), h('div', { class: 'ans wait' }, `${partnerName()}の答えを待っています`)];
+  if (theirs) return [h('div', { class: 'ans wait' }, `${partnerName()}はもう答えました。あなたが答えると、ふたり同時に見られます`)];
+  return [];
+}
+
+function forcedForm(n) {
+  const input = h('input', { type: 'text', maxlength: '80', placeholder: '今日のお題を入力', 'aria-label': '今日のお題' });
+  const err = h('p', { class: 'error', role: 'alert' });
+  const btn = h('button', { class: 'primary', type: 'submit' }, 'このお題にする');
+  const f = h('form', { class: 'stack' }, h('p', { class: 'lead' }, 'お題のストックがありません。今日のお題を入力してください。'), input, err, btn);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    btn.disabled = true;
+    try { await createCard(n, text, null, myUid()); state.needInput = null; } catch (x) { state.needInput = null; err.textContent = 'すでに次のお題が出ていました'; renderTalk(); }
+  });
+  return f;
+}
+
+let qSig = '';
+function renderQuestion() {
+  const cards = state.qcards;
+  const last = cards[cards.length - 1];
+  const ready = state.loaded.stock && state.loaded.qcards && state.loaded.answers;
+  const avail = availableStock(state.stock, cards).length;
+  $('#stock-n').textContent = String(avail);
+  const act = ready ? nextAction(cards, state.answers, ymd(new Date())) : null;
+  const sig = JSON.stringify([ready, last && last.id, last && [!!myAnswer(last.n), !!otherAnswer(last.n)], act && act.type, state.needInput, partnerName()]);
+  if (sig === qSig) return;
+  qSig = sig;
+  const area = $('#q-area');
+  const q = $('#qcard');
+  if (last) {
+    q.dataset.by = whoClass(last.by);
+    $('#q-meta').textContent = `第${last.n}問 ・ ${last.date.slice(5).replace('-', '/')}`;
+    $('#q-text').textContent = last.text;
+  } else {
+    q.dataset.by = '';
+    $('#q-meta').textContent = 'お題';
+    $('#q-text').textContent = ready ? 'まだお題がありません' : '読み込み中…';
+  }
+  const nodes = [];
+  if (last) {
+    nodes.push(...answersBlock(last.n));
+    if (!myAnswer(last.n)) nodes.push(answerForm(last));
+    if (act && act.type === 'wait' && act.until === 'tomorrow') nodes.push(h('p', { class: 'lead' }, '次のお題は、明日の0時に届きます。'));
+    if (act && act.type === 'skip-ok') {
+      const next = h('button', { class: 'ghost', type: 'button' }, '次のお題を出す');
+      next.addEventListener('click', async () => { next.disabled = true; try { await makeNextCard(act.n); } catch (e) { next.disabled = false; } });
+      nodes.push(h('p', { class: 'lead' }, `${partnerName()}がまだ答えていません。このお題は「お休み」にして、あとからいつでも答えられます。`), next);
+    }
+  }
+  if (ready && state.needInput != null && (!last || state.needInput === last.n + 1)) nodes.push(forcedForm(state.needInput));
+  area.replaceChildren(...nodes);
+}
+
+/* ---- カード ---- */
+function renderCards() {
+  $$('#c-chips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === state.cfilter)));
+  const cards = [...state.qcards].reverse().filter((c) => {
+    const st = cardStatus(c, state.qcards, state.answers);
+    return state.cfilter === 'all' || st === state.cfilter || (state.cfilter === 'rest' && st === 'rest');
+  });
+  $('#c-count').textContent = `${cards.length}枚`;
+  $('#c-grid').replaceChildren(...cards.map((c) => {
+    const st = cardStatus(c, state.qcards, state.answers);
+    const line = st === 'complete' ? 'ふたりの答えがそろった' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
+    const cls = st === 'complete' ? 'me' : 'none';
+    const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
+    b.addEventListener('click', () => openQCardSheet(c.n));
+    return b;
+  }));
+}
+
+function openQCardSheet(n) {
+  const body = h('div', { class: 'stack' });
+  let sig = '';
+  const fill = () => {
+    const c = state.qcards.find((x) => x.n === n);
+    if (!c) return;
+    const s = JSON.stringify([!!myAnswer(n), !!otherAnswer(n), partnerName()]);
+    if (s === sig) return;
+    sig = s;
+    const st = cardStatus(c, state.qcards, state.answers);
+    const q = h('div', { class: 'qcard', 'data-by': whoClass(c.by) }, h('small', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}${st === 'rest' ? ' ・ お休み' : ''}`), h('b', {}, c.text));
+    const kids = [q, ...answersBlock(n)];
+    if (!myAnswer(n)) kids.push(answerForm(c));
+    body.replaceChildren(...kids);
+  };
+  state.sheetRender = fill;
+  fill();
+  openSheet(body);
+  state.sheetRender = fill;
+}
+
+/* ---- お題ストック ---- */
+function openStockSheet() {
+  const list = h('ul', { class: 'stack', style: 'list-style:none;padding:0;margin:0' });
+  const fill = () => {
+    const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
+    list.replaceChildren(...(state.stock.length ? state.stock.map((s) => {
+      const isUsed = used.has(s.id);
+      const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
+      if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
+      return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
+    }) : [h('li', { class: 'empty' }, 'まだありません')]));
+  };
+  const one = h('input', { type: 'text', maxlength: '80', placeholder: 'お題を1つ追加', 'aria-label': 'お題を1つ追加' });
+  const addOne = h('button', { class: 'ghost sm', type: 'button' }, '追加');
+  const bulk = h('textarea', { rows: '4', placeholder: 'まとめて追加(1行に1つ)', 'aria-label': 'まとめて追加' });
+  const addBulk = h('button', { class: 'ghost sm', type: 'button' }, 'まとめて追加');
+  const push = async (texts) => {
+    for (const t of texts) {
+      await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now() }));
+    }
+  };
+  addOne.addEventListener('click', async () => { const t = one.value.trim(); if (!t) return; one.value = ''; await push([t]).catch(() => {}); });
+  addBulk.addEventListener('click', async () => {
+    const ts = bulk.value.split('\n').map((x) => x.trim().slice(0, 80)).filter(Boolean);
+    if (!ts.length) return;
+    bulk.value = '';
+    await push(ts).catch(() => {});
+  });
+  state.sheetRender = fill;
+  fill();
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます。ふたりとも足せます。角の色は、足した人です。'), list, one, addOne, bulk, addBulk);
+  state.sheetRender = fill;
+}
+
+/* ---- ボックス ---- */
+const isOpened = (b) => b.openAt <= Date.now();
+const itemsOf = (id) => state.items.get(id) || [];
+
+let itemsBusy = false;
+async function refreshItems() {
+  if (itemsBusy || !state.store || !state.key) return;
+  const lim = Date.now() - 120000;
+  const need = state.boxes.some((b) => b.openAt <= lim && (state.marks.get(b.id) || []).length > itemsOf(b.id).length);
+  if (!need) return;
+  itemsBusy = true;
+  try {
+    const docs = await state.store.loadItems(lim);
+    const next = new Map();
+    for (const d of docs) {
+      const p = await decrypt('items', d);
+      if (!p || !p.text) continue;
+      if (!next.has(d.box)) next.set(d.box, []);
+      next.get(d.box).push({ id: d.id, from: d.from, text: p.text, at: p.at || 0 });
+    }
+    next.forEach((v) => v.sort((a, b) => a.at - b.at));
+    state.items = next;
+    renderAll();
+  } catch (e) { /* 読めなかったら、次の機会にもう一度 */ } finally { itemsBusy = false; }
+}
+
+function boxTitle(b) {
+  if (b.kind === 'bd') return `${uidName(b.forUid)}への誕生日ボックス`;
+  return b.title || 'タイムカプセル';
+}
+
+function renderBoxes() {
+  const now = Date.now();
+  const visible = state.boxes.filter((b) => !(b.kind === 'bd' && b.forUid === myUid() && b.openAt > now)).sort((a, b) => a.openAt - b.openAt);
+  $('#b-list').replaceChildren(...(visible.length ? visible.map((b) => {
+    const opened = b.openAt <= now;
+    const count = (state.marks.get(b.id) || []).length;
+    const days = Math.max(1, Math.ceil((b.openAt - now) / 864e5));
+    const right = h('div', { class: 'count' }, opened ? `${count}通` : `あと${days}日`, h('small', {}, opened ? 'ひらく' : `${count}通 入ってる`));
+    const card = h('div', { class: 'bx' }, h('div', { class: 'top' }, b.kind === 'bd' ? cakeIcon() : capsuleIcon(), h('h2', {}, boxTitle(b), h('small', {}, `${opened ? '開いた日' : '開く日'} ${mdText(b.openAt)}`)), right));
+    if (opened) {
+      card.addEventListener('click', () => openBoxSheet(b.id));
+      card.style.cursor = 'pointer';
+    } else {
+      const acts = h('div', { style: 'display:flex;gap:8px' });
+      const add = h('button', { class: 'ghost sm', type: 'button', style: 'flex:1' }, 'メッセージを入れる');
+      add.addEventListener('click', () => openCompose(b.id));
+      acts.append(add);
+      if (b.from === myUid()) {
+        const del = h('button', { class: 'ghost sm', type: 'button' }, '削除');
+        del.addEventListener('click', () => { if (confirm('このボックスを削除しますか?(入れたメッセージも読めなくなります)')) state.store.removeBox(b.id).catch(() => {}); });
+        acts.append(del);
+      }
+      card.append(acts);
+    }
+    return card;
+  }) : [h('p', { class: 'lead' }, 'まだボックスがありません。下からタイムカプセルをつくれます。')]));
+}
+
+function openBoxSheet(id) {
+  const body = h('div', { class: 'stack' });
+  let sig = '';
+  const fill = () => {
+    const b = boxById(id);
+    if (!b) return;
+    const items = itemsOf(id);
+    const marks = (state.marks.get(id) || []).length;
+    const s = JSON.stringify([items.length, marks]);
+    if (s === sig) return;
+    sig = s;
+    const head = h('h2', {}, boxTitle(b));
+    const kids = [head, h('p', { class: 'lead' }, `${mdText(b.openAt)} に開きました`)];
+    if (!items.length) kids.push(h('p', { class: 'lead' }, marks ? '読み込み中…' : '何も入っていませんでした'));
+    items.forEach((i) => kids.push(h('div', { class: `ans ${whoClass(i.from)}` }, h('small', {}, uidName(i.from)), i.text, h('span', { class: 'meta' }, describeAnswer({ at: i.at })))));
+    body.replaceChildren(...kids);
+    if (marks > items.length) refreshItems();
+  };
+  openSheet(body);
+  state.sheetRender = fill;
+  fill();
+}
+
+// メッセージを入れる。誕生日ボックスは、まだ無ければここで作る(gb がそのとき渡される)
+function openCompose(boxId, gb) {
+  const ta = h('textarea', { rows: '5', maxlength: '800', placeholder: 'メッセージ', 'aria-label': 'メッセージ' });
+  const err = h('p', { class: 'error', role: 'alert' });
+  const send = h('button', { class: 'primary', type: 'submit' }, '封をして入れる');
+  const f = h('form', { class: 'stack' }, h('h2', {}, 'メッセージを入れる'), h('p', { class: 'lead' }, '封をすると、開く日まで、あなたにも読めません。'), ta, err, send);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text) return;
+    send.disabled = true;
+    try {
+      let box = boxById(boxId);
+      const openAt = box ? box.openAt : midnightMs(ymd(gb.date));
+      if (!box) {
+        const payload = await C.encryptJson(state.key, 'boxes', { kind: 'bd', title: '', forUid: partnerUid(), y: gb.year });
+        try { await state.store.createBox(boxId, payload, openAt); } catch (x) { /* すでにある */ }
+      }
+      await state.store.addItem(rid(), boxId, openAt, await C.encryptJson(state.key, 'items', { text, at: Date.now() }));
+      closeSheet();
+    } catch (x) { err.textContent = '入れられませんでした。開く日をすぎていないか確認してください。'; send.disabled = false; }
+  });
+  openSheet(f);
+}
+
+function buildTalk() {
+  const set = (t) => {
+    state.talk = t;
+    LS.set(K.talk, t);
+    $$('#talk-seg button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.t === t)));
+    ['chat', 'q', 'c', 'b'].forEach((k) => $(`#t-${k}`).classList.toggle('on', k === t));
+    if (t === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; }
+    renderTalk();
+  };
+  $$('#talk-seg button').forEach((b) => b.addEventListener('click', () => set(b.dataset.t)));
+  const saved = LS.get(K.talk);
+  set(['chat', 'q', 'c', 'b'].includes(saved) ? saved : 'q');
+  $('#stock-open').addEventListener('click', openStockSheet);
+  $$('#c-chips button').forEach((b) => b.addEventListener('click', () => { state.cfilter = b.dataset.f; renderCards(); }));
+  $('#cap-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = $('#cap-error');
+    err.textContent = '';
+    const date = $('#cap-date').value;
+    if (!date || date <= ymd(new Date())) { err.textContent = '開く日は、明日以降を選んでください。'; return; }
+    try {
+      const id = rid();
+      const payload = await C.encryptJson(state.key, 'boxes', { kind: 'cap', title: $('#cap-name').value.trim() });
+      await state.store.createBox(id, payload, midnightMs(date));
+      $('#cap-name').value = '';
+      $('#cap-date').value = '';
+      openCompose(id, null);
+    } catch (x) { err.textContent = 'つくれませんでした。もう一度ためしてください。'; }
+  });
+  setInterval(() => { if ($('#app').hidden) return; maybeAdvance(); refreshItems(); renderHome(); renderTalk(); }, 60000);
+}
+
+function renderTalk() {
+  if ($('#app').hidden) return;
+  renderQuestion();
+  renderCards();
+  renderBoxes();
+}
+
 /* ================= 起動 ================= */
 function init() {
   applyTheme(LS.get(K.theme));
@@ -1030,6 +1524,7 @@ function init() {
   buildCalendar();
   buildCard();
   buildChat();
+  buildTalk();
   $$('[data-hide]').forEach((b) => b.addEventListener('click', lock));
   $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.v)));
   $('#sheet-close').addEventListener('click', closeSheet);
