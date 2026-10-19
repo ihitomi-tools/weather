@@ -292,6 +292,7 @@ check('生理の日が塗られ、気分の点が付く', await page.locator('#m
 const dayDocs = await page.evaluate(() => JSON.stringify(window.__fake.dy));
 check('日の記録は暗号文だけで、保存名にも日付が出ない', !dayDocs.includes('テストメモ') && !dayDocs.includes('おなかが痛い') && !/2026/.test(dayDocs) && !/"id":"[^"]*20\d\d-/.test(dayDocs));
 check('気分のある日をタップすると、内容が大きく出る', await page.locator('#day-detail').isVisible() && (await page.textContent('#day-detail')).includes('テストメモ') && (await page.textContent('#day-detail')).includes('いまいち') && (await page.textContent('#day-detail')).includes('おなかが痛い') && (await page.textContent('#day-detail')).includes('生理'));
+check('大きな表示に、文字の「null」が混ざらない', !(await page.textContent('#day-detail')).includes('null'));
 await page.locator('#month button', { hasText: /^6$/ }).click();
 check('気分のない日では、大きな表示は出ない', !(await page.locator('#day-detail').isVisible()));
 await page.locator('#month button', { hasText: /^5$/ }).click();

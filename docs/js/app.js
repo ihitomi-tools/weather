@@ -23,7 +23,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt',
 };
-const VERSION = '2026.10.20-16';
+const VERSION = '2026.10.20-17';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -731,13 +731,13 @@ function renderDayDetail(date) {
   } else if (pats.length) {
     patArea = h('div', { class: 'stack' }, pats.sort((a, b) => b.at - a.at).map((p) => h('div', { class: 'dd-pat' }, heartIcon(), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
   }
-  box.replaceChildren(
+  box.replaceChildren(...[
     h('div', { class: 'dd-head' }, h('span', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})${mineRecord ? '' : `  ・ ${partnerName()}の記録`}`), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
     level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, moonIcon(level[1]), h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0])) : null,
     rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
     rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
     patArea,
-  );
+  ].filter(Boolean));
   box.hidden = false;
 }
 
