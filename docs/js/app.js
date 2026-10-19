@@ -1,5 +1,6 @@
 import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather } from './weather.js';
+import { isEmojiOnly } from './emoji.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -16,7 +17,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city',
 };
-const VERSION = '2026.10.19-3';
+const VERSION = '2026.10.19-4';
 
 // スタンプ(絵文字)。送るのはこの一覧にあるものだけで、受け取った側も一覧にあるものだけを表示する
 const STAMPS = [
@@ -411,9 +412,10 @@ function renderChat() {
       nodes.push(h('span', { class: 'dayline' }, key === todayKey ? '今日' : key === yesterdayKey ? '昨日' : `${d.getMonth() + 1}月${d.getDate()}日`));
     }
     const mine = m.from === myUid();
+    const big = m.stamp || (m.body != null && isEmojiOnly(m.body) ? m.body.trim() : null);
     nodes.push(h('div', { class: `row ${mine ? 'mine' : 'theirs'}` },
-      m.stamp
-        ? h('div', { class: 'bub stamp' }, m.stamp)
+      big
+        ? h('div', { class: 'bub stamp' }, big)
         : h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body),
       h('div', { class: 'meta' }, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));
   });

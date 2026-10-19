@@ -123,6 +123,16 @@ await page.waitForSelector('.row.mine .bub.stamp');
 check('スタンプが大きく表示され、一覧は閉じる', (await page.textContent('.row.mine .bub.stamp')) === '🍝' && !(await page.locator('#stamps').isVisible()));
 check('スタンプも暗号文だけが保存される', !JSON.stringify(await page.evaluate(() => window.__fake.msg[1])).includes('🍝'));
 
+// 絵文字だけのメッセージは大きく表示される(キーボードから好きな絵文字を打つ場合)
+await page.fill('#msg', '😋😋');
+await page.click('#chat-form .send');
+await page.waitForFunction(() => [...document.querySelectorAll('.row.mine .bub.stamp')].some((e) => e.textContent === '😋😋'));
+check('絵文字だけのメッセージは大きく表示される', true);
+await page.fill('#msg', 'おいしかった😋');
+await page.click('#chat-form .send');
+await page.waitForFunction(() => [...document.querySelectorAll('.row.mine .bub:not(.stamp)')].some((e) => e.textContent === 'おいしかった😋'));
+check('文字が混じるメッセージは、ふつうの吹き出し', true);
+
 // 予定
 await page.click('.tab[data-v="cal"]');
 await page.fill('#ev-title', '映画');
