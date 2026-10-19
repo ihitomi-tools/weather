@@ -314,3 +314,8 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .row.mine .bub { -webkit-touch-callout: none; }
 .row .del { border: 0; background: var(--surface); color: var(--fg); border-radius: 99px; padding: 6px 12px; font-size: 12px; font-weight: 800; cursor: pointer; align-self: center; }
 .row .meta span { color: var(--pink-deep); font-weight: 800; }
+.tab, .seg4 button { position: relative; }
+.tab.has-new::after { content: ""; position: absolute; top: 4px; left: calc(50% + 7px); width: 10px; height: 10px; border-radius: 50%; background: var(--pink-deep); border: 2px solid var(--screen); }
+.seg4 button.has-new::after { content: ""; position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink-deep); }
+.pat-banner.news { cursor: default; }
+.news-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on-pink); flex: none; }

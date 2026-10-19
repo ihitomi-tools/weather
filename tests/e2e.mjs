@@ -240,6 +240,19 @@ check('カレンダーのその日にケーキの印が付く', (await page.loca
 await page.click('.tab[data-v="set"]');
 await page.selectOption('select[aria-label="誕生日の月"]', String((nowD.getMonth() + 1) % 12 + 1));
 
+// 新着の印
+await page.click('.tab[data-v="home"]');
+const hello = await enc('messages', { body: 'やっほー' });
+await page.evaluate((doc) => { window.__fake.msg.push({ id: 'pm1', from: 'u2', ts: Date.now() + 1000, expireAt: null, ...doc }); window.__fake.notify(); }, hello);
+await page.waitForSelector('#new-banner:not([hidden])');
+check('新着があると、ホームの帯と、おはなしタブに印が出る', await page.locator('.tab[data-v="chat"].has-new').count() === 1 && (await page.textContent('#new-banner')).includes('新着があります'));
+check('帯には、メッセージの中身は出ない', !(await page.textContent('#new-banner')).includes('やっほー'));
+await page.click('.tab[data-v="chat"]');
+await page.click('#talk-seg [data-t="q"]');
+check('おしゃべり以外を開いても、おしゃべりの印は残る', await page.locator('#talk-seg [data-t="chat"].has-new').count() === 1);
+await page.click('#talk-seg [data-t="chat"]');
+check('おしゃべりを開くと印が消える', await page.locator('#talk-seg [data-t="chat"].has-new').count() === 0 && await page.locator('.tab[data-v="chat"].has-new').count() === 0);
+
 // 長押しで削除・既読
 await page.click('.tab[data-v="chat"]');
 await page.click('#talk-seg [data-t="chat"]');

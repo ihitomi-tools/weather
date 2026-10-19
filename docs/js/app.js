@@ -7,6 +7,7 @@ import { canRecord as canRecordNow, unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
+import { sectionKeys, newFlags } from './news.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -21,9 +22,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen',
 };
-const VERSION = '2026.10.20-17';
+const VERSION = '2026.10.20-18';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -356,6 +357,7 @@ function startWatching() {
     if (my !== seq.dy) return;
     state.days = next;
     state.dayOwners = owners;
+    state.loaded.dy = true;
     renderAll();
     if (legacy.length && canRecord()) s.claimDays(legacy).catch(() => {});
   }));
@@ -420,6 +422,7 @@ function startWatching() {
     }
     if (my !== seq.bx) return;
     state.boxes = out;
+    state.loaded.bx = true;
     renderAll();
     refreshItems();
   }));
@@ -428,6 +431,7 @@ function startWatching() {
     const next = new Map();
     docs.forEach((d) => { if (!next.has(d.box)) next.set(d.box, []); next.get(d.box).push({ id: d.id, from: d.from }); });
     state.marks = next;
+    state.loaded.mk = true;
     renderAll();
   }));
 
@@ -452,6 +456,7 @@ function startWatching() {
     }
     if (my !== seq.pt) return;
     state.pats = next;
+    state.loaded.pt = true;
     renderAll();
   }));
 
@@ -466,6 +471,7 @@ function startWatching() {
     }
     if (my !== seq.ev) return;
     state.events = out;
+    state.loaded.ev = true;
     renderAll();
   }));
 
@@ -483,6 +489,7 @@ function startWatching() {
     }
     if (my !== seq.msg) return;
     state.messages = out;
+    state.loaded.msg = true;
     renderChat();
   }));
 }
@@ -506,6 +513,7 @@ function renderAll() {
   renderSettings();
   if (state.pastRender && !$('#sheet').hidden) state.pastRender();
   if (state.sheetRender && !$('#sheet').hidden) state.sheetRender();
+  renderBadges();
 }
 
 const kindOf = (ev) => (ev.who === 'both' ? 'both' : ((ev.who === 'me') === (ev.by === myUid()) ? 'me' : 'you'));
@@ -1036,7 +1044,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js',
 ];
 
 async function refreshApp(btn) {
@@ -1566,6 +1574,34 @@ function renderTalk() {
   renderQuestion();
   renderCards();
   renderBoxes();
+  renderBadges();
+}
+
+
+/* ================= 新着の印 ================= */
+// どこまで見たかは、この端末の中だけに持つ(印だけで、中身は入れない)。
+function readSeen() {
+  try { const v = JSON.parse(LS.get(K.seen)); return v && typeof v === 'object' ? v : null; } catch (e) { return null; }
+}
+
+function renderBadges() {
+  const L = state.loaded;
+  if (!(L.msg && L.ev && L.qcards && L.answers && L.bx && L.mk && L.dy && L.pt) || !myUid()) return;
+  const keys = sectionKeys({ me: myUid(), messages: state.messages, qcards: state.qcards, answers: state.answers, boxes: state.boxes, marks: state.marks, items: state.items, events: state.events, days: state.days, pats: state.pats, now: Date.now() });
+  let seen = readSeen();
+  let dirty = false;
+  if (!seen) { seen = keys; dirty = true; } // 初めては、いまあるものを「見た」ことにする
+  const on = !document.hidden && !$('#app').hidden;
+  const visible = { chat: on && state.view === 'chat' && state.talk === 'chat', q: on && state.view === 'chat' && state.talk === 'q', b: on && state.view === 'chat' && state.talk === 'b', cal: on && state.view === 'cal' };
+  Object.keys(visible).forEach((k) => {
+    if (visible[k] && JSON.stringify(seen[k]) !== JSON.stringify(keys[k])) { seen[k] = keys[k]; dirty = true; }
+  });
+  if (dirty) LS.set(K.seen, JSON.stringify(seen));
+  const f = newFlags(keys, seen);
+  $$('#talk-seg button').forEach((b) => b.classList.toggle('has-new', !!f[b.dataset.t]));
+  $('.tab[data-v="chat"]').classList.toggle('has-new', f.chat || f.q || f.b);
+  $('.tab[data-v="cal"]').classList.toggle('has-new', f.cal);
+  $('#new-banner').hidden = !(f.chat || f.q || f.b || f.cal);
 }
 
 /* ================= 起動 ================= */
@@ -1583,7 +1619,7 @@ function init() {
 
   // アプリを離れたら最初の画面に戻す
   const away = () => { if (LS.get(K.auto) !== '0' && $('#cover').hidden) lock(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else markRead(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { markRead(); renderBadges(); } });
   window.addEventListener('pagehide', away);
   document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 
