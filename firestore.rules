@@ -4,7 +4,7 @@ service cloud.firestore {
     // 許可するユーザーのUID(Firebase Authentication のユーザー一覧に表示される)
     function isUs() {
       return request.auth != null
-        && request.auth.uid in ['2PWt6qQp8xdpSlIVRnPpewvbzUl1', 'nsaJ0BAcO8bHYFZbno30p3EJhQq2'];
+        && request.auth.uid in ['9Oa6h10AcEUe69QHN3520iJRks93', 'nsaJ0BAcO8bHYFZbno30p3EJhQq2'];
     }
 
     match /messages/{id} {
