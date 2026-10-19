@@ -19,7 +19,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme',
 };
-const VERSION = '2026.10.19-10';
+const VERSION = '2026.10.19-11';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];

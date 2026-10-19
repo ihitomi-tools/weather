@@ -17,7 +17,8 @@
   --sky-2: #6aa8e4;
   --sky-3: #9cc6ee;
   --m1: #7d8aa8; --m2: #8a74d0; --m3: #3f86d6; --m4: #e0892f; --m5: #d9b21c;
-  --card-bg: linear-gradient(135deg, #f1e4d5, #e6d2bd); --card-fg: #4d3a2c; --card-sub: #7d6755; --card-num: #7a5238; --card-dot: #bfa58f; --card-dot-on: #7a5238;
+  --card-bg: radial-gradient(130% 150% at 0% 0%, #ffe3ee, transparent 62%), radial-gradient(130% 150% at 100% 100%, #d8f6ea, transparent 62%), #fcf6f9;
+  --card-fg: #5b4332; --card-sub: #86705e; --card-num: #7a5238; --card-dot: #d3bfae; --card-dot-on: #7a5238;
 }
 /* ダーク: 端末の設定に合わせる。設定で「ダーク」を選んだときも同じ色。 */
 @media (prefers-color-scheme: dark) {
@@ -27,7 +28,8 @@
     --on-pink: #44102b; --on-mint: #05352a;
     --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
     --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
-    --card-bg: linear-gradient(135deg, #ffffff, #f2efeb); --card-fg: #2b2d45; --card-sub: #666a8c; --card-num: #2b2d45; --card-dot: #b9bcd2; --card-dot-on: #2b2d45;
+    --card-bg: radial-gradient(130% 150% at 0% 0%, rgba(255,156,196,.5), transparent 62%), radial-gradient(130% 150% at 100% 100%, rgba(98,230,192,.38), transparent 62%), #2e3260;
+    --card-fg: #ffffff; --card-sub: rgba(255,255,255,.78); --card-num: #ffffff; --card-dot: rgba(255,255,255,.35); --card-dot-on: #ffffff;
     color-scheme: dark;
   }
 }
@@ -37,7 +39,8 @@
     --on-pink: #44102b; --on-mint: #05352a;
     --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
     --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
-    --card-bg: linear-gradient(135deg, #ffffff, #f2efeb); --card-fg: #2b2d45; --card-sub: #666a8c; --card-num: #2b2d45; --card-dot: #b9bcd2; --card-dot-on: #2b2d45;
+    --card-bg: radial-gradient(130% 150% at 0% 0%, rgba(255,156,196,.5), transparent 62%), radial-gradient(130% 150% at 100% 100%, rgba(98,230,192,.38), transparent 62%), #2e3260;
+    --card-fg: #ffffff; --card-sub: rgba(255,255,255,.78); --card-num: #ffffff; --card-dot: rgba(255,255,255,.35); --card-dot-on: #ffffff;
     color-scheme: dark;
 }
 * { box-sizing: border-box; }
