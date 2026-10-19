@@ -3,7 +3,7 @@ const CACHE = 'shell-v1';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js',
-  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'robots.txt',
 ];
 
 self.addEventListener('install', (e) => {
