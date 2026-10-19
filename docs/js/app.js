@@ -543,7 +543,7 @@ function renderSettings() {
   const active = document.activeElement;
   if (active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
-    row('名前', '相手に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
+    row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
     row('開始日', 'ホームの日数に使います', since),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
