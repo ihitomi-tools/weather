@@ -268,6 +268,13 @@ await page.locator('#settings li', { hasText: 'キーの確認番号' }).locator
 check('確認番号が出る', /\d{3} \d{3}/.test(await page.textContent('#sheet-body')));
 await page.click('#sheet-close');
 
+// 画面の色(自動・ライト・ダーク)
+await page.click('.tab[data-v="set"]');
+await page.selectOption('#settings select[aria-label="画面の色"]', 'dark');
+check('設定でダークを選ぶと、ダークになる', (await page.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
+await page.selectOption('#settings select[aria-label="画面の色"]', 'auto');
+check('自動に戻すと、固定が外れる', (await page.evaluate(() => document.documentElement.dataset.theme)) === undefined);
+
 // 自動で天気へ戻る
 await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
 check('離れると最初の画面に戻る', await page.locator('#cover').isVisible() && !(await page.locator('#app').isVisible()));

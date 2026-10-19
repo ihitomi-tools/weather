@@ -17,9 +17,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme',
 };
-const VERSION = '2026.10.19-7';
+const VERSION = '2026.10.19-8';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -810,6 +810,11 @@ function openCardSheet() {
   );
 }
 
+function applyTheme(v) {
+  if (v === 'light' || v === 'dark') document.documentElement.dataset.theme = v;
+  else delete document.documentElement.dataset.theme;
+}
+
 function row(title, note, control) {
   return h('li', {}, h('div', { class: 't' }, title, note ? h('small', {}, note) : null), control);
 }
@@ -836,6 +841,11 @@ function renderSettings() {
 
   const cardBtn = h('button', { class: 'act', type: 'button' }, '設定');
   cardBtn.addEventListener('click', openCardSheet);
+
+  const theme = h('select', { 'aria-label': '画面の色' },
+    h('option', { value: 'auto' }, '自動'), h('option', { value: 'light' }, 'ライト'), h('option', { value: 'dark' }, 'ダーク'));
+  theme.value = LS.get(K.theme) || 'auto';
+  theme.addEventListener('change', () => { LS.set(K.theme, theme.value); applyTheme(theme.value); });
 
   const reseq = h('button', { class: 'act', type: 'button' }, '変更');
   reseq.addEventListener('click', () => startRecording('set'));
@@ -873,6 +883,7 @@ function renderSettings() {
   if (active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
     row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
+    row('画面の色', '自動は、端末の設定に合わせます', theme),
     row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
@@ -887,6 +898,7 @@ function renderSettings() {
 
 /* ================= 起動 ================= */
 function init() {
+  applyTheme(LS.get(K.theme));
   buildCover();
   buildGate();
   buildCalendar();

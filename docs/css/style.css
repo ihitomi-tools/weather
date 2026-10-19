@@ -18,15 +18,24 @@
   --sky-3: #9cc6ee;
   --m1: #7d8aa8; --m2: #8a74d0; --m3: #3f86d6; --m4: #e0892f; --m5: #d9b21c;
 }
+/* ダーク: 端末の設定に合わせる。設定で「ダーク」を選んだときも同じ色。 */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --screen: #1c2421; --surface: #27312e; --fg: #eaf3f0; --muted: #9db0a9; --line: #34413d;
-    --pink: #e8a5b8; --pink-deep: #f4a3bb; --mint: #7fcdb2; --mint-deep: #7fdcbf;
-    --on-pink: #3a1f29; --on-mint: #11302a;
-    --sky-1: #16223f; --sky-2: #2d4577; --sky-3: #46629a;
-    --m1: #9fadcc; --m2: #b3a6ec; --m3: #78adf0; --m4: #f2b05e; --m5: #f2d85a;
+  :root:not([data-theme="light"]) {
+    --screen: #181b30; --surface: #242848; --fg: #f5f6ff; --muted: #aab1d8; --line: #363b66;
+    --pink: #ff9cc4; --pink-deep: #ff7fb0; --mint: #62e6c0; --mint-deep: #62e6c0;
+    --on-pink: #44102b; --on-mint: #05352a;
+    --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
+    --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+    --screen: #181b30; --surface: #242848; --fg: #f5f6ff; --muted: #aab1d8; --line: #363b66;
+    --pink: #ff9cc4; --pink-deep: #ff7fb0; --mint: #62e6c0; --mint-deep: #62e6c0;
+    --on-pink: #44102b; --on-mint: #05352a;
+    --sky-1: #1d3578; --sky-2: #3a62bd; --sky-3: #6c94e0;
+    --m1: #9db0e8; --m2: #ae95ff; --m3: #5eb0ff; --m4: #ffae52; --m5: #ffdb45;
+    color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
