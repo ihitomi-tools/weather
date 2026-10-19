@@ -19,7 +19,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme',
 };
-const VERSION = '2026.10.19-11';
+const VERSION = '2026.10.19-12';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -426,7 +426,7 @@ function renderNextMoon() {
   }
   const { start, diff } = cyc.next;
   const tail = diff > 0 ? `あと${diff}日` : diff === 0 ? '今日の予定' : `${-diff}日過ぎ`;
-  box.replaceChildren(h('small', {}, '次の生理(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)), h('small', { class: 'fine' }, 'ふたりの画面に同じものが出ます。予想は、過去の記録から出した目安です。'));
+  box.replaceChildren(h('small', {}, '次の生理(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)));
 }
 
 function moodItem(r) {
@@ -543,6 +543,25 @@ function renderChat() {
   if (nearBottom || state.view === 'chat') chat.scrollTop = chat.scrollHeight;
 }
 
+// 選んだ日に気分の記録があれば、内容を大きく見せる
+function renderDayDetail(date) {
+  const box = $('#day-detail');
+  const rec = state.days.get(date);
+  const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
+  if (!hasMood) { box.hidden = true; box.replaceChildren(); return; }
+  const d = parseYmd(date);
+  const level = LEVELS.find((x) => x[1] === rec.l);
+  const edit = h('button', { class: 'ghost sm', type: 'button' }, '編集');
+  edit.addEventListener('click', () => openDaySheet(date));
+  box.replaceChildren(
+    h('div', { class: 'dd-head' }, h('span', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
+    level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, moonIcon(level[1]), h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0])) : null,
+    rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
+    rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
+  );
+  box.hidden = false;
+}
+
 function renderCalendar() {
   const { y, m, sel } = state.cal;
   $('#cal-title').textContent = `${y}年${m + 1}月`;
@@ -566,6 +585,7 @@ function renderCalendar() {
     }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
+  renderDayDetail(sel);
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
