@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 許可するユーザーのUID(Firebase Authentication のユーザー一覧に表示される)
+    function isUs() {
+      return request.auth != null
+        && request.auth.uid in ['2PWt6qQp8xdpSlIVRnPpewvbzUl1', 'nsaJ0BAcO8bHYFZbno30p3EJhQq2'];
+    }
+
+    match /messages/{id} {
+      allow read, delete: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.ts == request.time
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'from', 'ts', 'expireAt']);
+      allow update: if false;
+    }
+    match /events/{id} {
+      allow read, write: if isUs();
+    }
+    match /shared/{id} {
+      allow read, write: if isUs();
+    }
+    match /profiles/{uid} {
+      allow read: if isUs();
+      allow write: if isUs() && request.auth.uid == uid;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
