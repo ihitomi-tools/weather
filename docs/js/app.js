@@ -16,6 +16,8 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city',
 };
+const VERSION = '2026.10.19-3';
+
 // スタンプ(絵文字)。送るのはこの一覧にあるものだけで、受け取った側も一覧にあるものだけを表示する
 const STAMPS = [
   '😊', '😂', '🥹', '😭', '😍', '🥰', '😘', '😋',
@@ -581,6 +583,7 @@ function renderSettings() {
     row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
     row('キーの確認番号', '同じ番号か見比べます', showFp),
     row('ログアウト', null, out),
+    row('バージョン', null, h('span', { class: 'lead' }, VERSION)),
     row('この端末からキーを消す', 'バックアップコードがないと、過去の会話は読めなくなります', wipe),
   );
 }

@@ -1,5 +1,5 @@
 // 画面のファイルだけを保存する。通信(天気・Firebase)には触れない。
-const CACHE = 'shell-v1';
+const CACHE = 'shell-v2';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js',
@@ -18,12 +18,12 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// 新しい版を優先し、つながらないときだけ保存分を使う
+// 毎回サーバーに最新かを確かめ(ブラウザの一時保存を使わない)、つながらないときだけ保存分を使う
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy));
