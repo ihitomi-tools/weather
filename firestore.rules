@@ -18,6 +18,9 @@ service cloud.firestore {
     match /events/{id} {
       allow read, write: if isUs();
     }
+    match /days/{id} {
+      allow read, write: if isUs();
+    }
     match /shared/{id} {
       allow read, write: if isUs();
     }

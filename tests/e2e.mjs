@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -33,6 +33,9 @@ export const removeMessage = async (id) => { data.msg = data.msg.filter((m) => m
 export const watchEvents = watch('ev');
 export const saveEvent = async (id, payload) => { data.ev.push({ id: 'e' + n++, ...payload }); notify(); };
 export const removeEvent = async (id) => { data.ev = data.ev.filter((e) => e.id !== id); notify(); };
+export const watchDays = watch('dy');
+export const saveDays = async (list) => { list.forEach(({ id, payload }) => { data.dy = data.dy.filter((x) => x.id !== id); data.dy.push({ id, ...payload }); }); notify(); };
+export const removeDays = async (ids) => { data.dy = data.dy.filter((x) => !ids.includes(x.id)); notify(); };
 export const watchProfiles = watch('pr');
 export const saveProfile = async (uid, payload) => { data.pr = data.pr.filter((p) => p.id !== uid); data.pr.push({ id: uid, ...payload }); notify(); };
 export const watchShared = watch('sh');
@@ -147,7 +150,55 @@ await page.click('#cal-events .x');
 await page.waitForFunction(() => document.querySelectorAll('#cal-events .item').length === 0);
 check('予定を削除できる(2回タップ)', true);
 
+// お月さま・気分の記録
+const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
+await page.click('.tab[data-v="cal"]');
+await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.click('#day-record');
+await page.waitForSelector('#sheet:not([hidden]) .scale');
+check('日の記録シートに、5つの月と気分のタグが出る', (await page.locator('#sheet .scale button').count()) === 5 && (await page.locator('#sheet .tags button').count()) === 9);
+await page.locator('#sheet .sw').check();
+await page.locator('#sheet .scale button', { hasText: 'いまいち' }).click();
+await page.locator('#sheet .tags button', { hasText: 'おなかが痛い' }).click();
+await page.fill('#sheet textarea', 'テストメモ');
+await page.click('#sheet .primary');
+await page.waitForSelector('#sheet', { state: 'hidden' });
+check('お月さまの日が塗られ、気分の点が付く', await page.locator('#month button.period em.mood').count() === 1);
+const dayDocs = await page.evaluate(() => JSON.stringify(window.__fake.dy));
+check('日の記録は暗号文だけで、保存名にも日付が出ない', !dayDocs.includes('テストメモ') && !dayDocs.includes('おなかが痛い') && !/2026/.test(dayDocs) && !/"id":"[^"]*20\d\d-/.test(dayDocs));
+await page.click('#day-record');
+check('開き直すと、前の記録が入っている', await page.locator('#sheet textarea').inputValue() === 'テストメモ' && await page.locator('#sheet .sw').isChecked());
+await page.click('#sheet-close');
+
+await page.click('#past-record');
+await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(48)));
+await page.locator('#sheet input[type=date]').nth(1).fill(fmt(ago(44)));
+await page.click('#sheet .primary');
+await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(20)));
+await page.locator('#sheet input[type=date]').nth(1).fill(fmt(ago(16)));
+await page.click('#sheet .primary');
+await page.waitForFunction(() => document.querySelectorAll('#sheet .mini-list .item').length >= 2);
+check('過去の記録を追加できる', true);
+await page.click('#sheet-close');
+await page.waitForFunction(() => /平均の周期は\s*28日/.test(document.querySelector('#cyc-sum').textContent));
+check('2回分で、平均の周期が出る', true);
+await page.click('.tab[data-v="home"]');
+await page.waitForFunction(() => /あと\d+日/.test(document.querySelector('#next-moon').textContent));
+check('ホームに「次のお月さま」が出る', (await page.textContent('#next-moon')).includes('次のお月さま(予想)'));
+check('ホームの最近の気分に出る', (await page.textContent('#home-mood')).includes('おなかが痛い'));
+await page.click('.tab[data-v="cal"]');
+await page.click('#past-record');
+const before = await page.locator('#sheet .mini-list .item').count();
+await page.locator('#sheet .mini-list .x').first().click();
+await page.locator('#sheet .mini-list .x').first().click();
+await page.waitForFunction((n) => document.querySelectorAll('#sheet .mini-list .item').length < n, before);
+check('記録を削除できる(2回タップ)', true);
+await page.click('#sheet-close');
+
 // ホームと設定
+await page.click('.tab[data-v="cal"]');
+await page.locator('#month button.today').click(); // 選択日を今日に戻す
 await page.fill('#ev-title', '歯医者');
 await page.click('#ev-form button[type=submit]');
 await page.click('.tab[data-v="home"]');

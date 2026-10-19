@@ -104,6 +104,13 @@ export async function decryptJson(key, kind, doc) {
   return JSON.parse(dec.decode(pt));
 }
 
+// 日ごとの記録の保存名。日付から計算した値にして、サーバーには日付が分からないようにする。
+export async function dayId(keyBytes, date) {
+  const k = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', k, enc.encode(`day|${date}`));
+  return toB64(new Uint8Array(sig)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
 // 起動パターン(都市の並び)の保存用ハッシュ
 export async function hashSequence(salt, names) {
   const buf = await crypto.subtle.digest('SHA-256', enc.encode(`${salt}|${names.join(',')}`));

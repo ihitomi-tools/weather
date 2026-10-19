@@ -16,6 +16,7 @@
   --sky-1: #3f86d6;
   --sky-2: #6aa8e4;
   --sky-3: #9cc6ee;
+  --m1: #7d8aa8; --m2: #8a74d0; --m3: #3f86d6; --m4: #e0892f; --m5: #d9b21c;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -23,6 +24,7 @@
     --pink: #e8a5b8; --pink-deep: #f4a3bb; --mint: #7fcdb2; --mint-deep: #7fdcbf;
     --on-pink: #3a1f29; --on-mint: #11302a;
     --sky-1: #16223f; --sky-2: #2d4577; --sky-3: #46629a;
+    --m1: #9fadcc; --m2: #b3a6ec; --m3: #78adf0; --m4: #f2b05e; --m5: #f2d85a;
     color-scheme: dark;
   }
 }
@@ -140,8 +142,11 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0 14px; text-align: center; }
 .month .w { font-size: 11px; color: var(--muted); padding: 4px 0; }
 .month button { border: 0; background: none; color: var(--fg); aspect-ratio: 1; display: grid; place-items: center; font-size: 14px; position: relative; border-radius: 12px; font-variant-numeric: tabular-nums; cursor: pointer; }
-.month button.today { background: var(--pink); color: var(--on-pink); font-weight: 800; }
-.month button.sel { outline: 2px solid var(--mint-deep); }
+.month button.period { background: var(--pink); color: var(--on-pink); font-weight: 800; }
+.month button.future { border: 2px dashed var(--pink-deep); }
+.month button.today { box-shadow: inset 0 0 0 2px var(--mint-deep); }
+.month button.sel { outline: 2px solid var(--fg); outline-offset: 1px; }
+.month button em.mood { position: absolute; top: 4px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--mint-deep); }
 .month button i { position: absolute; bottom: 4px; display: flex; gap: 2px; }
 .month button i b { width: 5px; height: 5px; border-radius: 50%; }
 .month button i .me { background: var(--pink-deep); } .month button i .you { background: var(--mint-deep); }
@@ -172,7 +177,41 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .tab[aria-selected="true"] { color: var(--pink-deep); }
 
 .sheet { position: fixed; inset: 0; background: rgba(20, 30, 27, .55); display: flex; align-items: flex-end; justify-content: center; z-index: 20; padding: 16px max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-.sheet-box { background: var(--screen); border-radius: 24px; padding: 20px; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; }
+.sheet-box { background: var(--screen); border-radius: 24px; padding: 20px; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 14px; max-height: 92vh; overflow-y: auto; }
 .sheet-box h2 { margin: 0; font-size: 18px; }
+
+/* お月さま・気分 */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0 18px 8px; font-size: 11px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { display: inline-block; }
+.lg-a { width: 14px; height: 14px; border-radius: 5px; background: var(--pink); }
+.lg-b { width: 14px; height: 14px; border-radius: 5px; border: 2px dashed var(--pink-deep); }
+.lg-c { width: 26px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--m1), var(--m2), var(--m3), var(--m4), var(--m5)); }
+.sumline { margin: 10px 18px 6px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.sumline b { color: var(--fg); }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 18px 6px; }
+.ghost.sm { padding: 10px; font-size: 13px; }
+.next { margin: 0 18px 14px; padding: 16px 18px; border-radius: 22px; background: var(--surface); }
+.next small { font-size: 12px; font-weight: 700; color: var(--muted); display: block; }
+.next b { display: block; font-size: 34px; line-height: 1.2; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--pink-deep); }
+.next b span { font-size: 15px; margin-left: 6px; color: var(--fg); }
+.next .fine { font-weight: 500; margin-top: 6px; }
+.next .msg { font-size: 14px; font-weight: 700; color: var(--fg); }
+.srow { display: flex; align-items: center; gap: 12px; }
+.srow .t { flex: 1; font-size: 14px; font-weight: 700; }
+.srow .t small { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+.lab { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 6px; }
+.scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.scale button { border: 0; background: var(--surface); color: var(--fg); border-radius: 14px; padding: 10px 0 8px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.scale button svg { width: 26px; height: 26px; }
+.scale button[aria-pressed="true"] { background: var(--screen); box-shadow: inset 0 0 0 2px var(--c); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags button { border: 0; background: var(--surface); color: var(--fg); border-radius: 99px; padding: 8px 13px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.tags button[aria-pressed="true"] { background: var(--pink); color: var(--on-pink); }
+.sheet-box textarea { height: 64px; font-family: var(--font); font-size: 15px; }
+.lock { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 0; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pair label { font-size: 11px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.mini-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
 
 @media (prefers-reduced-motion: no-preference) { .view.on { animation: in .2s ease; } @keyframes in { from { opacity: 0; transform: translateY(6px); } } }

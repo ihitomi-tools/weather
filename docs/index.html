@@ -128,8 +128,11 @@
   <section class="view" id="v-home" aria-label="ホーム">
     <div class="head"><h1 id="home-title">ホーム</h1><button class="hide" data-hide type="button">もどる</button></div>
     <div class="days" id="days"></div>
+    <div class="next" id="next-moon"></div>
     <div class="sec">これからの予定</div>
     <ul class="list" id="home-events"></ul>
+    <div class="sec">最近の気分</div>
+    <ul class="list" id="home-mood"></ul>
   </section>
 
   <section class="view" id="v-chat" aria-label="チャット">
@@ -149,7 +152,15 @@
       <h1 id="cal-title">月</h1>
       <button class="nav" id="cal-next" type="button" aria-label="次の月">›</button>
     </div>
+    <div class="legend">
+      <span><i class="lg-a"></i>お月さま</span><span><i class="lg-b"></i>予想</span><span><i class="lg-c"></i>気分(色は調子)</span>
+    </div>
     <div class="month" id="month"></div>
+    <p class="sumline" id="cyc-sum"></p>
+    <div class="actions">
+      <button class="ghost" id="day-record" type="button">この日を記録</button>
+      <button class="ghost" id="past-record" type="button">過去の記録</button>
+    </div>
     <div class="sec" id="cal-day"></div>
     <ul class="list" id="cal-events"></ul>
     <form class="evform" id="ev-form">

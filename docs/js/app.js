@@ -1,6 +1,7 @@
 import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
+import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -17,7 +18,22 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city',
 };
-const VERSION = '2026.10.19-4';
+const VERSION = '2026.10.19-5';
+
+// 調子(新月 → 満月)と気分のタグ
+const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
+const MOOD_TAGS = ['元気', '眠い', 'イライラ', '不安', '落ち込み', 'おなかが痛い', '頭が痛い', 'だるい', 'うれしい'];
+const LIT = ['', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 1 12 3Z', 'M12 3A9 9 0 0 0 12 21Z', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 0 12 3Z', 'M12 3A9 9 0 1 0 12 21A9 9 0 1 0 12 3Z'];
+
+function moonIcon(level) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.style.color = `var(--m${level})`;
+  const lit = LIT[level - 1];
+  svg.innerHTML = `<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".75"/>${lit ? `<path d="${lit}" fill="currentColor"/>` : ''}`;
+  return svg;
+}
 
 // スタンプ(絵文字)。送るのはこの一覧にあるものだけで、受け取った側も一覧にあるものだけを表示する
 const STAMPS = [
@@ -50,7 +66,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], since: null,
+  profiles: {}, messages: [], events: [], days: new Map(), since: null, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -293,7 +309,7 @@ function startWatching() {
   if (state.unsubs.length) return;
   const s = state.store;
   const cache = new Map();
-  const seq = { msg: 0, ev: 0 };
+  const seq = { msg: 0, ev: 0, dy: 0 };
 
   state.unsubs.push(s.watchProfiles(async (docs) => {
     const next = {};
@@ -310,6 +326,20 @@ function startWatching() {
     const d = docs.find((x) => x.id === 'main');
     const p = d && await decrypt('shared', d);
     state.since = p ? p.since : null;
+    renderAll();
+  }));
+
+  state.unsubs.push(s.watchDays(async (docs) => {
+    const my = ++seq.dy;
+    const next = new Map();
+    for (const d of docs) {
+      const ck = `d:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('days', d));
+      const p = cache.get(ck);
+      if (p && p.d) next.set(p.d, p);
+    }
+    if (my !== seq.dy) return;
+    state.days = next;
     renderAll();
   }));
 
@@ -360,6 +390,7 @@ function renderAll() {
   renderChat();
   renderCalendar();
   renderSettings();
+  if (state.pastRender && !$('#sheet').hidden) state.pastRender();
 }
 
 const kindOf = (ev) => (ev.who === 'both' ? 'both' : ((ev.who === 'me') === (ev.by === myUid()) ? 'me' : 'you'));
@@ -380,6 +411,30 @@ function eventItem(ev, withDelete) {
   return li;
 }
 
+const periodDays = () => [...state.days.values()].filter((r) => r.p).map((r) => r.d);
+const mdLabel = (key) => { const d = parseYmd(key); return `${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; };
+
+function renderNextMoon() {
+  const box = $('#next-moon');
+  const cyc = predict(periodDays(), ymd(new Date()));
+  if (!cyc.next) {
+    box.replaceChildren(h('small', {}, '次のお月さま'), h('p', { class: 'msg' }, '記録が2回分たまると、予想が出ます'), h('small', { class: 'fine' }, '予定タブの「過去の記録」から入力できます'));
+    return;
+  }
+  const { start, diff } = cyc.next;
+  const tail = diff > 0 ? `あと${diff}日` : diff === 0 ? '今日の予定' : `${-diff}日過ぎ`;
+  box.replaceChildren(h('small', {}, '次のお月さま(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)), h('small', { class: 'fine' }, 'ふたりの画面に同じものが出ます。予想は、過去の記録から出した目安です。'));
+}
+
+function moodItem(r) {
+  const detail = [...(r.t || []), r.m].filter(Boolean).join('、');
+  const d = parseYmd(r.d);
+  return h('li', { class: 'item' },
+    h('span', { style: 'display:flex;flex:none;width:26px;height:26px' }, r.l ? moonIcon(r.l) : h('span', { class: 'dot both' })),
+    h('div', { class: 't' }, r.l ? `調子 ${r.l}/5` : '記録', h('small', {}, detail)),
+    h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`));
+}
+
 function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
   const days = $('#days');
@@ -390,6 +445,9 @@ function renderHome() {
   } else {
     days.replaceChildren(h('small', {}, '開始日を登録すると、日数を数えます'), h('button', { type: 'button', onclick: () => setView('set') }, '設定で登録'));
   }
+  renderNextMoon();
+  const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
+  $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
   const today = ymd(new Date());
   const upcoming = state.events.filter((e) => e.date >= today).sort(byDate).slice(0, 5);
   $('#home-events').replaceChildren(...(upcoming.length ? upcoming.map((e) => eventItem(e, false)) : [h('li', { class: 'empty' }, '予定はまだありません')]));
@@ -430,19 +488,24 @@ function renderCalendar() {
   const first = new Date(y, m, 1).getDay();
   const count = new Date(y, m + 1, 0).getDate();
   const todayKey = ymd(new Date());
+  const cyc = predict(periodDays(), todayKey);
   const cells = [...WEEK].map((w) => h('div', { class: 'w' }, w));
   for (let i = 0; i < first; i++) cells.push(h('div'));
   for (let d = 1; d <= count; d++) {
     const key = `${y}-${pad(m + 1)}-${pad(d)}`;
     const kinds = new Set(state.events.filter((e) => e.date === key).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [kindOf(e)])));
     const dots = [...kinds].map((k) => h('b', { class: k }));
+    const rec = state.days.get(key);
+    const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', rec && rec.p ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
+    const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
     cells.push(h('button', {
       type: 'button',
-      class: `${key === todayKey ? 'today ' : ''}${key === sel ? 'sel' : ''}`,
+      class: classes,
       onclick: () => { state.cal.sel = key; $('#ev-date').value = key; renderCalendar(); },
-    }, String(d), dots.length ? h('i', {}, dots) : null));
+    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
+  $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、お月さまの期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
   const list = state.events.filter((e) => e.date === sel).sort(byDate);
@@ -459,6 +522,8 @@ function buildCalendar() {
   $('#cal-prev').addEventListener('click', () => move(-1));
   $('#cal-next').addEventListener('click', () => move(1));
   $('#ev-date').value = state.cal.sel;
+  $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
+  $('#past-record').addEventListener('click', openPastSheet);
   $('#ev-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const who = $('input[name="who"]:checked').value;
@@ -508,8 +573,140 @@ function openSheet(...nodes) {
   $('#sheet').hidden = false;
 }
 function closeSheet() {
+  state.pastRender = null;
   $('#sheet').hidden = true;
   $('#sheet-body').replaceChildren();
+}
+
+/* ================= お月さま・気分の記録 ================= */
+const emptyRec = (r) => !r.p && !r.l && !(r.t && r.t.length) && !r.m;
+const withTimeout = (promise, ms) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
+
+// changes: [{ date, rec }]。rec が空なら、その日の記録を消す。
+async function writeDays(changes) {
+  const saves = [];
+  const removes = [];
+  for (const { date, rec } of changes) {
+    const id = await C.dayId(state.keyBytes, date);
+    if (!rec || emptyRec(rec)) removes.push(id);
+    else saves.push({ id, payload: await C.encryptJson(state.key, 'days', { ...rec, d: date, by: myUid() }) });
+  }
+  // 通信できないときは、端末に保存して先に進む(つながったら送られる)。拒否されたときは例外になる。
+  if (saves.length) await withTimeout(state.store.saveDays(saves), 5000);
+  if (removes.length) await withTimeout(state.store.removeDays(removes), 5000);
+}
+
+const SAVE_ERROR = '保存できませんでした。通信と、アクセスルールの更新(days の許可)を確認してください。';
+
+function openDaySheet(date) {
+  const rec = state.days.get(date) || { p: false, l: 0, t: [], m: '' };
+  const draft = { p: !!rec.p, l: rec.l || 0, t: [...(rec.t || [])] };
+  const d = parseYmd(date);
+
+  const period = h('input', { type: 'checkbox', class: 'sw', 'aria-label': 'この日はお月さま' });
+  period.checked = draft.p;
+  period.addEventListener('change', () => { draft.p = period.checked; });
+
+  const scale = h('div', { class: 'scale' });
+  LEVELS.forEach(([label, lv]) => {
+    const b = h('button', { type: 'button', 'aria-pressed': String(draft.l === lv) }, moonIcon(lv), label);
+    b.style.setProperty('--c', `var(--m${lv})`);
+    b.addEventListener('click', () => {
+      draft.l = draft.l === lv ? 0 : lv;
+      $$('button', scale).forEach((x, i) => x.setAttribute('aria-pressed', String(draft.l === LEVELS[i][1])));
+    });
+    scale.append(b);
+  });
+
+  const tags = h('div', { class: 'tags' });
+  MOOD_TAGS.forEach((t) => {
+    const b = h('button', { type: 'button', 'aria-pressed': String(draft.t.includes(t)) }, t);
+    b.addEventListener('click', () => {
+      const i = draft.t.indexOf(t);
+      if (i >= 0) draft.t.splice(i, 1); else draft.t.push(t);
+      b.setAttribute('aria-pressed', String(i < 0));
+    });
+    tags.append(b);
+  });
+
+  const memo = h('textarea', { maxlength: '200', placeholder: 'ひとことメモ', 'aria-label': 'ひとことメモ' });
+  memo.value = rec.m || '';
+  const err = h('p', { class: 'error', role: 'alert' });
+  const save = h('button', { class: 'primary', type: 'button' }, '保存');
+  save.addEventListener('click', async () => {
+    err.textContent = '';
+    save.disabled = true;
+    try {
+      await writeDays([{ date, rec: { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) } }]);
+      closeSheet();
+    } catch (e) {
+      err.textContent = SAVE_ERROR;
+      save.disabled = false;
+    }
+  });
+
+  openSheet(
+    h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`),
+    h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日はお月さま', h('small', {}, '連続した日が、ひとまとまりになります')), period),
+    h('div', {}, h('p', { class: 'lab' }, '今日の調子(新月 → 満月)'), scale),
+    h('div', {}, h('p', { class: 'lab' }, '気分(いくつでも)'), tags),
+    memo,
+    h('p', { class: 'lock' }, '調子・気分・メモは、ふたりに共有されます。'),
+    err,
+    save,
+  );
+}
+
+function openPastSheet() {
+  const start = h('input', { type: 'date', 'aria-label': 'はじまった日' });
+  const end = h('input', { type: 'date', 'aria-label': 'おわった日' });
+  const err = h('p', { class: 'error', role: 'alert' });
+  const list = h('ul', { class: 'mini-list' });
+  const add = h('button', { class: 'primary', type: 'button' }, '追加する');
+
+  const render = () => {
+    const runs = runsOf(periodDays()).reverse();
+    list.replaceChildren(...(runs.length ? runs.map((r) => {
+      const x = h('button', { class: 'x', type: 'button' }, '削除');
+      x.addEventListener('click', async () => {
+        if (!x.classList.contains('sure')) { x.classList.add('sure'); x.textContent = '本当に削除'; return; }
+        const changes = [];
+        for (let n = dayNum(r.start); n <= dayNum(r.end); n++) {
+          const k = keyOf(n);
+          changes.push({ date: k, rec: { ...(state.days.get(k) || {}), p: false } });
+        }
+        try { await writeDays(changes); } catch (e) { err.textContent = SAVE_ERROR; }
+      });
+      return h('li', { class: 'item' }, h('span', { class: 'dot p' }),
+        h('div', { class: 't' }, `${mdLabel(r.start)} 〜 ${mdLabel(r.end)}`, h('small', {}, `${r.len}日間`)), x);
+    }) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
+  };
+  state.pastRender = render;
+
+  add.addEventListener('click', async () => {
+    err.textContent = '';
+    if (!start.value || !end.value) { err.textContent = '日付を入れてください'; return; }
+    const a = dayNum(start.value);
+    const b = dayNum(end.value);
+    if (b < a || b - a > 13) { err.textContent = 'おわった日は、はじまった日から14日以内にしてください'; return; }
+    const changes = [];
+    for (let n = a; n <= b; n++) {
+      const k = keyOf(n);
+      changes.push({ date: k, rec: { ...(state.days.get(k) || { l: 0, t: [], m: '' }), p: true } });
+    }
+    try { await writeDays(changes); start.value = ''; end.value = ''; } catch (e) { err.textContent = SAVE_ERROR; }
+  });
+
+  openSheet(
+    h('h2', {}, 'お月さまの記録'),
+    h('p', { class: 'lock' }, '入力した日付は、この端末で暗号化されてから保存されます。ふたり以外には読めません。チャットなどには書かないでください。'),
+    h('div', { class: 'pair' }, h('label', {}, 'はじまった日', start), h('label', {}, 'おわった日', end)),
+    err,
+    add,
+    h('p', { class: 'lab' }, 'いまの記録'),
+    list,
+  );
+  render();
 }
 
 function row(title, note, control) {

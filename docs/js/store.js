@@ -6,7 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, collection, doc, addDoc, setDoc, deleteDoc,
-  query, orderBy, limitToLast, onSnapshot, serverTimestamp, Timestamp,
+  query, orderBy, limitToLast, onSnapshot, serverTimestamp, Timestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 let auth;
@@ -56,6 +56,18 @@ export const saveEvent = (id, payload) => (id
   ? setDoc(doc(db, 'events', id), payload)
   : addDoc(collection(db, 'events'), payload));
 export const removeEvent = (id) => deleteDoc(doc(db, 'events', id));
+
+export const watchDays = (cb) => watchPlain('days', cb);
+export function saveDays(list) {
+  const batch = writeBatch(db);
+  list.forEach(({ id, payload }) => batch.set(doc(db, 'days', id), payload));
+  return batch.commit();
+}
+export function removeDays(ids) {
+  const batch = writeBatch(db);
+  ids.forEach((id) => batch.delete(doc(db, 'days', id)));
+  return batch.commit();
+}
 
 export const watchProfiles = (cb) => watchPlain('profiles', cb);
 export const saveProfile = (uid, payload) => setDoc(doc(db, 'profiles', uid), payload);

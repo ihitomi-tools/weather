@@ -34,6 +34,16 @@ test('同じ内容でも暗号文は毎回変わる', async () => {
   assert.notEqual(a.ct, b.ct);
 });
 
+test('日ごとの保存名は、同じキー・同じ日なら同じで、日付が分からない', async () => {
+  const k = c.newSecret();
+  const a = await c.dayId(k, '2026-10-19');
+  assert.equal(a, await c.dayId(k, '2026-10-19'));
+  assert.notEqual(a, await c.dayId(k, '2026-10-20'));
+  assert.notEqual(a, await c.dayId(c.newSecret(), '2026-10-19'));
+  assert.match(a, /^[A-Za-z0-9_-]{43}$/);
+  assert.ok(!a.includes('2026'));
+});
+
 test('確認番号は同じキーなら同じ', async () => {
   const k = c.newSecret();
   assert.equal(await c.fingerprint(k), await c.fingerprint(k));
