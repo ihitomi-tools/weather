@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-33';
+const VERSION = '2026.10.20-34';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -631,13 +631,17 @@ function renderNextMoon() {
   box.replaceChildren(h('small', {}, '次の生理(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)));
 }
 
+// ホームの「最近の気分」: 調子は丸い枠、気分(タグ)は色つきの丸。ひとことメモは、その下の行に分ける
 function moodItem(r) {
-  const detail = [...(r.t || []), r.m].filter(Boolean).join('、');
   const d = parseYmd(r.d);
-  return h('li', { class: 'item' },
-    h('span', { class: 'mi-av', style: 'display:flex;flex:none;width:30px;height:30px' }, svgEl(Ch.bust(roleOf(r.u), 30))),
-    h('div', { class: 't' }, `${nameOfUid(r.u)}  ${r.l ? `調子 ${r.l}/5` : '記録'}`, h('small', {}, detail)),
-    h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`));
+  const role = roleOf(r.u);
+  const lv = r.l ? h('span', { class: 'lv', style: `--lc:var(--m${r.l})` }, moonIcon(r.l), `調子 ${r.l}/5`) : h('span', { class: 'lv none' }, '記録');
+  return h('li', { class: 'item mood-item' },
+    h('span', { class: 'mi-av' }, svgEl(Ch.bust(role, 34))),
+    h('div', { class: 'mi-body' },
+      h('div', { class: 'mi-top' }, nameOfUid(r.u), lv, h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`)),
+      r.t && r.t.length ? h('div', { class: 'chips2' }, r.t.map((t) => h('span', { class: `chip2 ${role}` }, t))) : null,
+      r.m ? h('div', { class: 'mi-memo' }, r.m) : null));
 }
 
 // ホームのカード: 3つの面(記念日1・記念日2・次の「両方」の予定)。名前は設定で決める。
@@ -842,7 +846,7 @@ function renderDayDetail(date) {
     nodes.push(h('div', { class: 'dd-p' },
       h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
       level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lv' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
-      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
+      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', { class: role }, t))) : null,
       rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
       patArea));
   });
