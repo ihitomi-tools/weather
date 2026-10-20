@@ -437,14 +437,10 @@ check('ふたりの記録が、同じ大きさで並ぶ', (await page.locator('#
 check('カレンダーの日に、ふたり分の印が出る', (await page.locator('#month button', { hasText: /^5$/ }).locator('em.mood').count()) === 2);
 check('調子のポーズが出る', (await page.locator('#day-detail .pose svg.chara').count()) >= 1);
 await page.click('#day-detail .pat');
-await page.waitForSelector('#day-detail .pat.on');
+await page.waitForSelector('#day-detail .pat-done');
 const patDocs = await page.evaluate(() => JSON.stringify(window.__fake.pt));
 check('よしよしを送れる。保存されるのは暗号文と送り主だけ', (() => { const x = JSON.parse(patDocs)[0]; return x.from === 'u2' && Object.keys(x).sort().join() === 'ct,from,id,iv,v'; })());
-await page.click('#day-detail .pat');
-await page.waitForFunction(() => window.__fake.pt.length === 0);
-check('もう一度押すと、取り消せる', true);
-await page.click('#day-detail .pat');
-await page.waitForFunction(() => window.__fake.pt.length === 1);
+check('送ったあとは、押せない表示(よしよし済み)になる。取り消しはできない', (await page.locator('#day-detail .pat-done').count()) === 1 && (await page.locator('#day-detail button.pat').count()) === 0 && (await page.evaluate(() => window.__fake.pt.length)) === 1);
 await page.evaluate(() => window.__fake.asUser('u1'));
 await page.click('.tab[data-v="home"]');
 await page.click('.tab[data-v="cal"]');

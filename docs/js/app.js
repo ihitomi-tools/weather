@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-36';
+const VERSION = '2026.10.20-37';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -804,15 +804,13 @@ const heartIcon = () => {
 };
 const timeLabel = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
-// 「よしよし」を送る(もう一度押すと取り消す)。送れるのは、記録を見る側だけ。
-async function togglePat(date, mine) {
+// 「よしよし」を送る。同じ日の同じ人には、1回だけ(取り消しはできない。押し間違いで消えないように)
+async function sendPat(date) {
+  if ((state.pats.get(date) || []).some((p) => p.by === myUid())) return;
   const id = await C.dayId(state.keyBytes, `pat|${date}|${myUid()}`);
   try {
-    if (mine) await withTimeout(state.store.removePat(id), 5000);
-    else {
-      state.justPat = date;
-      await withTimeout(state.store.savePat(id, await C.encryptJson(state.key, 'pats', { d: date, by: myUid(), at: Date.now() })), 5000);
-    }
+    state.justPat = date;
+    await withTimeout(state.store.savePat(id, await C.encryptJson(state.key, 'pats', { d: date, by: myUid(), at: Date.now() })), 5000);
   } catch (e) { /* 送れなかったときは、押す前の表示のまま */ }
 }
 
@@ -838,9 +836,14 @@ function renderDayDetail(date) {
     const patPic = (from) => svgEl(from === 'h' ? Ch.lapPat() : Ch.pair('pat'));
     if (!mine) {
       const sent = pats.find((p) => p.by === myUid());
-      const btn = h('button', { class: `pat${sent ? ' on' : ''}${state.justPat === date ? ' pop' : ''}`, type: 'button', 'aria-pressed': String(!!sent) }, heartIcon(), sent ? 'よしよししたよ' : 'よしよし');
-      btn.addEventListener('click', () => togglePat(date, sent));
-      patArea = h('div', { class: 'dd-patrow' }, h('span', { class: 'dd-patpic' }, patPic(roleOf(myUid()))), btn);
+      // 送ったあとは、押せないただの表示にする(誤って取り消したり、二重に送ったりしないように)
+      let tail;
+      if (sent) tail = h('div', { class: `pat-done${state.justPat === date ? ' pop' : ''}` }, heartIcon(), h('span', {}, 'よしよし済み'), h('small', {}, timeLabel(sent.at)));
+      else {
+        tail = h('button', { class: 'pat', type: 'button' }, heartIcon(), 'よしよし');
+        tail.addEventListener('click', () => { tail.disabled = true; sendPat(date); });
+      }
+      patArea = h('div', { class: 'dd-patrow' }, h('span', { class: 'dd-patpic' }, patPic(roleOf(myUid()))), tail);
       state.justPat = null;
     } else {
       const got = pats.filter((p) => p.by !== myUid()).sort((a, b) => b.at - a.at);
