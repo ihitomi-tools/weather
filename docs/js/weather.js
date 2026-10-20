@@ -69,3 +69,6 @@ export async function loadWeather(city, fetchImpl = fetch) {
     return { data: null, stale: true };
   }
 }
+
+// 雨の日か(いまか、きょう1日の天気が雨のとき)
+export const isRainy = (parsed) => !!parsed && (parsed.now.kind === 'rain' || (parsed.days[0] && parsed.days[0].kind === 'rain'));

@@ -1,6 +1,6 @@
 import { DEMO } from './demo-boot.js';
 import { CITIES, SEQUENCE_LENGTH } from './cities.js';
-import { loadWeather } from './weather.js';
+import { loadWeather, isRainy } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-26';
+const VERSION = '2026.10.20-27';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -81,7 +81,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -245,6 +245,7 @@ async function enter() {
   setView(state.view);
   if (state.view === 'home') moonEnterHome();
   moodAskMaybe();
+  refreshRain();
 }
 
 async function useKey(bytes) {
@@ -1785,13 +1786,30 @@ function moonAnalysis(now = Date.now()) {
 const roleName = (role, roles) => { const u = Object.keys(roles).find((x) => roles[x] === role); return u ? uidName(u) : (role === 'h' ? 'ひとみ' : 'ゆうき'); };
 const clockText = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
+// 雨の日かどうか。場所は、ふたりにゆかりのある山梨(甲府)で固定。30分ごとに確かめる
+const RAIN_PLACE = { name: '山梨', lat: 35.66, lon: 138.57 };
+const rainNow = () => (DEMO ? !!DEMO.host.rain : state.rain);
+async function refreshRain() {
+  if (DEMO || Date.now() - state.rainAt < 30 * 60 * 1000) return;
+  state.rainAt = Date.now();
+  try {
+    const { data } = await loadWeather(RAIN_PLACE);
+    state.rain = isRainy(data);
+  } catch (e) { state.rain = false; }
+}
+
+// 雨の日は、相合傘が出やすい(ほかの場面の3倍)。それ以外の日は、どれも同じ確率
 function pickMoonVariant() {
   const pool = VARIANTS.filter((v) => v !== state.moonVariant);
-  state.moonVariant = pool[Math.floor(Math.random() * pool.length)];
+  const weights = pool.map((v) => (v === 'umbrella' && rainNow() ? 3 : 1));
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+  const i = weights.findIndex((x) => (r -= x) < 0);
+  state.moonVariant = pool[i < 0 ? pool.length - 1 : i];
 }
 
 // ホームに戻ってきたとき: 今日すでに成立していれば、くっついた姿を見せる
 function moonEnterHome() {
+  refreshRain();
   if (!state.loaded.moon) return;
   const { A } = moonAnalysis();
   if (!A.today.resolved || Date.now() < state.moonCheerUntil) return;

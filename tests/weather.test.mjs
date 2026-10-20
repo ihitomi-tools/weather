@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { describe, parseForecast, loadWeather } from '../docs/js/weather.js';
+import { isRainy, describe, parseForecast, loadWeather } from '../docs/js/weather.js';
 
 const sample = () => ({
   current: { temperature_2m: 18.4, weather_code: 3 },
@@ -48,4 +48,16 @@ test('通信に失敗したら保存済みの値を使い、なければnull', a
   assert.equal(ng.data.now.temp, 18);
   store.clear();
   assert.equal((await loadWeather(city, async () => { throw new Error('offline'); })).data, null);
+});
+
+test('雨の日の判定: いまか、きょうの天気が雨のとき', () => {
+  const s = sample();
+  const base = parseForecast(s, new Date(2026, 9, 19, 21, 30));
+  assert.equal(isRainy(base), false); // いまはくもり、きょうもくもり
+  s.current.weather_code = 63;
+  assert.equal(isRainy(parseForecast(s, new Date(2026, 9, 19, 21, 30))), true);
+  const t = sample();
+  t.daily.weather_code[0] = 80; // きょう1日の天気がにわか雨
+  assert.equal(isRainy(parseForecast(t, new Date(2026, 9, 19, 21, 30))), true);
+  assert.equal(isRainy(null), false);
 });

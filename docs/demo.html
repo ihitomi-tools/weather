@@ -30,6 +30,7 @@
 <div class="dm-bar">
   <div class="dm-grp"><b>デモ</b><small>ここでの記録は、この画面の中だけ。リセットか開き直しで、すべて消えます</small></div>
   <div class="dm-grp"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
+  <div class="dm-grp"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
   <div class="dm-grp"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button></div>
 </div>
 <div class="dm-stage" id="stage">
@@ -41,7 +42,7 @@ import * as C from './js/crypto.js';
 const $ = (s) => document.querySelector(s);
 const pad = (n) => String(n).padStart(2, '0');
 const MIN = 60000, DAY = 86400000;
-const host = { offset: 0, bus: null, ls: {} };
+const host = { offset: 0, bus: null, ls: {}, rain: false };
 window.__demo = host;
 const NAME = { h: '彼女', y: '彼氏' };
 
@@ -68,6 +69,8 @@ async function reset(pts = 0) {
   const bytes = C.newSecret();
   const key = await C.importKey(bytes);
   host.offset = 0;
+  host.rain = false;
+  $('#rain').setAttribute('aria-pressed', 'false'); $('#rain').textContent = '雨の日にする';
   host.bus = { data: EMPTY(), subs: new Set(), n: 0 };
   host.bus.data.moon = await seedMoon(key, pts);
   ['h', 'y'].forEach((r) => {
@@ -83,7 +86,8 @@ function tick() { clock(); ['h', 'y'].forEach((r) => { try { $(`#f-${r}`).conten
 
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.pts != null) reset(Number(b.dataset.pts));
+  if (b.dataset.rain) { host.rain = !host.rain; b.setAttribute('aria-pressed', String(host.rain)); b.textContent = host.rain ? '雨の日をやめる' : '雨の日にする'; }
+  else if (b.dataset.pts != null) reset(Number(b.dataset.pts));
   else if (b.dataset.adv != null) {
     if (b.dataset.adv === 'next') { const d = now(); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0); host.offset = d.getTime() - Date.now(); }
     else if (b.dataset.adv === '0') host.offset = 0;
