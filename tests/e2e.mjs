@@ -201,7 +201,7 @@ await page.waitForSelector('#q-area .ans.me');
 check('答えたあとは、相手を待つ表示(相手の答えは見えない)', (await page.textContent('#q-area')).includes('ゆうきの答えを待っています') && (await page.locator('#q-area .ans.you').count()) === 0);
 check('書き直しは、まとめて消した回数で数える(バックスペースの回数ではない)', (await page.textContent('#q-area .ans.me .meta')).includes('書き直し1回'));
 check('答えは暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.an)).includes('友だち'));
-const partnerAns = await enc('answers', { n: 1, text: '新しい本を買った', at: Date.now(), t0: Date.now() - 600000, edits: 3 });
+const partnerAns = await enc('answers', { n: 1, text: '新しい本を買った', at: Date.now(), t0: Date.now() - 601000, edits: 3 });
 await page.evaluate((doc) => { window.__fake.an.push({ id: 'pa1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerAns);
 await page.waitForSelector('#q-area .ans.you');
 const meta = await page.textContent('#q-area .ans.you .meta');
@@ -393,6 +393,21 @@ await page.locator('#month button', { hasText: /^5$/ }).click();
 await page.click('#day-record');
 check('開き直すと、前の記録が入っている', await page.locator('#sheet textarea').inputValue() === 'テストメモ' && await page.locator('#sheet .sw').isChecked());
 await page.click('#sheet-close');
+// 記録の時刻と、あとから足した症状
+{
+  check('はじめの記録に、「〜に記録」の時刻が出る', /\d\d:\d\d に記録|\d\d:\d\dに記録/.test(await page.textContent('#day-detail')));
+  await page.click('#day-detail .ghost');
+  await page.locator('#sheet .tags button', { hasText: '眠い' }).click();
+  await page.locator('#sheet-body .primary').click();
+  await page.waitForSelector('#sheet', { state: 'hidden' });
+  const txt = await page.textContent('#day-detail');
+  check('あとから足した症状に、＋と時刻が付く(はじめからの症状には付かない)', /眠い ＋\d\d:\d\d/.test(txt) && !/おなかが痛い ＋/.test(txt) && txt.includes('＋は、あとから足した症状'), txt);
+  await page.click('#day-detail .ghost');
+  const before = await page.evaluate(() => window.__fake.dy.length);
+  await page.locator('#sheet-body .primary').click();
+  await page.waitForSelector('#sheet', { state: 'hidden' });
+  check('変えずに保存しても、時刻は変わらない', /眠い ＋\d\d:\d\d/.test(await page.textContent('#day-detail')));
+}
 
 await page.click('#past-record');
 await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(48)));

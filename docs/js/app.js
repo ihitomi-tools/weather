@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-38';
+const VERSION = '2026.10.20-39';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -635,6 +635,16 @@ function renderNextMoon() {
   box.replaceChildren(h('small', {}, '次の生理(予想)'), h('b', {}, mdLabel(start), h('span', {}, tail)));
 }
 
+// 「00:35に記録 ・ 08:10に更新」。＋は、あとから足した症状
+function recTimeLine(rec) {
+  if (!rec.up && !rec.at) return null;
+  const parts = [];
+  if (rec.at) parts.push(`${clockOf(rec.at)}に記録`);
+  if (rec.up && (!rec.at || clockOf(rec.up) !== clockOf(rec.at))) parts.push(`${clockOf(rec.up)}に更新`);
+  if (rec.tt && Object.keys(rec.tt).length) parts.push('＋は、あとから足した症状');
+  return h('div', { class: 'dd-time' }, parts.join(' ・ '));
+}
+
 // ホームの「最近の気分」: 調子は丸い枠、気分(タグ)は色つきの丸。ひとことメモは、その下の行に分ける
 function moodItem(r) {
   const d = parseYmd(r.d);
@@ -644,7 +654,7 @@ function moodItem(r) {
     h('span', { class: 'mi-av' }, svgEl(Ch.bust(role, 34))),
     h('div', { class: 'mi-body' },
       h('div', { class: 'mi-top' }, nameOfUid(r.u), lv, h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`)),
-      r.t && r.t.length ? h('div', { class: 'chips2' }, r.t.map((t) => h('span', { class: `chip2 ${role}` }, t))) : null,
+      r.t && r.t.length ? h('div', { class: 'chips2' }, r.t.map((t) => h('span', { class: `chip2 ${role}` }, t, r.tt && r.tt[t] ? h('small', {}, ` ＋${clockOf(r.tt[t])}`) : null))) : null,
       r.m ? h('div', { class: 'mi-memo' }, r.m) : null));
 }
 
@@ -853,7 +863,8 @@ function renderDayDetail(date) {
     nodes.push(h('div', { class: 'dd-p' },
       h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
       level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lvtxt' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
-      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', { class: role }, t))) : null,
+      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', { class: role }, t, rec.tt && rec.tt[t] ? h('small', {}, ` ＋${clockOf(rec.tt[t])}`) : null))) : null,
+      recTimeLine(rec),
       rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
       patArea));
   });
@@ -886,7 +897,8 @@ function openMoodAsk(date) {
       $$('button', scale).forEach((x) => { x.disabled = true; });
       try {
         const cur = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
-        await writeDays([{ date, rec: { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '' } }]);
+        const had = myRecs().get(date);
+        await writeDays([{ date, rec: stampRec(had, { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '' }) }]);
         state.sheetClose = null;
         note.textContent = 'カレンダーに入れたよ';
         setTimeout(closeSheet, 1300);
@@ -1164,6 +1176,16 @@ function closeSheet() {
 }
 
 /* ================= 生理・気分の記録 ================= */
+// 記録の時刻: at=はじめて入れた時刻 / up=最後に直した時刻 / tt={タグ: あとから足した時刻}(はじめから入れていたタグは、載せない)
+const clockOf = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+function stampRec(prev, rec, now = Date.now()) {
+  const out = { ...rec, at: prev ? prev.at : now, up: now, tt: {} };
+  if (prev) (rec.t || []).forEach((t) => { if (!(prev.t || []).includes(t)) out.tt[t] = now; else if (prev.tt && prev.tt[t]) out.tt[t] = prev.tt[t]; });
+  if (!out.at) delete out.at; // 時刻のない古い記録は、そのまま
+  if (!Object.keys(out.tt).length) delete out.tt;
+  return out;
+}
+const sameRec = (x, y) => !!x && !!y && !!x.p === !!y.p && (x.l || 0) === (y.l || 0) && (x.m || '') === (y.m || '') && JSON.stringify([...(x.t || [])].sort()) === JSON.stringify([...(y.t || [])].sort());
 const emptyRec = (r) => !r.p && !r.l && !(r.t && r.t.length) && !r.m;
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
 
@@ -1252,7 +1274,9 @@ function openDaySheet(date) {
     err.textContent = '';
     save.disabled = true;
     try {
-      await writeDays([{ date, rec: { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) } }]);
+      const next = { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) };
+      const prev = myRecs().get(date);
+      if (!(prev && sameRec(prev, next))) await writeDays([{ date, rec: stampRec(prev, next) }]); // 変えていなければ、時刻は更新しない
       closeSheet();
     } catch (e) {
       err.textContent = SAVE_ERROR;

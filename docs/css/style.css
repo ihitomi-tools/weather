@@ -440,3 +440,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .month button.sel { border-radius: 12px 0 0 12px; }
 .month button.sel:not(:has(+ .inrange)) { border-radius: 12px; }
 .month button.rstart { background: var(--mint); color: var(--on-mint); font-weight: 800; border-radius: 12px 0 0 12px; }
+
+/* 記録の時刻 */
+.dd-time { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dd-tags span small, .chip2 small { font-weight: 800; opacity: .8; font-size: 11px; }
