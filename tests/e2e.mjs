@@ -487,7 +487,7 @@ check('点で、いまの面が分かる', (await page.locator('#days .dots i.on
 // バックアップコード・確認番号
 await page.click('.tab[data-v="set"]');
 check('危ない項目は、ふだん隠れている(バージョン更新・ログアウトなど)', (await page.locator('#settings li', { hasText: /機種変更|バックアップコードがないと/ }).count()) === 0);
-check('ふだんは、画面の色・起動パターン・バージョンだけ見える。名前などは隠れている', (await page.locator('#settings li', { hasText: /画面の色|起動パターン|バージョン/ }).count()) === 3 && (await page.locator('#settings li', { hasText: /あなたの名前|既読を相手に|ログアウト/ }).count()) === 0);
+check('ふだんは、画面の色・起動パターン・バージョンだけ見える。名前などは隠れている', (await page.locator('#settings li', { hasText: /画面の色|起動パターン|バージョン/ }).count()) === 3 && (await page.locator('#settings li', { hasText: /あなたの名前|既読を相手に伝える|キーを消す/ }).count()) === 0);
 await more();
 await page.locator('#settings li', { hasText: '機種変更' }).locator('button').click();
 check('設定から同じバックアップコードを再表示できる', (await page.textContent('#sheet .code')) === code);
