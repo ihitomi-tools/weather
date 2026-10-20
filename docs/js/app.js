@@ -1,3 +1,4 @@
+import { DEMO } from './demo-boot.js';
 import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
@@ -17,7 +18,12 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 // 端末の中に残す設定(使えない環境でも動くように、すべて try/catch で包む)
-const LS = {
+const DEMO_MEM = DEMO ? new Map(Object.entries(DEMO.host.ls[DEMO.role])) : null; // デモ中は、端末の保存を使わない
+const LS = DEMO ? {
+  get(k) { return DEMO_MEM.has(k) ? DEMO_MEM.get(k) : null; },
+  set(k, v) { DEMO_MEM.set(k, String(v)); },
+  del(k) { DEMO_MEM.delete(k); },
+} : {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できなくても続ける */ } },
   del(k) { try { localStorage.removeItem(k); } catch (e) { /* 同上 */ } },
@@ -26,7 +32,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen',
 };
-const VERSION = '2026.10.20-19';
+const VERSION = '2026.10.20-20';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -181,6 +187,7 @@ function startRecording(view) {
 }
 
 function lock() {
+  if (DEMO) { closeSheet(); return; } // デモ中は、天気の画面に戻さない
   picked = [];
   recording = null;
   $('#rec').hidden = true;
@@ -193,7 +200,7 @@ function lock() {
 async function ensureStore() {
   if (state.store) return true;
   try {
-    state.store = await import('./store.js');
+    state.store = await import(DEMO ? './demo-store.js' : './store.js');
     state.store.init(firebaseConfig);
   } catch (e) {
     state.store = null;
@@ -222,7 +229,7 @@ async function loadKey() {
 }
 
 async function enter() {
-  if (!isConfigured) { gate('unconfigured'); return; }
+  if (!isConfigured && !DEMO) { gate('unconfigured'); return; }
   if (!(await ensureStore())) { gate('offline'); return; }
   await Promise.race([state.authReady, new Promise((r) => setTimeout(r, 8000))]);
   if (!state.user) { gate('login'); return; }
@@ -1073,7 +1080,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'css/moon.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'css/moon.css',
 ];
 
 async function refreshApp(btn) {
@@ -1816,7 +1823,10 @@ function init() {
   window.addEventListener('pagehide', away);
   document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  if (DEMO) {
+    window.addEventListener('demo-tick', () => { moonSigReset(); renderAll(); });
+    enter();
+  } else if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 }

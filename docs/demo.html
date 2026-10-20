@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>デモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  body { display: flex; flex-direction: column; font-family: var(--font); background: var(--surface); }
+  .dm-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px; background: var(--screen); border-bottom: 1px solid var(--line); }
+  .dm-bar b { font-size: 13px; }
+  .dm-bar small { color: var(--muted); font-size: 11px; font-weight: 700; }
+  .dm-grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .dm-bar button { border: 0; border-radius: 999px; padding: 8px 13px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+  .dm-bar button.reset { background: var(--fg); color: var(--screen); box-shadow: none; }
+  .dm-clk { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .dm-stage { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; gap: 18px; padding: 10px; }
+  .dm-ph { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dm-ph h2 { margin: 0; font-size: 13px; font-weight: 800; }
+  .dm-ph h2 i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .dm-frame { border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 2px var(--line), 0 6px 20px rgba(0,0,0,.12); background: var(--screen); }
+  .dm-frame iframe { width: 390px; height: 844px; border: 0; transform-origin: 0 0; display: block; }
+</style>
+</head>
+<body>
+<div class="dm-bar">
+  <div class="dm-grp"><b>デモ</b><small>ここでの記録は、この画面の中だけ。リセットか開き直しで、すべて消えます</small></div>
+  <div class="dm-grp"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
+  <div class="dm-grp"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button></div>
+</div>
+<div class="dm-stage" id="stage">
+  <div class="dm-ph"><h2><i style="background:var(--pink-deep)"></i>彼女</h2><div class="dm-frame" id="fh"><iframe title="彼女" id="f-h"></iframe></div></div>
+  <div class="dm-ph"><h2><i style="background:var(--mint-deep)"></i>彼氏</h2><div class="dm-frame" id="fy"><iframe title="彼氏" id="f-y"></iframe></div></div>
+</div>
+<script type="module">
+import * as C from './js/crypto.js';
+const $ = (s) => document.querySelector(s);
+const pad = (n) => String(n).padStart(2, '0');
+const MIN = 60000, DAY = 86400000;
+const host = { offset: 0, bus: null, ls: {} };
+window.__demo = host;
+const NAME = { h: '彼女', y: '彼氏' };
+
+const EMPTY = () => ({ messages: [], events: [], days: [], pats: [], stock: [], qcards: [], answers: [], boxes: [], marks: [], items: [], moon: [], reads: [], profiles: [], shared: [] });
+
+async function seedMoon(key, pts) {
+  const rows = [];
+  let k = 1, left = pts;
+  const add = async (kind) => {
+    const d = new Date(Date.now() - k * DAY); d.setHours(21, 0, 0, 0); k += 1;
+    const h = d.getTime(), y = h + (kind === 'sync' ? 3 : 40) * MIN;
+    rows.push({ id: `seed-h-${k}`, ...(await C.encryptJson(key, 'moon', { at: h })), from: 'demo-h' });
+    rows.push({ id: `seed-y-${k}`, ...(await C.encryptJson(key, 'moon', { at: y })), from: 'demo-y' });
+  };
+  while (left >= 5) { await add('sync'); left -= 5; }
+  while (left >= 1) { await add('late'); left -= 1; }
+  return rows;
+}
+
+let busy = false;
+async function reset(pts = 0) {
+  if (busy) return;
+  busy = true;
+  const bytes = C.newSecret();
+  const key = await C.importKey(bytes);
+  host.offset = 0;
+  host.bus = { data: EMPTY(), subs: new Set(), n: 0 };
+  host.bus.data.moon = await seedMoon(key, pts);
+  ['h', 'y'].forEach((r) => {
+    host.ls[r] = { 'app.key': C.toB64(bytes), 'app.name': NAME[r], 'app.seq': 'demo', 'app.auto': '0', 'app.role': r };
+    $(`#f-${r}`).src = `index.html?demo=${r}&t=${Date.now()}`;
+  });
+  clock();
+  busy = false;
+}
+const now = () => new Date(Date.now() + host.offset);
+function clock() { const d = now(); $('#clk').textContent = `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function tick() { clock(); ['h', 'y'].forEach((r) => { try { $(`#f-${r}`).contentWindow.dispatchEvent(new Event('demo-tick')); } catch (e) { /* まだ開いていない */ } }); }
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.pts != null) reset(Number(b.dataset.pts));
+  else if (b.dataset.adv != null) {
+    if (b.dataset.adv === 'next') { const d = now(); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0); host.offset = d.getTime() - Date.now(); }
+    else if (b.dataset.adv === '0') host.offset = 0;
+    else host.offset += Number(b.dataset.adv) * MIN;
+    tick();
+  }
+});
+
+// 画面の大きさに合わせて、2台ぶんを縮めて並べる
+function fit() {
+  const st = $('#stage'); const W = st.clientWidth - 28 - 18, H = st.clientHeight - 20 - 24;
+  const s = Math.max(0.3, Math.min(1, W / 2 / 390, H / 844));
+  ['h', 'y'].forEach((r) => {
+    const f = $(`#f-${r}`); f.style.transform = `scale(${s})`;
+    const fr = f.parentElement; fr.style.width = `${390 * s}px`; fr.style.height = `${844 * s}px`;
+  });
+}
+window.addEventListener('resize', fit);
+fit();
+setInterval(clock, 15000);
+reset(0);
+</script>
+</body>
+</html>
