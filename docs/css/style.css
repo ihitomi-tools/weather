@@ -361,3 +361,12 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .evrow.end label { font-size: 12px; color: var(--muted); font-weight: 700; }
 #ev-range { align-self: flex-start; }
 #ev-range[aria-pressed="true"] { background: var(--mint); color: var(--on-mint); }
+
+/* 似たお題のお知らせ */
+.sim { background: var(--warn-bg, #fff1cf); color: var(--warn-ink, #6b4a00); border-radius: 14px; padding: 10px 13px; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sim { background: #4a3a12; color: #ffe3a3; } }
+:root[data-theme="dark"] .sim { background: #4a3a12; color: #ffe3a3; }
+.sim-list { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 2px; }
+.sim-list small { opacity: .8; }
+.sim-row { display: flex; flex-direction: column; gap: 2px; }
+.sim-btns { display: flex; gap: 8px; flex-wrap: wrap; }

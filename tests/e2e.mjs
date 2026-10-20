@@ -202,8 +202,20 @@ await page.locator('#sheet-body button', { hasText: 'まとめて追加' }).clic
 await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 3);
 check('ストックにまとめて追加できる', true);
 check('ストックも暗号文だけ', !JSON.stringify(await page.evaluate(() => window.__fake.sk)).includes('季節'));
+// 似たお題のお知らせ(ほとんど同じものだけ)
+await page.fill('#sheet-body input[type=text]', 'いちばん好きな季節は?');
+check('似たお題があると、知らせて、「それでも追加」になる', (await page.textContent('#sheet-body .sim')).includes('好きな季節は?') && (await page.locator('#sheet-body button', { hasText: 'それでも追加' }).count()) === 1);
+await page.fill('#sheet-body input[type=text]', '好きな動物は?');
+check('話題がちがうと、知らせない', await page.locator('#sheet-body .sim').first().isHidden());
+await page.fill('#sheet-body textarea', '好きな季節は?\n好きな色は?');
+await page.locator('#sheet-body button', { hasText: 'まとめて追加' }).click();
+check('まとめて追加でも、似たお題を知らせる', (await page.textContent('#sheet-body')).includes('似たお題が 1 件あります'));
+await page.locator('#sheet-body button', { hasText: '似たものを除いて追加' }).click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 4);
+check('「似たものを除いて追加」で、似ていない分だけ入る', true);
+await page.fill('#sheet-body input[type=text]', '');
 await page.click('#sheet-close');
-check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '3');
+check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '4');
 
 // カード
 await page.click('#talk-seg [data-t="c"]');

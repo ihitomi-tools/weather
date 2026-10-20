@@ -13,6 +13,7 @@ import { moonScene, VARIANTS, phaseName } from './moon.js';
 import { analyzeMoon, rolesOf, seasonOf, specialOf, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
+import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -33,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-28';
+const VERSION = '2026.10.20-29';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1179,7 +1180,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'css/moon.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'css/moon.css',
 ];
 
 async function refreshApp(btn) {
@@ -1582,16 +1583,52 @@ function openStockSheet() {
       await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now() }));
     }
   };
-  addOne.addEventListener('click', async () => { const t = one.value.trim(); if (!t) return; one.value = ''; await push([t]).catch(() => {}); });
+  // 似たお題の見つけかた: ストックと、これまでのお題カードを見比べる(文字の重なり具合だけ。ほとんど同じものだけ)
+  const known = () => {
+    const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
+    return [
+      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id) })),
+      ...state.qcards.filter((c) => !c.stockId).map((c) => ({ text: c.text, by: c.by, used: true })),
+    ];
+  };
+  const simList = (items) => h('ul', { class: 'sim-list' }, items.map((m) => h('li', {}, `「${m.text}」`, h('small', {}, m.batch ? ' (いま入れた中の同じもの)' : ` ${nameOfUid(m.by)}が追加${m.used ? '・使用済み' : ''}`))));
+  const oneHint = h('div', { class: 'sim', hidden: true });
+  const bulkHint = h('div', { class: 'sim', hidden: true });
+  one.addEventListener('input', () => {
+    const t = one.value.trim();
+    const m = t ? findSimilar(t, known()) : [];
+    oneHint.hidden = !m.length;
+    oneHint.replaceChildren(...(m.length ? [h('b', {}, '似たお題があります'), simList(m)] : []));
+    addOne.textContent = m.length ? 'それでも追加' : '追加';
+  });
+  addOne.addEventListener('click', async () => {
+    const t = one.value.trim();
+    if (!t) return;
+    one.value = '';
+    oneHint.hidden = true;
+    addOne.textContent = '追加';
+    await push([t]).catch(() => {});
+  });
+  bulk.addEventListener('input', () => { bulkHint.hidden = true; });
   addBulk.addEventListener('click', async () => {
     const ts = bulk.value.split('\n').map((x) => x.trim().slice(0, 80)).filter(Boolean);
     if (!ts.length) return;
-    bulk.value = '';
-    await push(ts).catch(() => {});
+    const flagged = [];
+    ts.forEach((t, i) => {
+      const m = findSimilar(t, [...known(), ...ts.slice(0, i).map((x) => ({ text: x, batch: true }))]);
+      if (m.length) flagged.push({ t, m });
+    });
+    if (!flagged.length) { bulk.value = ''; await push(ts).catch(() => {}); return; }
+    const skip = h('button', { class: 'ghost sm', type: 'button' }, '似たものを除いて追加');
+    const all = h('button', { class: 'ghost sm', type: 'button' }, '全部追加');
+    skip.addEventListener('click', async () => { const keep = ts.filter((t) => !flagged.some((f) => f.t === t)); bulk.value = ''; bulkHint.hidden = true; await push(keep).catch(() => {}); });
+    all.addEventListener('click', async () => { bulk.value = ''; bulkHint.hidden = true; await push(ts).catch(() => {}); });
+    bulkHint.replaceChildren(h('b', {}, `似たお題が ${flagged.length} 件あります`), ...flagged.map((f) => h('div', { class: 'sim-row' }, h('span', {}, `「${f.t}」`), simList(f.m))), h('div', { class: 'sim-btns' }, skip, all));
+    bulkHint.hidden = false;
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます。ふたりとも足せます。角の色は、足した人です。'), list, one, addOne, bulk, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます。ふたりとも足せます。角の色は、足した人です。'), list, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 
