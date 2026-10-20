@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-24';
+const VERSION = '2026.10.20-25';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -729,7 +729,7 @@ function renderChat() {
     if (mine) holdToDelete(bub, m.id);
     const del = mine && state.delId === m.id ? h('button', { class: 'del', type: 'button' }, '削除') : null;
     if (del) del.addEventListener('click', (e) => { e.stopPropagation(); state.delId = null; state.store.removeMessage(m.id).catch(() => {}); });
-    nodes.push(h('div', { class: `row ${mine ? 'mine' : 'theirs'}` },
+    nodes.push(h('div', { class: `row ${mine ? 'mine' : 'theirs'} c-${roleOf(m.from)}` }, // 色は、送った人の役で決まる(ピンク=飛ぶ人、ミント=もうひとり)
       bub,
       del,
       h('div', { class: 'meta' }, mine && lastRead === m ? h('span', {}, '既読', h('br')) : null, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));

@@ -142,8 +142,10 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .row { display: flex; align-items: flex-end; gap: 6px; max-width: 86%; }
 .row.mine { align-self: flex-end; flex-direction: row-reverse; }
 .bub { padding: 9px 13px; border-radius: 18px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
-.row.theirs .bub { background: var(--mint); color: var(--on-mint); border-bottom-left-radius: 5px; }
-.row.mine .bub { background: var(--pink); color: var(--on-pink); border-bottom-right-radius: 5px; }
+.row.theirs .bub { border-bottom-left-radius: 5px; }
+.row.mine .bub { border-bottom-right-radius: 5px; }
+.row.c-h .bub { background: var(--pink); color: var(--on-pink); }
+.row.c-y .bub { background: var(--mint); color: var(--on-mint); }
 .row .bub.bad { opacity: .6; font-style: italic; }
 .row .bub.stamp { background: none; padding: 0 2px; font-size: 52px; line-height: 1.15; border-radius: 0; }
 .stamps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; padding: 8px 10px; border-top: 1px solid var(--line); max-height: 190px; overflow-y: auto; background: var(--surface); }
