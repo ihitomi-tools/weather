@@ -15,6 +15,7 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/moon.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -131,12 +132,20 @@
     <button class="pat-banner" id="pat-banner" type="button" hidden></button>
     <button class="pat-banner bd-pop" id="bd-banner" type="button" hidden></button>
     <div class="bd-today" id="bd-today" hidden></div>
+    <div class="mn" id="moon">
+      <button class="mn-card" id="mn-card" type="button" aria-label="ふたりの月">
+        <div id="mn-scene"></div>
+        <span class="mn-t"><small>ふたりの月</small><b><span id="mn-pts">0</span><i>/100</i></b><span class="mn-bar"><i id="mn-bar-i"></i></span><small id="mn-phase"></small></span>
+        <i class="mn-hint" id="mn-hint" hidden></i>
+      </button>
+      <div class="mn-panel" id="mn-panel" hidden></div>
+    </div>
     <div class="days" id="days"></div>
+    <div class="sec">最近の気分</div>
+    <ul class="list" id="home-mood"></ul>
     <div class="next" id="next-moon"></div>
     <div class="sec">これからの予定</div>
     <ul class="list" id="home-events"></ul>
-    <div class="sec">最近の気分</div>
-    <ul class="list" id="home-mood"></ul>
   </section>
 
   <section class="view" id="v-chat" aria-label="おはなし">

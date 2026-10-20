@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], rd: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], mn: [], rd: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -42,6 +42,8 @@ export const removePat = async (id) => { data.pt = data.pt.filter((x) => x.id !=
 export const removeDays = async (ids) => { data.dy = data.dy.filter((x) => !ids.includes(x.id)); notify(); };
 export const watchReads = watch('rd');
 export const saveRead = async (at) => { data.rd = data.rd.filter((x) => x.id !== user.uid); data.rd.push({ id: user.uid, at, from: user.uid }); notify(); };
+export const watchMoon = watch('mn');
+export const addMoon = async (id, payload) => { if (data.mn.some((x) => x.id === id)) throw new Error('exists'); data.mn.push({ id, ...payload, from: user.uid }); notify(); };
 export const watchStock = watch('sk');
 export const addStock = async (payload) => { data.sk.push({ id: 's' + n++, ...payload, from: user.uid }); notify(); };
 export const removeStock = async (id) => { data.sk = data.sk.filter((x) => x.id !== id); notify(); };
@@ -252,6 +254,35 @@ await page.click('#talk-seg [data-t="q"]');
 check('おしゃべり以外を開いても、おしゃべりの印は残る', await page.locator('#talk-seg [data-t="chat"].has-new').count() === 1);
 await page.click('#talk-seg [data-t="chat"]');
 check('おしゃべりを開くと印が消える', await page.locator('#talk-seg [data-t="chat"].has-new').count() === 0 && await page.locator('.tab[data-v="chat"].has-new').count() === 0);
+
+// 月(ふたりのブランコ)
+await page.click('.tab[data-v="home"]');
+await page.waitForSelector('#mn-scene svg.scene');
+check('ホームの一番上に、月の舞台が出る', await page.locator('#moon').isVisible() && (await page.locator('#v-home > *').evaluateAll((els) => els.map((e) => e.id || e.className)))[ 4 ] !== undefined);
+check('触れる前は、合図の輪が出て、ボタンはない', await page.locator('#mn-hint').isVisible() && (await page.locator('#moon button:has-text("月に触れる")').count()) === 0);
+await page.click('#mn-card');
+await page.waitForSelector('#mn-panel:not([hidden])');
+await page.waitForFunction(() => window.__fake.mn.length === 1);
+check('月を押すと、触れた記録が暗号文で保存され、状況パネルが開く', !JSON.stringify(await page.evaluate(() => window.__fake.mn)).includes('"at"') && (await page.textContent('#mn-panel')).includes('まだ'));
+check('触れたあとは、合図の輪が消える', !(await page.locator('#mn-hint').isVisible()));
+await page.click('#mn-card');
+check('もう一度押すと、パネルが閉じる(2回目は記録されない)', !(await page.locator('#mn-panel').isVisible()) && (await page.evaluate(() => window.__fake.mn.length)) === 1);
+await page.click('#mn-card');
+const partnerAt = await enc('moon', { at: Date.now() + 60000 });
+await page.evaluate((doc) => { window.__fake.mn.push({ id: 'pm1', from: 'u2', ...doc }); window.__fake.notify(); }, partnerAt);
+await page.waitForFunction(() => document.querySelector('#mn-panel').textContent.includes('ぴったり'));
+check('2人目が10分以内に触れると、ぴったり💛 +5 になる', (await page.textContent('#mn-pts')) === '5' && (await page.textContent('#mn-panel')).includes('+5'));
+check('成立のあいだは、ブランコで2人がつながって揺れる', (await page.locator('#mn-scene .pend.carry').count()) === 1);
+await page.waitForTimeout(7200);
+check('しばらくすると、ゆらゆら揺れるだけになる', (await page.locator('#mn-scene .pend.carry').count()) === 0 && (await page.locator('#mn-scene .pend.rest').count()) === 1);
+await page.click('.tab[data-v="cal"]');
+await page.click('.tab[data-v="home"]');
+check('ホームに戻ってくると、くっついた姿になる', (await page.locator('#mn-scene .together, #mn-scene .pend.rest .perf.h').count()) >= 1 && (await page.locator('#mn-scene .pend.rest .pairh').count()) === 0);
+await page.click('#mn-panel button');
+await page.waitForSelector('#sheet-body .mlog li');
+check('「記録をみる」で、触れた記録が見られる', (await page.textContent('#sheet-body')).includes('ぴったり'));
+await page.click('#sheet-close');
+await page.locator('#settings li', { hasText: '月のブランコの役' }).count();
 
 // 長押しで削除・既読
 await page.click('.tab[data-v="chat"]');

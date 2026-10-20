@@ -94,6 +94,14 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['box', 'from']);
       allow update, delete: if false;
     }
+    // 月: 触れた記録。自分の分を、1日1回だけ作れる(あとから書き換え・削除はできない)。
+    match /moon/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'from']);
+      allow update, delete: if false;
+    }
     // 既読: 自分の分だけ書ける(相手がどこまで読んだかの印)。
     match /reads/{uid} {
       allow read: if isUs();

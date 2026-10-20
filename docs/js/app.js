@@ -8,6 +8,8 @@ import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeA
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
+import { moonScene, VARIANTS, phaseName } from './moon.js';
+import { analyzeMoon, rolesOf, seasonOf, specialOf, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -22,9 +24,9 @@ const LS = {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen',
 };
-const VERSION = '2026.10.20-18';
+const VERSION = '2026.10.20-19';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -72,7 +74,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -230,6 +232,7 @@ async function enter() {
   startWatching();
   screen('app');
   setView(state.view);
+  if (state.view === 'home') moonEnterHome();
 }
 
 async function useKey(bytes) {
@@ -316,7 +319,7 @@ function startWatching() {
   if (state.unsubs.length) return;
   const s = state.store;
   const cache = new Map();
-  const seq = { msg: 0, ev: 0, dy: 0, pt: 0, st: 0, qc: 0, an: 0, bx: 0, mk: 0 };
+  const seq = { msg: 0, ev: 0, dy: 0, pt: 0, st: 0, qc: 0, an: 0, bx: 0, mk: 0, mn: 0 };
 
   state.unsubs.push(s.watchProfiles(async (docs) => {
     const next = {};
@@ -427,6 +430,26 @@ function startWatching() {
     refreshItems();
   }));
 
+  state.unsubs.push(s.watchMoon(async (docs) => {
+    const my = ++seq.mn;
+    const out = [];
+    for (const d of docs) {
+      const ck = `mn:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('moon', d));
+      const p = cache.get(ck);
+      if (p && typeof p.at === 'number' && d.from) out.push({ id: d.id, from: d.from, at: p.at });
+    }
+    if (my !== seq.mn) return;
+    const before = moonAnalysis().A.today;
+    const firstLoad = !state.loaded.moon;
+    state.moon = out;
+    state.loaded.moon = true;
+    const after = moonAnalysis();
+    ['h', 'y'].forEach((r) => { if (!firstLoad && after.A.today[r] != null && before[r] == null) moonObs[r] = Date.now(); });
+    if (!firstLoad && !before.resolved && after.A.today.resolved) { state.moonCheerUntil = Date.now() + 6600; setTimeout(renderMoon, 6700); }
+    renderMoon();
+  }));
+
   state.unsubs.push(s.watchMarks((docs) => {
     const next = new Map();
     docs.forEach((d) => { if (!next.has(d.box)) next.set(d.box, []); next.get(d.box).push({ id: d.id, from: d.from }); });
@@ -496,12 +519,14 @@ function startWatching() {
 
 /* ================= 画面 ================= */
 function setView(v) {
+  const prev = state.view;
   state.view = v;
   $$('#app .view').forEach((el) => el.classList.toggle('on', el.id === `v-${v}`));
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v));
   renderAll();
   if (v === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; refreshItems(); }
   markRead();
+  if (v === 'home' && prev !== 'home') moonEnterHome();
 }
 
 function renderAll() {
@@ -628,6 +653,7 @@ function renderHome() {
   renderCard();
   renderPatBanner();
   renderBirthdayHome();
+  renderMoon();
   renderNextMoon();
   const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
@@ -1044,7 +1070,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'css/moon.css',
 ];
 
 async function refreshApp(btn) {
@@ -1103,6 +1129,15 @@ function renderSettings() {
   const rcpt = h('input', { type: 'checkbox', class: 'sw', 'aria-label': '既読を相手に伝える' });
   rcpt.checked = LS.get(K.rcpt) !== '0';
   rcpt.addEventListener('change', () => { LS.set(K.rcpt, rcpt.checked ? '1' : '0'); markRead(); });
+
+  const roleSel = h('select', { 'aria-label': '月のブランコでの役' }, h('option', { value: '' }, 'おまかせ'), h('option', { value: 'h' }, '飛ぶ人(ピンク)'), h('option', { value: 'y' }, '受け止める人(ミント)'));
+  roleSel.value = LS.get(K.role) || '';
+  roleSel.addEventListener('change', async () => {
+    if (roleSel.value) LS.set(K.role, roleSel.value); else LS.del(K.role);
+    await state.store.saveProfile(myUid(), await C.encryptJson(state.key, 'profiles', profilePayload()));
+    moonSigReset();
+    renderAll();
+  });
 
   const exportBtn = h('button', { class: 'act', type: 'button' }, '書き出す');
   exportBtn.addEventListener('click', () => {
@@ -1165,6 +1200,7 @@ function renderSettings() {
     row('画面の色', '自動は、端末の設定に合わせます', theme),
     row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
+    row('月のブランコの役', 'ふたりで別々の役にします。おまかせなら、自動で決まります', roleSel),
     row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
     row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
@@ -1203,7 +1239,14 @@ function myBd() {
   try { const v = JSON.parse(LS.get(K.bd)); return v && v.m && v.d ? v : null; } catch (e) { return null; }
 }
 const partnerBd = () => { const p = state.profiles[partnerUid()]; return p && p.bd && p.bd.m && p.bd.d ? p.bd : null; };
-const profilePayload = () => { const bd = myBd(); return bd ? { name: myName(), bd } : { name: myName() }; };
+const profilePayload = () => {
+  const p = { name: myName() };
+  const bd = myBd();
+  if (bd) p.bd = bd;
+  const role = LS.get(K.role);
+  if (role === 'h' || role === 'y') p.role = role;
+  return p;
+};
 const bdList = () => [[myUid(), myBd()], [partnerUid(), partnerBd()]].filter(([u, b]) => u && b);
 const birthdayNames = (date) => bdList().filter(([, b]) => isBirthdayOn(b.m, b.d, date)).map(([u]) => uidName(u));
 const birthdayOn = (date) => birthdayNames(date).length > 0;
@@ -1604,6 +1647,142 @@ function renderBadges() {
   $('#new-banner').hidden = !(f.chat || f.q || f.b || f.cal);
 }
 
+
+/* ================= 月(ふたりのブランコ) ================= */
+let moonSig = '';
+let moonPanelSig = '';
+const moonObs = { h: 0, y: 0 }; // その役の合図を、この画面が受け取った時刻(0 = 開く前からあった)
+const moonSigReset = () => { moonSig = ''; moonPanelSig = ''; };
+
+function moonRoles() {
+  const me = myUid();
+  let other = partnerUid();
+  if (!other) { const m = state.moon.find((x) => x.from !== me); other = m && m.from; }
+  const prof = (u) => (u && state.profiles[u] && state.profiles[u].role) || null;
+  return rolesOf(me, other, LS.get(K.role) || prof(me), prof(other));
+}
+function moonAnalysis(now = Date.now()) {
+  const roles = moonRoles();
+  const sigs = state.moon.filter((m) => roles[m.from]).map((m) => ({ role: roles[m.from], at: m.at }));
+  return { A: analyzeMoon(sigs, now), roles };
+}
+const roleName = (role, roles) => { const u = Object.keys(roles).find((x) => roles[x] === role); return u ? uidName(u) : (role === 'h' ? 'ひとみ' : 'ゆうき'); };
+const clockText = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+
+function pickMoonVariant() {
+  const pool = VARIANTS.filter((v) => v !== state.moonVariant);
+  state.moonVariant = pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ホームに戻ってきたとき: 今日すでに成立していれば、くっついた姿を見せる
+function moonEnterHome() {
+  if (!state.loaded.moon) return;
+  const { A } = moonAnalysis();
+  if (!A.today.resolved || Date.now() < state.moonCheerUntil) return;
+  if (LS.get(K.moonSeen) !== A.today.key && state.moonVisit === 0) return; // 初めて見るときは、ブランコのままゆれる姿
+  state.moonVisit += 1;
+  pickMoonVariant();
+  moonSigReset();
+  renderMoon();
+}
+
+function renderMoon() {
+  if ($('#app').hidden || !$('#mn-scene') || !myUid()) return;
+  const now = Date.now();
+  const { A, roles } = moonAnalysis(now);
+  const t = A.today;
+  if (state.moonDay !== t.key) {
+    state.moonDay = t.key;
+    state.moonPanel = false;
+    state.moonVisit = LS.get(K.moonSeen) === t.key ? 1 : 0;
+    if (state.moonVisit) pickMoonVariant();
+  }
+  const today = new Date();
+  const special = specialOf({ todayKey: ymd(today), today, birthdays: [myBd(), partnerBd()], anns: state.ann, events: state.events });
+  const season = seasonOf(today);
+  const cheerOn = now < state.moonCheerUntil;
+  const popOn = now < state.moonPop.until;
+  const tired = !!(t.h != null && !t.resolved && t.y == null && now - t.h > MOON_WIN);
+  const ready = !!state.loaded.moon;
+  const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired]);
+  if (key !== moonSig) {
+    moonSig = key;
+    $('#mn-scene').innerHTML = moonScene({
+      pts: A.pts, sig: { h: ready ? t.h : null, y: ready ? t.y : null }, first: t.first, resolved: ready && t.resolved, kind: t.kind,
+      cheerUntil: state.moonCheerUntil, revisit: state.moonVisit, variant: state.moonVariant, special, season, now, winMs: MOON_WIN,
+      pop: state.moonPop.w, popUntil: state.moonPop.until, sigAt: moonObs,
+    });
+  }
+  $('#mn-pts').textContent = String(A.pts);
+  $('#mn-bar-i').style.width = `${A.pts}%`;
+  $('#mn-phase').textContent = phaseName(A.pts);
+  const myRole = roles[myUid()];
+  $('#mn-hint').hidden = !(ready && !t.resolved && t[myRole] == null);
+  if (ready && t.resolved && !cheerOn && state.moonVisit === 0) LS.set(K.moonSeen, t.key);
+  renderMoonPanel(A, roles);
+  if (popOn) setTimeout(() => { moonSig = ''; renderMoon(); }, Math.max(0, state.moonPop.until - now) + 50);
+}
+
+function renderMoonPanel(A, roles) {
+  const p = $('#mn-panel');
+  p.hidden = !state.moonPanel;
+  if (!state.moonPanel) { moonPanelSig = ''; return; }
+  const t = A.today;
+  const key = JSON.stringify([t.h, t.y, t.kind, A.pts, roleName('h', roles), roleName('y', roles)]);
+  if (key === moonPanelSig) return;
+  moonPanelSig = key;
+  const row = (role) => h('div', { class: 'mn-row' }, h('i', { class: `mn-dot ${role}` }), h('span', {}, roleName(role, roles)), t[role] != null ? h('b', {}, clockText(t[role])) : h('em', {}, 'まだ'));
+  const logBtn = h('button', { type: 'button' }, '記録をみる');
+  logBtn.addEventListener('click', openMoonLog);
+  p.replaceChildren(...[
+    row('h'), row('y'),
+    t.resolved ? h('div', { class: 'mn-row' }, h('span', { class: `mn-res ${t.kind}` }, t.kind === 'sync' ? 'ぴったり💛' : 'おまたせ～💦'), h('span', {}, t.kind === 'sync' ? '+5' : '+1')) : null,
+    h('div', { class: 'mn-row' }, h('span', {}, `${A.pts}/100`), h('span', { class: 'sub' }, `満月まで あと${100 - A.pts}`)),
+    logBtn,
+  ].filter(Boolean));
+}
+
+async function touchMoon() {
+  const { A, roles } = moonAnalysis();
+  const role = roles[myUid()];
+  if (!role || A.today.resolved || A.today[role] != null || !state.key) return;
+  moonObs[role] = Date.now();
+  state.moonPop = { w: role, until: Date.now() + 1500 };
+  try {
+    const id = await C.dayId(state.keyBytes, `moon|${A.today.key}|${myUid()}`);
+    await withTimeout(state.store.addMoon(id, await C.encryptJson(state.key, 'moon', { at: Date.now() })), 5000);
+  } catch (e) { /* すでに触れていたとき(別の端末など)は、そのまま */ }
+}
+
+function openMoonLog() {
+  const body = h('div', { class: 'stack' });
+  const fill = () => {
+    const { A, roles } = moonAnalysis();
+    const items = [
+      ...A.days.map((d) => ({ at: d.at, kind: d.kind, pts: d.pts, text: `${roleName(d.first, roles)} ${clockText(d[d.first])} → ${roleName(d.first === 'h' ? 'y' : 'h', roles)} ${clockText(d[d.first === 'h' ? 'y' : 'h'])}` })),
+      ...A.fulls.map((f) => ({ at: f.at + 1, kind: 'full', pts: 0, text: `${f.n}回目の満月` })),
+    ].sort((a, b) => b.at - a.at);
+    const stamp = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${clockText(ms)}`; };
+    body.replaceChildren(
+      h('h2', {}, '月の記録'),
+      h('div', { class: 'mstats' }, h('div', {}, h('b', {}, String(A.sync)), h('small', {}, 'ぴったり💛')), h('div', {}, h('b', {}, String(A.late)), h('small', {}, 'おまたせ～💦')), h('div', {}, h('b', {}, String(A.fulls.length)), h('small', {}, '満月の回数'))),
+      h('ul', { class: 'mlog' }, ...(items.length ? items.map((i) => h('li', {}, h('span', { class: `tg ${i.kind}` }, i.kind === 'sync' ? 'ぴったり💛' : i.kind === 'late' ? 'おまたせ～💦' : '満月'), i.pts ? `+${i.pts}` : '', h('span', {}, i.text), h('time', {}, stamp(i.at)))) : [h('li', { class: 'empty' }, 'まだ記録がありません')])),
+    );
+  };
+  openSheet(body);
+  state.sheetRender = fill;
+  fill();
+}
+
+function buildMoon() {
+  $('#mn-card').addEventListener('click', () => {
+    if (!state.loaded.moon || !state.key) return;
+    const { A, roles } = moonAnalysis();
+    const role = roles[myUid()];
+    if (!A.today.resolved && A.today[role] == null) { state.moonPanel = true; touchMoon(); renderMoon(); } else { state.moonPanel = !state.moonPanel; renderMoon(); }
+  });
+}
+
 /* ================= 起動 ================= */
 function init() {
   applyTheme(LS.get(K.theme));
@@ -1613,6 +1792,7 @@ function init() {
   buildCard();
   buildChat();
   buildTalk();
+  buildMoon();
   $$('[data-hide]').forEach((b) => b.addEventListener('click', lock));
   $$('.tab').forEach((t) => t.addEventListener('click', () => setView(t.dataset.v)));
   $('#sheet-close').addEventListener('click', closeSheet);

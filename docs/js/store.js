@@ -115,6 +115,10 @@ export async function loadItems(untilMs) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+// ---- 月(触れた記録): 1人が1日に1回だけ。あとから書き換えられない ----
+export const watchMoon = (cb) => watchPlain('moon', cb);
+export const addMoon = (id, payload) => setDoc(doc(db, 'moon', id), { ...payload, from: auth.currentUser.uid });
+
 export const watchProfiles = (cb) => watchPlain('profiles', cb);
 export const saveProfile = (uid, payload) => setDoc(doc(db, 'profiles', uid), payload);
 

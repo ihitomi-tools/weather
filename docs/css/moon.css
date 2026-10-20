@@ -1,0 +1,224 @@
+/* 月の舞台(.mn の中だけに効く)。動きの名前は mn- を付けて、ほかと重ならないようにしている。 */
+.mn .scene { display: block; width: 100%; height: auto; overflow: visible; }
+.mn .scene .perf { fill: currentColor; }
+.mn .scene { --s-out: #12153f; --s-pink: #ff9cc4; --s-mint: #62e6c0; --s-line: #aab4e8; --s-moon: #39407a; --s-moon-line: #8f98d8; --s-lit: #ffd966; }
+.mn .scene .perf.h { color: var(--s-pink); }
+.mn .scene .perf.y { color: var(--s-mint); }
+.mn .scene .st { stroke: currentColor; stroke-width: 3.8; stroke-linecap: round; fill: none; }
+.mn .scene .arm, .mn .scene .leg, .mn .scene .reach { transform-box: fill-box; transform-origin: 50% 0%; }
+.mn .scene .arm.up { transform-origin: 50% 100%; }
+.mn .scene .hand { stroke: #121640; stroke-width: .9; }
+.mn .scene .hair { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-swish 1.9s ease-in-out infinite alternate; }
+.mn .perf.h.air .hair { animation-duration: .35s; }
+@keyframes mn-swish { from { transform: rotate(-14deg); } to { transform: rotate(12deg); } }
+.mn .pairh { transform-origin: 0 0; animation: mn-lag 1.9s ease-in-out infinite alternate; }
+@keyframes mn-lag { from { transform: rotate(5deg); } to { transform: rotate(-6deg); } }
+.mn .scene .rigmetal { fill: var(--s-line); }
+.mn .scene .rope { stroke: var(--s-line); stroke-width: 1.5; fill: none; }
+.mn .scene .rig { stroke: var(--s-line); stroke-width: 3; stroke-linecap: round; }
+.mn .scene .bar-l { fill: var(--s-line); }
+.mn .scene .bang { font-size: 14px; font-weight: 800; fill: currentColor; font-family: var(--font); animation: mn-blink .5s steps(2) infinite; }
+.mn .pend { transform-origin: 0 0; }
+.mn .pend.idle.h { animation: mn-sway 2.8s ease-in-out infinite alternate; }
+.mn .pend.idle.y { animation: mn-sway 3.2s ease-in-out infinite alternate-reverse; }
+.mn .pend.empty { animation: mn-sway 3.4s ease-in-out infinite alternate; }
+.mn .pend.rest { animation: mn-sway 3.4s ease-in-out infinite alternate-reverse; }
+.mn .pend.out { animation: mn-flyOut .95s ease-in-out forwards, mn-emptyBack 8s linear .95s forwards, mn-sway 3.4s ease-in-out 8.95s infinite alternate-reverse; }
+.mn .pend.ready { animation: mn-readyY 2.6s ease-in-out infinite alternate; }
+.mn .pend.carry { animation: mn-carryY 6.5s linear forwards, mn-sway 3.4s ease-in-out 6.5s infinite alternate-reverse; }
+@keyframes mn-sway { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+@keyframes mn-flyOut { from { transform: rotate(8deg); } to { transform: rotate(-35deg); } }
+@keyframes mn-readyY { from { transform: rotate(6deg); } to { transform: rotate(35deg); } }
+@keyframes mn-carryY { 0.00% { transform: rotate(6.00deg); } 1.54% { transform: rotate(5.27deg); } 3.08% { transform: rotate(5.15deg); } 4.62% { transform: rotate(5.66deg); } 6.15% { transform: rotate(6.78deg); } 7.69% { transform: rotate(8.53deg); } 9.23% { transform: rotate(10.90deg); } 10.77% { transform: rotate(13.88deg); } 12.31% { transform: rotate(17.49deg); } 13.85% { transform: rotate(21.72deg); } 15.38% { transform: rotate(26.39deg); } 16.92% { transform: rotate(30.48deg); } 18.46% { transform: rotate(33.74deg); } 20.00% { transform: rotate(36.14deg); } 21.54% { transform: rotate(37.64deg); } 23.08% { transform: rotate(38.26deg); } 24.62% { transform: rotate(38.00deg); } 26.15% { transform: rotate(36.91deg); } 27.69% { transform: rotate(35.03deg); } 29.23% { transform: rotate(32.44deg); } 30.77% { transform: rotate(29.22deg); } 32.31% { transform: rotate(25.46deg); } 33.85% { transform: rotate(21.27deg); } 35.38% { transform: rotate(16.75deg); } 36.92% { transform: rotate(12.02deg); } 38.46% { transform: rotate(7.19deg); } 40.00% { transform: rotate(2.37deg); } 41.54% { transform: rotate(-2.33deg); } 43.08% { transform: rotate(-6.81deg); } 44.62% { transform: rotate(-10.99deg); } 46.15% { transform: rotate(-14.77deg); } 47.69% { transform: rotate(-18.09deg); } 49.23% { transform: rotate(-20.89deg); } 50.77% { transform: rotate(-23.12deg); } 52.31% { transform: rotate(-24.76deg); } 53.85% { transform: rotate(-25.79deg); } 55.38% { transform: rotate(-26.22deg); } 56.92% { transform: rotate(-26.04deg); } 58.46% { transform: rotate(-25.29deg); } 60.00% { transform: rotate(-24.00deg); } 61.54% { transform: rotate(-22.23deg); } 63.08% { transform: rotate(-20.02deg); } 64.62% { transform: rotate(-17.44deg); } 66.15% { transform: rotate(-14.57deg); } 67.69% { transform: rotate(-11.48deg); } 69.23% { transform: rotate(-8.24deg); } 70.77% { transform: rotate(-4.93deg); } 72.31% { transform: rotate(-1.63deg); } 73.85% { transform: rotate(1.60deg); } 75.38% { transform: rotate(4.67deg); } 76.92% { transform: rotate(7.53deg); } 78.46% { transform: rotate(10.12deg); } 80.00% { transform: rotate(12.39deg); } 81.54% { transform: rotate(14.31deg); } 83.08% { transform: rotate(15.84deg); } 84.62% { transform: rotate(16.97deg); } 86.15% { transform: rotate(17.67deg); } 87.69% { transform: rotate(17.96deg); } 89.23% { transform: rotate(17.84deg); } 90.77% { transform: rotate(17.33deg); } 92.31% { transform: rotate(16.45deg); } 93.85% { transform: rotate(15.23deg); } 95.38% { transform: rotate(13.72deg); } 96.92% { transform: rotate(11.95deg); } 98.46% { transform: rotate(9.99deg); } 100.00% { transform: rotate(7.87deg); } }
+@keyframes mn-emptyBack { 0.00% { transform: rotate(-35.00deg); } 1.67% { transform: rotate(-33.05deg); } 3.33% { transform: rotate(-29.23deg); } 5.00% { transform: rotate(-23.88deg); } 6.67% { transform: rotate(-17.38deg); } 8.33% { transform: rotate(-10.18deg); } 10.00% { transform: rotate(-2.75deg); } 11.67% { transform: rotate(4.45deg); } 13.33% { transform: rotate(11.02deg); } 15.00% { transform: rotate(16.59deg); } 16.67% { transform: rotate(20.89deg); } 18.33% { transform: rotate(23.71deg); } 20.00% { transform: rotate(24.98deg); } 21.67% { transform: rotate(24.70deg); } 23.33% { transform: rotate(22.96deg); } 25.00% { transform: rotate(19.95deg); } 26.67% { transform: rotate(15.90deg); } 28.33% { transform: rotate(11.12deg); } 30.00% { transform: rotate(5.93deg); } 31.67% { transform: rotate(0.65deg); } 33.33% { transform: rotate(-4.39deg); } 35.00% { transform: rotate(-8.91deg); } 36.67% { transform: rotate(-12.67deg); } 38.33% { transform: rotate(-15.47deg); } 40.00% { transform: rotate(-17.21deg); } 41.67% { transform: rotate(-17.83deg); } 43.33% { transform: rotate(-17.36deg); } 45.00% { transform: rotate(-15.89deg); } 46.67% { transform: rotate(-13.54deg); } 48.33% { transform: rotate(-10.51deg); } 50.00% { transform: rotate(-7.01deg); } 51.67% { transform: rotate(-3.28deg); } 53.33% { transform: rotate(0.46deg); } 55.00% { transform: rotate(3.97deg); } 56.67% { transform: rotate(7.07deg); } 58.33% { transform: rotate(9.58deg); } 60.00% { transform: rotate(11.39deg); } 61.67% { transform: rotate(12.43deg); } 63.33% { transform: rotate(12.68deg); } 65.00% { transform: rotate(12.16deg); } 66.67% { transform: rotate(10.94deg); } 68.33% { transform: rotate(9.14deg); } 70.00% { transform: rotate(6.88deg); } 71.67% { transform: rotate(4.33deg); } 73.33% { transform: rotate(1.66deg); } 75.00% { transform: rotate(-0.97deg); } 76.67% { transform: rotate(-3.41deg); } 78.33% { transform: rotate(-5.52deg); } 80.00% { transform: rotate(-7.19deg); } 81.67% { transform: rotate(-8.35deg); } 83.33% { transform: rotate(-8.95deg); } 85.00% { transform: rotate(-8.98deg); } 86.67% { transform: rotate(-8.48deg); } 88.33% { transform: rotate(-7.50deg); } 90.00% { transform: rotate(-6.13deg); } 91.67% { transform: rotate(-4.46deg); } 93.33% { transform: rotate(-2.61deg); } 95.00% { transform: rotate(-0.71deg); } 96.67% { transform: rotate(1.14deg); } 98.33% { transform: rotate(2.83deg); } 100.00% { transform: rotate(4.26deg); } }
+@keyframes mn-blink { 50% { opacity: .15; } }
+@keyframes mn-kickL { from { transform: rotate(-22deg); } to { transform: rotate(24deg); } }
+@keyframes mn-kickR { from { transform: rotate(24deg); } to { transform: rotate(-22deg); } }
+@keyframes mn-flailL { from { transform: rotate(-60deg); } to { transform: rotate(45deg); } }
+@keyframes mn-flailR { from { transform: rotate(60deg); } to { transform: rotate(-45deg); } }
+@keyframes mn-bob { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
+@keyframes mn-appear { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mn-vanish { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mn-flip { from { transform: rotate(180deg); } to { transform: rotate(0); } }
+@keyframes mn-reach { from { transform: rotate(-6deg); } to { transform: rotate(8deg); } }
+.mn .late-in { opacity: 0; animation: mn-appear .12s .95s forwards; }
+.mn .early { animation: mn-vanish .12s .95s forwards; }
+.mn .idle .leg.l, .mn .rest .leg.l { animation: mn-kickL 1.7s ease-in-out infinite alternate; }
+.mn .idle .leg.r, .mn .rest .leg.r { animation: mn-kickR 1.7s ease-in-out infinite alternate; }
+.mn .air .arm.l { animation: mn-flailL .24s ease-in-out infinite alternate; }
+.mn .air .arm.r { animation: mn-flailR .24s ease-in-out infinite alternate; }
+.mn .air .leg.l { animation: mn-kickL .22s ease-in-out infinite alternate; }
+.mn .air .leg.r { animation: mn-kickR .22s ease-in-out infinite alternate; }
+.mn .air .bob { animation: mn-bob .5s ease-in-out infinite alternate; }
+.mn .catcher { transform-origin: 0 0; animation: mn-flip .6s ease-out; }
+.mn .catcher .reach { animation: mn-reach 1.2s ease-in-out infinite alternate; transform-origin: 100% 0%; }
+.mn .moon-glow { animation: mn-glow 2s ease 1s; }
+@keyframes mn-glow { 0% { filter: drop-shadow(0 0 0 transparent); } 40% { filter: drop-shadow(0 0 var(--gl, 14px) #ffd966); } 100% { filter: drop-shadow(0 0 0 transparent); } }
+.mn .moon-glow.big { --gl: 22px; }
+.mn .drip { fill: var(--s-lit); opacity: 0; animation: mn-drip .9s ease-in .1s forwards; }
+@keyframes mn-drip { 0% { opacity: 0; translate: 150px 6px; } 15% { opacity: 1; } 85% { opacity: 1; translate: 150px 40px; } 100% { opacity: 0; translate: 150px 44px; scale: 1.6 .4; } }
+.mn .heart { fill: var(--s-pink); opacity: 0; }
+.mn .heart.up { animation: mn-absorb 2.2s ease-in-out forwards; }
+@keyframes mn-absorb { 0% { opacity: 0; translate: var(--hx) 128px; scale: .4; } 18% { opacity: 1; } 80% { opacity: 1; translate: calc(var(--hx) * .4 + 90px) 92px; scale: 1; } 100% { opacity: 0; translate: 150px 88px; scale: .3; } }
+.mn .hpop { fill: var(--s-pink); opacity: 0; animation: mn-hpop 1.5s ease-out forwards; }
+@keyframes mn-hpop { 0% { opacity: 0; translate: var(--px) var(--py); scale: .3; } 20% { opacity: 1; scale: 1.15; } 100% { opacity: 0; translate: var(--px) calc(var(--py) - 22px); scale: 1; } }
+.mn .ring { fill: none; stroke: var(--s-lit); stroke-width: 3; opacity: 0; animation: mn-ring 1.1s ease-out .95s forwards; }
+@keyframes mn-ring { 0% { opacity: .9; r: 6px; } 100% { opacity: 0; r: 70px; } }
+.mn .sky-star { fill: #fff; animation: mn-tw 3s ease-in-out infinite; }
+@keyframes mn-tw { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.mn .twirl { transform-origin: 0 0; animation: mn-twirl 1s ease-in-out .95s; }
+@keyframes mn-twirl { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.mn .sag { animation: mn-sag 3s ease-out forwards; }
+@keyframes mn-sag { from { translate: 0 0; } to { translate: 0 14px; } }
+.mn .air.tired .arm.l { animation: none; transform: rotate(-16deg); }
+.mn .air.tired .arm.r { animation: none; transform: rotate(16deg); }
+.mn .air.tired .leg.l, .mn .air.tired .leg.r { animation-duration: .9s; }
+.mn .air.tired .bob { animation-duration: 1.4s; }
+.mn .spark { fill: var(--s-lit); opacity: 0; animation: mn-twinkle 1.4s ease 1.1s 2; }
+@keyframes mn-twinkle { 0%, 100% { opacity: 0; transform: scale(.3); } 50% { opacity: 1; transform: scale(1); } }
+.mn .spark { transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .shoot { opacity: 0; fill: none; stroke: url(#streak); stroke-width: 1.5; stroke-linecap: round; }
+.mn .shoot.s1 { rotate: 24deg; animation: mn-shoot1 14s linear 3s infinite; }
+.mn .shoot.s2 { rotate: 30deg; animation: mn-shoot2 19s linear 9s infinite; }
+.mn .shoot.s3 { rotate: 152deg; animation: mn-shoot3 23s linear 15s infinite; }
+@keyframes mn-shoot1 { 0%, 93% { opacity: 0; translate: 40px 20px; } 94% { opacity: .85; } 100% { opacity: 0; translate: 112px 50px; } }
+@keyframes mn-shoot2 { 0%, 94% { opacity: 0; translate: 188px 12px; } 95% { opacity: .85; } 100% { opacity: 0; translate: 252px 42px; } }
+@keyframes mn-shoot3 { 0%, 95% { opacity: 0; translate: 112px 28px; } 96% { opacity: .85; } 100% { opacity: 0; translate: 62px 54px; } }
+@media (prefers-reduced-motion: reduce) { .mn .shoot { animation: none; } }
+.mn .perf.happy .leg.l { animation: mn-kickL .2s ease-in-out infinite alternate; }
+.mn .perf.happy .leg.r { animation: mn-kickR .2s ease-in-out infinite alternate; }
+.mn .perf.happy .hair { animation-duration: .3s; }
+.mn .scene .rope { transform-box: fill-box; transform-origin: 50% 0%; }
+.mn .pend.carry .hangers { animation: mn-jolt .5s ease .95s both; }
+.mn .pend.carry .rope { animation: mn-stretch .5s ease .95s both; }
+.mn .pend.rest .hangers { translate: 0 3px; }
+.mn .pend.rest .rope { transform: scaleY(1.034); }
+@keyframes mn-jolt { 0% { translate: 0 0; } 40% { translate: 0 5px; } 100% { translate: 0 3px; } }
+@keyframes mn-stretch { 0% { transform: scaleY(1); } 40% { transform: scaleY(1.057); } 100% { transform: scaleY(1.034); } }
+@media (prefers-reduced-motion: reduce) { .mn .pend .hangers, .mn .pend .rope { animation: none; } }
+.mn .together { animation: mn-appear .8s ease both; }
+.mn .together .perf { animation: mn-breathe 3.2s ease-in-out infinite alternate; transform-box: view-box; transform-origin: 0 0; }
+@keyframes mn-breathe { from { scale: 1 1; } to { scale: 1 1.018; } }
+.mn .fheart { fill: var(--s-pink); animation: mn-floath 3.4s ease-in-out infinite; }
+@keyframes mn-floath { 0% { opacity: 0; translate: 0 8px; } 25% { opacity: 1; } 100% { opacity: 0; translate: 0 -16px; } }
+.mn .cloud { animation: mn-drift 40s linear infinite alternate; }
+.mn .cloud.c2 { animation-duration: 55s; animation-direction: alternate-reverse; }
+@keyframes mn-drift { from { translate: -14px 0; } to { translate: 22px 0; } }
+@media (prefers-reduced-motion: reduce) { .mn .together, .mn .together .perf, .mn .fheart, .mn .cloud { animation: none; } }
+.mn .fall { translate: var(--x0) -10px; animation: mn-fallk var(--d) linear infinite; }
+@keyframes mn-fallk { 0% { translate: var(--x0) -10px; rotate: 0deg; } 50% { translate: calc(var(--x0) + var(--dx) * .6) 90px; } 100% { translate: calc(var(--x0) + var(--dx)) 196px; rotate: var(--rot); } }
+.mn .firefly { fill: #d6ff7a; filter: drop-shadow(0 0 3px #d6ff7a); animation: mn-flit 6s ease-in-out infinite; }
+@keyframes mn-flit { 0%, 100% { opacity: .1; transform: translate(0, 0); } 30% { opacity: 1; transform: translate(6px, -8px); } 60% { opacity: .4; transform: translate(-5px, -14px); } }
+.mn .fw { stroke: #ffd966; stroke-width: 1.400; stroke-linecap: round; opacity: 0; animation: mn-fw 15s ease-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .fw.b { stroke: #ff9cc4; animation-delay: -7s; animation-duration: 19s; }
+@keyframes mn-fw { 0%, 90% { opacity: 0; scale: .2; } 92% { opacity: 1; scale: .6; } 100% { opacity: 0; scale: 1.5; } }
+.mn .susuki { transform-box: fill-box; transform-origin: 50% 100%; animation: mn-sway2 3.4s ease-in-out infinite alternate; }
+@keyframes mn-sway2 { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+.mn .tree { animation: none; }
+.mn .together.walk .walker { animation: mn-walkx 14s ease-in-out infinite alternate; }
+@keyframes mn-walkx { from { translate: -42px 0; } to { translate: 42px 0; } }
+.mn .together.walk .leg.l { animation: mn-kickL .8s ease-in-out infinite alternate; }
+.mn .together.walk .leg.r { animation: mn-kickR .8s ease-in-out infinite alternate; }
+.mn .patarm { animation: mn-patk 1s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 100% 100%; }
+@keyframes mn-patk { from { transform: rotate(-6deg); } to { transform: rotate(7deg); } }
+.mn .tiptoe { animation: mn-tip 1.6s ease-in-out infinite alternate; }
+@keyframes mn-tip { from { translate: 0 0; } to { translate: 0 -3px; } }
+.mn .tiptoe .leg.r { animation: mn-kickR .5s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .mn .fall, .mn .firefly, .mn .fw, .mn .susuki, .mn .together.walk .walker, .mn .patarm, .mn .tiptoe { animation: none; } }
+.mn .pic { fill: currentColor; }
+.mn .pic.h { color: var(--s-pink); }
+.mn .pic.y { color: var(--s-mint); }
+.mn .pic .hair { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-swish 1.9s ease-in-out infinite alternate; }
+.mn .kickback { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-kb .55s ease-in-out infinite alternate; }
+@keyframes mn-kb { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+.mn .umb { animation: mn-umbsway 2.6s ease-in-out infinite alternate; }
+@keyframes mn-umbsway { from { transform: rotate(-1.500deg); } to { transform: rotate(1.500deg); } }
+.mn .bfw { fill: none; stroke-width: 1.600; stroke-linecap: round; opacity: 0; animation: mn-bfw 8s ease-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes mn-bfw { 0%, 70% { opacity: 0; scale: .1; } 74% { opacity: 1; scale: .55; } 100% { opacity: 0; scale: 1.4; } }
+.mn .flame { animation: mn-flick .35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes mn-flick { from { transform: scale(1, 1); } to { transform: scale(.8, 1.2); } }
+.mn .rise { translate: var(--bx) 196px; animation: mn-risek var(--d) linear infinite; }
+@keyframes mn-risek { 0% { translate: var(--bx) 196px; } 50% { translate: calc(var(--bx) + 10px) 90px; } 100% { translate: calc(var(--bx) - 6px) -30px; } }
+.mn .aura-spark { fill: #ffe9a0; animation: mn-aspark 2.600s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes mn-aspark { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+.mn .aura-ring, .mn .aura-orbit { transform-box: view-box; transform-origin: 150px 88px; animation: mn-spinr 80s linear infinite; }
+.mn .aura-orbit { animation-duration: 55s; animation-direction: reverse; }
+@keyframes mn-spinr { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .mn .bfw, .mn .flame, .mn .rise, .mn .aura-spark, .mn .aura-ring, .mn .aura-orbit { animation: none; } }
+.mn .bulb { fill: #fff3b0; animation: mn-bulbk 1.800s ease-in-out infinite; }
+@keyframes mn-bulbk { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.mn .wheel { animation: mn-spinw 70s linear infinite; transform-box: view-box; transform-origin: 0 0; }
+@keyframes mn-spinw { to { transform: rotate(360deg); } }
+.mn .dballoon { translate: var(--bx) 60px; animation: mn-balloonk 60s linear infinite alternate; }
+@keyframes mn-balloonk { from { translate: 20px 70px; } to { translate: 150px 28px; } }
+.mn .dheart { fill: #ff9cc4; opacity: 0; translate: var(--x) 150px; animation: mn-dheartk 6s ease-in-out infinite; }
+@keyframes mn-dheartk { 0% { opacity: 0; translate: var(--x) 150px; } 20% { opacity: .95; } 100% { opacity: 0; translate: calc(var(--x) + 8px) 40px; } }
+.mn .pend.excited.h { animation: mn-swayx 1.900s ease-in-out infinite alternate; }
+.mn .pend.excited.y { animation: mn-swayx 2.100s ease-in-out infinite alternate-reverse; }
+@keyframes mn-swayx { from { transform: rotate(-17deg); } to { transform: rotate(17deg); } }
+.mn .drop2 { stroke: #a9c4ff; stroke-width: .9; stroke-linecap: round; opacity: .75; translate: var(--rx) -10px; animation: mn-rainf var(--rd) linear infinite; }
+@keyframes mn-rainf { from { translate: var(--rx) -10px; } to { translate: calc(var(--rx) - 22px) 190px; } }
+.mn .ripple { fill: none; stroke: #cfe0ff; stroke-width: .8; opacity: 0; animation: mn-ripk 1.800s ease-out infinite; }
+@keyframes mn-ripk { 0% { opacity: .8; rx: 1px; ry: .4px; } 100% { opacity: 0; rx: 7px; ry: 2.400px; } }
+.mn .rclouds { animation: mn-rdrift 30s ease-in-out infinite alternate; }
+@keyframes mn-rdrift { from { translate: -10px 0; } to { translate: 10px 0; } }
+.mn .bfw.hb { stroke: none; }
+@media (prefers-reduced-motion: reduce) { .mn .bulb, .mn .wheel, .mn .dballoon, .mn .dheart, .mn .pend.excited, .mn .drop2, .mn .ripple, .mn .rclouds { animation: none; } }
+.mn .stp { transform-box: fill-box; transform-origin: 50% 0%; }
+.mn .stp.a { animation: mn-stpa 1s ease-in-out infinite alternate; }
+.mn .stp.b { animation: mn-stpb 1s ease-in-out infinite alternate; }
+@keyframes mn-stpa { from { transform: rotate(-13deg); } to { transform: rotate(13deg); } }
+@keyframes mn-stpb { from { transform: rotate(13deg); } to { transform: rotate(-13deg); } }
+.mn .rbob { animation: mn-rbobk .5s ease-in-out infinite alternate; }
+@keyframes mn-rbobk { from { translate: 0 0; } to { translate: 0 -.8px; } }
+.mn .kissW { translate: var(--dx) 0; animation: mn-kissmove 9s ease-in-out infinite; }
+.mn .kissM { translate: var(--dx) 0; animation: mn-kissmove 9s ease-in-out infinite; }
+.mn .kissarms { animation: mn-kissarms 9s ease-in-out infinite; }
+@keyframes mn-kissmove { 0%, 8% { translate: var(--dx) 0; } 22%, 62% { translate: 0 0; } 76%, 100% { translate: var(--dx) 0; } }
+@keyframes mn-kissarms { 0%, 14% { opacity: 0; } 22%, 62% { opacity: 1; } 70%, 100% { opacity: 0; } }
+.mn .kw { animation: mn-kissheadw 9s ease-in-out infinite; transform-origin: 0px -35px; }
+.mn .km { animation: mn-kissheadm 9s ease-in-out infinite; transform-origin: 0px -39px; }
+@keyframes mn-kissheadw { 0%, 8% { rotate: 0deg; } 22%, 62% { rotate: 19deg; } 76%, 100% { rotate: 0deg; } }
+@keyframes mn-kissheadm { 0%, 8% { rotate: 0deg; } 22%, 62% { rotate: -19deg; } 76%, 100% { rotate: 0deg; } }
+.mn .kisspop { opacity: 0; animation: mn-kisspopk 9s ease-out infinite; }
+@keyframes mn-kisspopk { 0%, 21% { opacity: 0; translate: 0 4px; scale: .4; } 25% { opacity: 1; translate: 0 0; scale: 1.2; } 31% { scale: 1; } 52% { opacity: 1; translate: 0 -3px; } 62%, 100% { opacity: 0; translate: 0 -8px; } }
+@keyframes mn-hint { 0% { opacity: .55; scale: .6; } 100% { opacity: 0; scale: 1.15; } }
+@media (prefers-reduced-motion: reduce) { .mn .stp, .mn .rbob, .mn .kissW, .mn .kissM, .mn .kissarms, .mn .kw, .mn .km, .mn .kisspop, .mn .hintring { animation: none; } .mn .kissW, .mn .kissM { translate: var(--dx) 0; } }
+.mn .patback { animation: mn-patbk 10s ease-in-out infinite; }
+@keyframes mn-patbk { 0%, 58% { translate: 0 0; } 62% { translate: 0 -1.600px; } 66% { translate: 0 .4px; } 70% { translate: 0 -1.600px; } 74% { translate: 0 .4px; } 78% { translate: 0 -1.600px; } 82%, 100% { translate: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .mn .patback { animation: none; } }
+
+/* 月のカードと、状況パネル */
+.mn { margin: 0 18px 14px; display: flex; flex-direction: column; gap: 8px; }
+.mn .mn-card { width: 100%; border: 0; border-radius: 24px; background: var(--surface); color: var(--fg); padding: 10px 14px 14px; display: flex; flex-direction: column; gap: 6px; position: relative; cursor: pointer; text-align: left; font: inherit; -webkit-tap-highlight-color: transparent; }
+.mn .mn-t { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.mn .mn-t small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.mn .mn-t b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.mn .mn-t b i { font-style: normal; font-size: 13px; color: var(--muted); margin-left: 2px; }
+.mn .mn-bar { display: block; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.mn .mn-bar i { display: block; height: 100%; background: #f6c453; border-radius: 99px; transition: width .5s ease; }
+.mn .mn-hint { position: absolute; left: 50%; top: 82px; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid var(--pink-deep); opacity: 0; pointer-events: none; animation: mn-hint 3s ease-out infinite; }
+@keyframes mn-hint { 0% { opacity: .55; scale: .6; } 100% { opacity: 0; scale: 1.15; } }
+.mn .mn-panel { background: var(--surface); border-radius: 18px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.mn .mn-panel[hidden] { display: none; }
+.mn .mn-row { display: flex; align-items: center; gap: 8px; }
+.mn .mn-row > span:first-of-type { flex: 1; min-width: 0; }
+.mn .mn-row .sub { color: var(--muted); font-size: 12px; flex: none; }
+.mn .mn-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.mn .mn-dot.h { background: var(--pink-deep); } .mn .mn-dot.y { background: var(--mint-deep); }
+.mn .mn-row em { font-style: normal; color: var(--muted); }
+.mn .mn-row b { font-variant-numeric: tabular-nums; }
+.mn .mn-res { border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 800; background: var(--mint); color: var(--on-mint); }
+.mn .mn-res.late { background: var(--pink); color: var(--on-pink); }
+.mn .mn-panel button { border: 0; border-radius: 99px; padding: 9px 14px; font-size: 13px; font-weight: 800; background: var(--screen); color: var(--fg); cursor: pointer; }
+.mlog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.mlog li { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 10px 12px; font-size: 12px; flex-wrap: wrap; }
+.mlog .tg { border-radius: 99px; padding: 3px 10px; font-size: 11px; font-weight: 800; flex: none; background: var(--mint); color: var(--on-mint); }
+.mlog .tg.late { background: var(--pink); color: var(--on-pink); }
+.mlog .tg.full { background: #f6c453; color: #4a3a05; }
+.mlog time { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.mstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mstats div { background: var(--surface); border-radius: 16px; padding: 10px 4px; text-align: center; }
+.mstats b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.mstats small { font-size: 11px; color: var(--muted); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { .mn .mn-hint { animation: none; } }
