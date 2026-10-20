@@ -355,3 +355,9 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .gate-pose svg { width: 96px; height: 104px; }
 .bd-today > svg { width: 84px; height: 90px; align-self: center; --cbg: #fff; }
 .pat-banner.bd-pop > svg { width: 44px; height: 48px; flex: none; fill: initial; --cbg: var(--pink); }
+
+/* 連続する予定 */
+.evrow.end { display: flex; flex-direction: column; gap: 4px; }
+.evrow.end label { font-size: 12px; color: var(--muted); font-weight: 700; }
+#ev-range { align-self: flex-start; }
+#ev-range[aria-pressed="true"] { background: var(--mint); color: var(--on-mint); }

@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-25';
+const VERSION = '2026.10.20-26';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -560,6 +560,9 @@ function renderAll() {
   renderBadges();
 }
 
+// 連続する予定(お泊まりなど)は、終わりの日(end)まで続く
+const evEnd = (e) => (e.end && e.end > e.date ? e.end : e.date);
+const evOn = (e, key) => e.date <= key && key <= evEnd(e);
 const kindOf = (ev) => (ev.who === 'both' ? 'both' : ((ev.who === 'me') === (ev.by === myUid()) ? 'me' : 'you'));
 const byDate = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''));
 
@@ -572,7 +575,7 @@ function eventMark(ev) {
 function eventItem(ev, withDelete) {
   const li = h('li', { class: 'item' },
     eventMark(ev),
-    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${ev.time ? ` ${ev.time}` : ''}`)));
+    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}` : ''}${ev.time ? ` ${ev.time}` : ''}`)));
   if (withDelete) {
     const x = h('button', { class: 'x', type: 'button' }, '削除');
     x.addEventListener('click', async () => {
@@ -648,7 +651,7 @@ function renderCard() {
     const label = state.nl || NEXT_DEFAULT;
     const ev = nextJoint(state.events, today);
     if (ev) {
-      const diff = dayNum(ev.date) - dayNum(today);
+      const diff = dayNum(ev.date < today ? today : ev.date) - dayNum(today); // 連続する予定の最中は「今日」
       nodes = [h('small', {}, label), h('b', {}, diff === 0 ? '今日' : `あと${diff}`, diff === 0 ? null : h('span', {}, '日')), h('small', {}, `${ev.title}・${mdLabel(ev.date)}${ev.time ? ` ${ev.time}` : ''}`)];
     } else {
       nodes = [h('small', {}, label), h('p', { class: 'hint' }, 'カレンダーで「両方」を選んだ予定が、ここに出ます')];
@@ -700,7 +703,7 @@ function renderHome() {
   const recent = peopleOf().flatMap((u) => [...recsOf(u).values()].filter(hasMoodRec).map((r) => ({ ...r, u }))).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 4);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
   const today = ymd(new Date());
-  const upcoming = state.events.filter((e) => e.date >= today).sort(byDate).slice(0, 5);
+  const upcoming = state.events.filter((e) => evEnd(e) >= today).sort(byDate).slice(0, 5);
   $('#home-events').replaceChildren(...(upcoming.length ? upcoming.map((e) => eventItem(e, false)) : [emptyWith('予定はまだありません', 'think')]));
 }
 
@@ -892,7 +895,7 @@ function renderCalendar() {
   for (let i = 0; i < first; i++) cells.push(h('div'));
   for (let d = 1; d <= count; d++) {
     const key = `${y}-${pad(m + 1)}-${pad(d)}`;
-    const kinds = new Set(state.events.filter((e) => e.date === key).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [evColor(kindOf(e))])));
+    const kinds = new Set(state.events.filter((e) => evOn(e, key)).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [evColor(kindOf(e))])));
     const dots = [...kinds].map((k) => h('b', { class: k }));
     const recs = people.map((u) => ({ u, rec: recsOf(u).get(key) }));
     const isPeriod = recs.some((x) => x.rec && x.rec.p);
@@ -903,16 +906,21 @@ function renderCalendar() {
     cells.push(h('button', {
       type: 'button',
       class: classes,
-      onclick: () => { state.cal.sel = key; $('#ev-date').value = key; renderCalendar(); },
+      onclick: () => {
+        if (state.cal.range && key > $('#ev-date').value) { $('#ev-end').value = key; state.cal.range = false; renderCalendar(); return; } // 終わりの日を、カレンダーで選ぶ
+        state.cal.sel = key; $('#ev-date').value = key; renderCalendar();
+      },
     }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
   $('#past-record').hidden = !isHer();
+  $('#ev-range').setAttribute('aria-pressed', String(!!state.cal.range));
+  $('#ev-range').textContent = state.cal.range ? '終わりの日を、カレンダーで選んでください' : '連続する日(お泊まりなど)を、カレンダーで選ぶ';
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
-  const list = state.events.filter((e) => e.date === sel).sort(byDate);
+  const list = state.events.filter((e) => evOn(e, sel)).sort(byDate);
   const bdItems = birthdayNames(parseYmd(sel)).map((nm) => h('li', { class: 'item' }, h('span', { style: 'display:flex;width:20px;color:var(--pink-deep)' }, cakeIcon()), h('div', { class: 't' }, `${nm}の誕生日`)));
   $('#cal-events').replaceChildren(...bdItems, ...(list.length ? list.map((e) => eventItem(e, true)) : bdItems.length ? [] : [h('li', { class: 'empty' }, 'この日の予定はありません')]));
 }
@@ -928,13 +936,18 @@ function buildCalendar() {
   $('#cal-next').addEventListener('click', () => move(1));
   $('#ev-date').value = state.cal.sel;
   $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
+  $('#ev-range').addEventListener('click', () => { state.cal.range = !state.cal.range; renderCalendar(); });
   $('#past-record').addEventListener('click', openPastSheet);
   $('#ev-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const who = $('input[name="who"]:checked').value;
     const payload = { title: $('#ev-title').value.trim(), date: $('#ev-date').value, time: $('#ev-time').value, who, by: myUid() };
+    const end = $('#ev-end').value;
+    if (end && end > payload.date) payload.end = end;
     $('#ev-title').value = '';
     $('#ev-time').value = '';
+    $('#ev-end').value = '';
+    state.cal.range = false;
     state.cal.sel = payload.date;
     const d = parseYmd(payload.date);
     state.cal.y = d.getFullYear();

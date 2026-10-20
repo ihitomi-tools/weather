@@ -220,6 +220,11 @@
         <input id="ev-date" type="date" required aria-label="日付">
         <input id="ev-time" type="time" aria-label="時刻">
       </div>
+      <div class="evrow end">
+        <label for="ev-end">連続するときの、終わりの日</label>
+        <input id="ev-end" type="date" aria-label="終わりの日(連続するとき)">
+      </div>
+      <button class="ghost sm" id="ev-range" type="button" aria-pressed="false">連続する日(お泊まりなど)を、カレンダーで選ぶ</button>
       <div class="seg" role="radiogroup" aria-label="だれの予定">
         <label><input type="radio" name="who" value="me" checked><span>自分</span></label>
         <label><input type="radio" name="who" value="you"><span>相手</span></label>

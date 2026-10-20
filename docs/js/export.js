@@ -10,7 +10,7 @@ export function buildExport(s, now = Date.now()) {
   out.push('■ メッセージ');
   s.messages.forEach((m) => out.push(`${stamp(m.ts)} ${nameOf(m.from)}: ${m.stamp || m.body || '(読めません)'}`));
   out.push('', '■ 予定');
-  [...s.events].sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).forEach((e) => out.push(`${e.date} ${e.time || ''} ${e.title}`.replace('  ', ' ')));
+  [...s.events].sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).forEach((e) => out.push(`${e.date}${e.end && e.end > e.date ? `〜${e.end}` : ''} ${e.time || ''} ${e.title}`.replace('  ', ' ')));
 
   out.push('', '■ 記録(生理・調子・気分)');
   [...s.days.values()].sort((a, b) => a.d.localeCompare(b.d) || String(a.by).localeCompare(String(b.by))).forEach((r) => {

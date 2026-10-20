@@ -9,8 +9,8 @@ export const nextMilestone = (n) => Math.max(100, Math.ceil(Math.max(n, 0) / 100
 // 今日以降で、いちばん近い「両方」の予定
 export function nextJoint(events, todayKey) {
   return events
-    .filter((e) => e.who === 'both' && e.date >= todayKey)
-    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0] || null;
+    .filter((e) => e.who === 'both' && (e.end && e.end > e.date ? e.end : e.date) >= todayKey) // 連続する予定は、終わりの日まで
+    .sort((a, b) => ((a.date < todayKey ? todayKey : a.date) + (a.time || '')).localeCompare((b.date < todayKey ? todayKey : b.date) + (b.time || '')))[0] || null;
 }
 
 const EMPTY = () => [{ l: '', d: '' }, { l: '', d: '' }];

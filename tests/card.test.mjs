@@ -22,6 +22,9 @@ test('次の「両方」の予定を選ぶ', () => {
   ];
   assert.equal(nextJoint(ev, '2026-10-19').title, '昼');
   assert.equal(nextJoint(ev, '2026-10-26').title, '遠い');
+  // 連続する予定は、終わりの日まで「次の予定」として残る
+  assert.equal(nextJoint([{ who: 'both', date: '2026-10-20', end: '2026-10-22', title: '旅行' }], '2026-10-21').title, '旅行');
+  assert.equal(nextJoint([{ who: 'both', date: '2026-10-20', end: '2026-10-22', title: '旅行' }], '2026-10-23'), null);
   assert.equal(nextJoint(ev, '2026-12-01'), null);
   assert.equal(nextJoint(ev, '2026-10-25').title, '昼'); // 当日も含む
 });

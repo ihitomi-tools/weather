@@ -35,8 +35,8 @@ const hiza = () => `<svg viewBox="-42 -40 84 46" aria-hidden="true"><g class="y"
 
 
 const bust = (w, size = 30) => w === 'h'
-  ? `<svg class="bust" viewBox="-12 -14 24 24" width="${size}" height="${size}" aria-hidden="true"><circle r="12" cx="0" cy="-2" fill="var(--pink)"/><g style="color:var(--pink-deep);fill:var(--pink-deep)"><path d="M-8 10 Q-8 2 0 2 Q8 2 8 10Z"/><circle cx="0" cy="-3.500" r="5.600"/><path d="M-5.800 -2.500 A5.800 5.800 0 0 1 5.800 -2.500 L5.800 -1.200 Q0 -5 -5.800 -1.200Z"/><g transform="scale(-1 1)"><path d="M-4.600 -1.500 C-10 -1 -11.300 3.500 -10.500 7.500 C-9.200 4.500 -7.600 2 -4.600 0.800Z" stroke="var(--pink)" stroke-width=".7" stroke-linejoin="round"/><circle cx="-5.600" cy="-0.800" r="1.400" fill="#d2d6dd"/></g></g></svg>`
-  : `<svg class="bust" viewBox="-12 -14 24 24" width="${size}" height="${size}" aria-hidden="true"><circle r="12" cx="0" cy="-2" fill="var(--mint)"/><g style="color:var(--mint-deep);fill:var(--mint-deep)"><path d="M-9 10 Q-9 2.500 0 2.500 Q9 2.500 9 10Z"/><circle cx="0" cy="-3.500" r="6"/></g></svg>`;
+  ? `<svg class="bust" viewBox="-12 -14 24 24" width="${size}" height="${size}" aria-hidden="true"><circle r="12" cx="0" cy="-2" fill="var(--pink)" opacity=".4"/><g transform="translate(0 -2) scale(.74) translate(0 2)" style="color:var(--pink-deep);fill:var(--pink-deep)"><path d="M-8 10 Q-8 2 0 2 Q8 2 8 10Z"/><circle cx="0" cy="-3.500" r="5.600"/><path d="M-5.800 -2.500 A5.800 5.800 0 0 1 5.800 -2.500 L5.800 -1.200 Q0 -5 -5.800 -1.200Z"/><g transform="scale(-1 1)"><path d="M-4.600 -1.500 C-10 -1 -11.300 3.500 -10.500 7.500 C-9.200 4.500 -7.600 2 -4.600 0.800Z" stroke="var(--pink)" stroke-width=".7" stroke-linejoin="round"/><circle cx="-5.600" cy="-0.800" r="1.400" fill="#d2d6dd"/></g></g></svg>`
+  : `<svg class="bust" viewBox="-12 -14 24 24" width="${size}" height="${size}" aria-hidden="true"><circle r="12" cx="0" cy="-2" fill="var(--mint)" opacity=".4"/><g transform="translate(0 -2) scale(.74) translate(0 2)" style="color:var(--mint-deep);fill:var(--mint-deep)"><path d="M-9 10 Q-9 2.500 0 2.500 Q9 2.500 9 10Z"/><circle cx="0" cy="-3.500" r="6"/></g></svg>`;
 
 
 const ARMS = {

@@ -63,7 +63,7 @@ export function isMilestone(dateKey, todayKey) {
 export function specialOf({ todayKey, today, birthdays, anns, events }) {
   if (birthdays.some((b) => b && isBirthdayOn(b.m, b.d, today))) return 'bday';
   if (anns.some((a) => a && a.d && isMilestone(a.d, todayKey))) return 'milestone';
-  if (events.some((e) => e.who === 'both' && e.date === todayKey)) return 'date';
+  if (events.some((e) => e.who === 'both' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date))) return 'date';
   return 'none';
 }
 

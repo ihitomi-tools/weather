@@ -468,6 +468,23 @@ await page.click('#ev-form button[type=submit]');
 await page.click('.tab[data-v="home"]');
 await page.waitForFunction(() => /ごはん/.test(document.querySelector('#days').textContent));
 check('カード3: 次の「両方」の予定まで、あと1日', (await page.textContent('#days')).includes('あと1日'));
+// 連続する予定(お泊まり)
+{
+  const k = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  await page.click('.tab[data-v="cal"]');
+  await page.fill('#ev-title', 'お泊まり');
+  await page.fill('#ev-date', k(20));
+  await page.fill('#ev-end', k(22));
+  await page.check('input[name="who"][value="me"]');
+  await page.click('#ev-form button[type=submit]');
+  await page.waitForFunction(() => /お泊まり/.test(document.querySelector('#cal-events').textContent));
+  check('連続する予定は、「開始〜終了」で出る', /〜/.test(await page.textContent('#cal-events')));
+  check('保存された予定に、終わりの日が入る', (await page.evaluate(() => window.__fake.ev.length)) >= 1);
+  await page.click('#ev-range');
+  check('「カレンダーで選ぶ」を押すと、選ぶ状態になる', (await page.getAttribute('#ev-range', 'aria-pressed')) === 'true');
+  await page.click('#ev-range');
+  await page.click('.tab[data-v="home"]');
+}
 // スライド(右へ)で前の面に戻る
 const box = await page.locator('#days').boundingBox();
 await page.mouse.move(box.x + 60, box.y + 40);
