@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-22';
+const VERSION = '2026.10.20-23';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -189,6 +189,7 @@ function startRecording(view) {
 
 function lock() {
   state.sheetClose = null;
+  settingsMore = false;
   state.moodChecked = false;
   if (DEMO) { closeSheet(); return; } // デモ中は、天気の画面に戻さない
   picked = [];
@@ -533,8 +534,10 @@ function startWatching() {
 }
 
 /* ================= 画面 ================= */
+let settingsMore = false; // 注意が必要な設定は、ふだんは隠しておく
 function setView(v) {
   const prev = state.view;
+  if (v === 'set' && prev !== 'set') settingsMore = false;
   state.view = v;
   $$('#app .view').forEach((el) => el.classList.toggle('on', el.id === `v-${v}`));
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v));
@@ -1184,7 +1187,7 @@ function row(title, note, control) {
   return h('li', {}, h('div', { class: 't' }, title, note ? h('small', {}, note) : null), control);
 }
 
-function renderSettings() {
+function renderSettings(force = false) {
   const auto = h('input', { type: 'checkbox', class: 'sw', 'aria-label': '自動で最初の画面に戻る' });
   auto.checked = LS.get(K.auto) !== '0';
   auto.addEventListener('change', () => LS.set(K.auto, auto.checked ? '1' : '0'));
@@ -1284,8 +1287,10 @@ function renderSettings() {
     wipe.textContent = '本当に消す';
   });
 
+  const moreBtn = h('button', { class: 'act', type: 'button' }, settingsMore ? 'とじる' : 'ひらく');
+  moreBtn.addEventListener('click', () => { settingsMore = !settingsMore; renderSettings(true); });
   const active = document.activeElement;
-  if (active && $('#settings').contains(active)) return; // 入力中に作り直さない
+  if (!force && active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
     row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
     row('誕生日', '月と日だけ。相手にも見えます', h('span', { style: 'display:flex;gap:6px' }, bdM, bdD)),
@@ -1295,19 +1300,23 @@ function renderSettings() {
     row('月のブランコの役', 'ふたりで別々の役にします。おまかせなら、自動で決まります', roleSel),
     row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),
     row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
-    row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
-    row('データの書き出し', '読める文章のファイルで保存します(暗号化されません)', exportBtn),
-    row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
-    row('キーの確認番号', '同じ番号か見比べます', showFp),
-    row('ログアウト', null, out),
-    row('バージョン', VERSION, refreshBtn),
-    row('この端末からキーを消す', 'バックアップコードがないと、過去の会話は読めなくなります', wipe),
+    row('そのほかの設定', 'パターン・バックアップコード・ログアウト・更新など。ふだんは触らない項目です', moreBtn),
+    ...(settingsMore ? [
+      row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
+      row('データの書き出し', '読める文章のファイルで保存します(暗号化されません)', exportBtn),
+      row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
+      row('キーの確認番号', '同じ番号か見比べます', showFp),
+      row('バージョン', VERSION, refreshBtn),
+      row('ログアウト', null, out),
+      row('この端末からキーを消す', 'バックアップコードがないと、過去の会話は読めなくなります', wipe),
+    ] : []),
   );
 }
 
 /* ================= おはなし(お題・カード・ボックス・誕生日) ================= */
 const rid = () => crypto.randomUUID().replaceAll('-', '');
-const whoClass = (uid) => (uid === myUid() ? 'me' : 'you');
+// カードや答えの色: ピンク=ひとみの役(飛ぶ人)、ミント=もうひとりの役。入れた人の役で決まる
+const whoClass = (uid) => ((uid === myUid()) === (myRole() === 'h') ? 'me' : 'you');
 const uidName = (uid) => (uid === myUid() ? myName() : partnerName());
 const mdText = (ms) => { const d = new Date(ms); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`; };
 const myAnswer = (n) => state.answers.get(answerKey(n, myUid()));
@@ -1433,8 +1442,8 @@ function answersBlock(n) {
   const mine = myAnswer(n);
   const theirs = otherAnswer(n);
   const bubble = (a, cls, who) => h('div', { class: `ans ${cls}` }, h('small', {}, who), a.text, h('span', { class: 'meta' }, describeAnswer(a)));
-  if (mine && theirs) return [bubble(mine, 'me flip-in', myName()), bubble(theirs, 'you flip-in', partnerName())];
-  if (mine) return [bubble(mine, 'me', myName()), h('div', { class: 'ans wait' }, svgEl(Ch.pair('think')), `${partnerName()}の答えを待っています`)];
+  if (mine && theirs) return [bubble(mine, `${whoClass(myUid())} flip-in`, myName()), bubble(theirs, `${whoClass(theirs.owner)} flip-in`, partnerName())];
+  if (mine) return [bubble(mine, whoClass(myUid()), myName()), h('div', { class: 'ans wait' }, svgEl(Ch.pair('think')), `${partnerName()}の答えを待っています`)];
   if (theirs) return [h('div', { class: 'ans wait' }, `${partnerName()}はもう答えました。あなたが答えると、ふたり同時に見られます`)];
   return [];
 }
@@ -1501,7 +1510,7 @@ function renderCards() {
   $('#c-count').textContent = `${cards.length}枚`;
   $('#c-grid').replaceChildren(...cards.map((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
-    const line = st === 'complete' ? 'ふたりの答えがそろった' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
+    const line = st === 'complete' ? 'ふたりとも答えた' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
     const cls = st === 'complete' ? 'me' : 'none';
     const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
     b.addEventListener('click', () => openQCardSheet(c.n));

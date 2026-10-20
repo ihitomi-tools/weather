@@ -283,7 +283,8 @@ function scene() {
     y = pend('y', 'idle', hangBody('y', 'idle'));
   } else if (s.y) {
     h = pend('h', 'idle', hangBody('h', 'idle'));
-    y = pend('y', 'ready', `<g class="catcher">${catcherBody('reach')}</g>`);
+    const settledY = Date.now() - st.sigAt.y > 1200; // 開き直しや描き直しのたびに、でんぐり返しをやり直さない
+    y = pend('y', 'ready', `<g class="catcher${settledY ? ' still' : ''}">${catcherBody('reach')}</g>`);
   } else {
     const ex = st.special === 'date' ? ' excited' : '';
     h = pend('h', 'idle' + ex, hangBody('h', 'idle'));

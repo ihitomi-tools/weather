@@ -482,6 +482,8 @@ check('点で、いまの面が分かる', (await page.locator('#days .dots i.on
 
 // バックアップコード・確認番号
 await page.click('.tab[data-v="set"]');
+check('危ない項目は、ふだん隠れている(バージョン更新・ログアウトなど)', (await page.locator('#settings li', { hasText: /機種変更|バックアップコードがないと/ }).count()) === 0);
+await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
 await page.locator('#settings li', { hasText: '機種変更' }).locator('button').click();
 check('設定から同じバックアップコードを再表示できる', (await page.textContent('#sheet .code')) === code);
 await page.click('#sheet-close');
@@ -505,6 +507,7 @@ await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: f
 await tap(['札幌', '福岡', '東京', '那覇', '大阪', '仙台']);
 await page.waitForSelector('#app:not([hidden])');
 await page.click('.tab[data-v="set"]');
+await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
 await page.locator('#settings li', { hasText: '起動パターン' }).locator('button').click();
 check('登録中の表示が出る', await page.locator('#rec').isVisible());
 await tap(['金沢', '金沢', '那覇', '札幌', '仙台', '東京']);
@@ -518,6 +521,7 @@ check('新しいパターンで開く', true);
 
 // 「最新版にする」で、ファイルを取り直して再読み込みする
 await page.click('.tab[data-v="set"]');
+await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
 const reloaded = page.waitForNavigation();
 await page.locator('#settings li', { hasText: 'バージョン' }).locator('button').click();
 await reloaded;
