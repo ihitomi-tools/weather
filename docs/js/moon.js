@@ -74,7 +74,7 @@ function moonMarkup(f) {
 const hand = () => '';
 const limb = (x1, y1, x2, y2, w) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--s-out)" stroke-width="${w + 2.200}" stroke-linecap="round"/><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="currentColor" stroke-width="${w}" stroke-linecap="round"/>`;
 const headOf = (w) => (w === 'h'
-  ? '<circle cx="0" cy="7.500" r="5.300"/><path d="M-5.500 8.600 A5.500 5.500 0 0 1 5.500 8.600 L5.500 9.800 Q0 6.300 -5.500 9.800Z"/><g transform="scale(-1 1)"><path class="hair" style="transform-origin:3px 12px" d="M3 11.500 C8.500 12 10.500 17.500 9.500 26 C8 20.500 6.500 16.500 2.500 14.500Z"/><circle cx="3.800" cy="12" r="1.300" fill="#fff" opacity=".9"/></g>'
+  ? '<circle cx="0" cy="7.500" r="5.300"/><path d="M-5.500 8.600 A5.500 5.500 0 0 1 5.500 8.600 L5.500 9.800 Q0 6.300 -5.500 9.800Z"/><g transform="scale(-1 1)"><path class="hair" style="transform-origin:4.400px 11px" d="M4.400 10.500 C9.800 11 11.200 16 10.200 21 C9 17.500 7.400 15 4.400 13.900Z"/><circle cx="5.400" cy="11.200" r="1.500" fill="#dfe3ea"/></g>'
   : '<circle cx="0" cy="7.500" r="5.700"/>');
 const torso = (w) => (w === 'h' ? '<path d="M-5.200 13.200 Q0 11.600 5.200 13.200 L9.400 32.500 Q0 34.500 -9.400 32.500Z"/>' : '<rect x="-6.800" y="12.500" width="13.600" height="21.500" rx="4.800"/>');
 const legs = (y0 = 31) => ['l', 'r'].map((k) => { const x = k === 'l' ? -2.500 : 2.500; return `<g class="leg ${k}" style="transform-origin:${x}px ${y0}px"><line x1="${x}" y1="${y0}" x2="${x}" y2="${y0 + 13.500}" stroke="currentColor" stroke-width="4.200" stroke-linecap="round"/></g>`; }).join('');
@@ -117,14 +117,16 @@ function man(x, o = {}) {
     <rect x="-6.800" y="-40.500" width="13.600" height="21.500" rx="4.800"/>
     <g class="${o.hc || ''}" transform="rotate(${o.head || 0} 0 -39)"><circle cx="0" cy="-45.800" r="5.700"/></g>${o.arms || ''}</g>`;
 }
+const hairQ = []; // ふたりの腕より手前に、髪を描くための順番待ち
 function woman(x, o = {}) {
+  if (!o.old) hairQ.push(`<g class="pic h" transform="translate(${x} 0) rotate(${o.tilt || 0})"><g transform="rotate(${o.head || 0} 0 -35)"><g transform="scale(-1 1)"><path class="hair" style="transform-origin:4.200px -38.500px" d="M4.200 -39.500 C9.600 -39 11 -34.500 10 -29.500 C8.800 -33 7.200 -35.500 4.200 -36.500Z"/><circle cx="5.400" cy="-38.200" r="1.500" fill="#dfe3ea"/></g></g></g>`);
   const legs = o.legs || '<path d="M-2.500 -17 V-1.500 M2.500 -17 V-1.500" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round"/>';
   return `<g class="pic h ${o.cls || ''}" transform="translate(${x} 0) rotate(${o.tilt || 0})">${legs}
     <path d="M-5.200 -35.500 Q0 -37 5.200 -35.500 L9.400 -16.500 Q0 -14.500 -9.400 -16.500Z"/>
     <g class="${o.hc || ''}" transform="rotate(${o.head || 0} 0 -35)"><circle cx="0" cy="-41.200" r="5.300"/><path d="M-5.500 -40.200 A5.500 5.500 0 0 1 5.500 -40.200 L5.500 -39 Q0 -42.500 -5.500 -39Z"/>
-      <g transform="scale(-1 1)"><path class="hair" style="transform-origin:3px -37px" d="M3 -37.500 C8.500 -37 10.500 -31.500 9.500 -23 C8 -28.500 6.500 -32.500 2.500 -34.500Z"/><circle cx="3.800" cy="-37" r="1.300" fill="#fff" opacity=".9"/></g></g>${o.arms || ''}</g>`;
+      ${o.old ? '<g transform="scale(-1 1)"><path class="hair" style="transform-origin:3px -37px" d="M3 -37.500 C8.500 -37 10.500 -31.500 9.500 -23 C8 -28.500 6.500 -32.500 2.500 -34.500Z"/><circle cx="3.800" cy="-37" r="1.300" fill="#fff" opacity=".9"/></g>' : ''}</g>${o.arms || ''}</g>`;
 }
-const Tg = (inner, cls = '') => `<g class="together ${cls}" transform="translate(150 154) scale(1.45)">${inner}</g>`;
+const Tg = (inner, cls = '') => `<g class="together ${cls}" transform="translate(150 154) scale(1.45)">${inner}${hairQ.splice(0).join('')}</g>`;
 const bigHeart = (x, y, sc = 1) => `<path class="fheart" d="M0 5.500 C-7 0 -8 -6 -4 -7 C-2 -7.500 0 -5.500 0 -4.500 C0 -5.500 2 -7.500 4 -7 C8 -6 7 0 0 5.500Z" transform="translate(${x} ${y}) scale(${sc})"/>`;
 const floatHeart = () => bigHeart(0, -66);
 
@@ -134,7 +136,7 @@ function hugScene() {
 }
 // キス: 近づいて、ちゅっ。しばらくして離れ、またくり返す
 function kissScene() {
-  const W = woman(-6.500, { head: 0, hc: 'hd kw' }), M = man(6.500, { head: 0, hc: 'hd km' });
+  const W = woman(-6.500, { head: 0, hc: 'hd kw', old: true }), M = man(6.500, { head: 0, hc: 'hd km' });
   const arms = armsOf('h', 'M-2.500 -33.500 Q3 -32 9.500 -26.500') + armsOf('y', 'M2.500 -38 Q-3 -34 -9 -27.500');
   const pop = '<g class="kisspop" transform="translate(0 -62)"><path d="M0 5.500 C-7 0 -8 -6 -4 -7 C-2 -7.500 0 -5.500 0 -4.500 C0 -5.500 2 -7.500 4 -7 C8 -6 7 0 0 5.500Z" fill="#ff7fb0" transform="scale(1.300)"/><text x="0" y="-12" text-anchor="middle" font-size="7.500" font-weight="800" fill="#ffe3ee" font-family="var(--font)">ちゅっ</text></g>';
   return Tg(`<g class="kissW" style="--dx:-9px">${W}</g><g class="kissM" style="--dx:9px">${M}</g><g class="kissarms">${arms}</g>${pop}`);
@@ -156,7 +158,7 @@ function umbrellaScene() {
   const legsW = `<g class="stp a" style="transform-origin:-2.500px -17px"><path d="M-2.500 -17 V-1.500" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round"/></g><g class="stp b" style="transform-origin:2.500px -17px"><path d="M2.500 -17 V-1.500" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round"/></g>`;
   const legsM = `<g class="stp b" style="transform-origin:-3.200px -20px"><path d="M-3.200 -20 V-1.500" fill="none" stroke="currentColor" stroke-width="4.600" stroke-linecap="round"/></g><g class="stp a" style="transform-origin:3.200px -20px"><path d="M3.200 -20 V-1.500" fill="none" stroke="currentColor" stroke-width="4.600" stroke-linecap="round"/></g>`;
   const arms = armsOf('h', 'M-3.500 -33.500 Q1 -31.500 5 -28') + armsOf('y', 'M1.500 -38.500 Q-1.500 -43 0 -47.500');
-  return `<g class="together rainwalk" transform="translate(150 154) scale(1.45)"><g class="rbob">${woman(-8, { head: 4, legs: legsW })}${man(8, { head: -3, legs: legsM })}${arms}${canopy}</g></g>`;
+  return `<g class="together rainwalk" transform="translate(150 154) scale(1.45)"><g class="rbob">${woman(-8, { head: 4, legs: legsW })}${man(8, { head: -3, legs: legsM })}${arms}${hairQ.splice(0).join('')}${canopy}</g></g>`;
 }
 // 丘に並んで座って、月を見る(うしろ姿。ひとみはゆうきの肩にもたれる)
 function hillScene() {
