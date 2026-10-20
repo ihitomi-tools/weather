@@ -40,8 +40,8 @@ const bust = (w, size = 30) => w === 'h'
 
 
 const ARMS = {
-  h: { stand: A('M-5.500 -34 Q-8 -27 -7.500 -21', 'M5.500 -34 Q8 -27 7.500 -21'), wave: A('M-5.500 -34 Q-8 -27 -7.500 -21', 'M5.500 -34.500 Q12 -38 13 -47'), jump: A('M-5 -35 Q-12 -42 -10 -52', 'M5 -35 Q12 -42 10 -52'), heart: A('M-5 -35 Q-13 -45 -2.500 -54', 'M5 -35 Q13 -45 2.500 -54'), think: A('M-5.500 -34 Q0 -29 5 -31', 'M5.500 -34.500 Q10 -35 4 -38.500') },
-  y: { stand: A('M-6.500 -38 Q-9 -30 -8.500 -22', 'M6.500 -38 Q9 -30 8.500 -22'), wave: A('M-6.500 -38 Q-9 -30 -8.500 -22', 'M6.500 -38.500 Q14 -42 15 -52'), jump: A('M-6.500 -39 Q-14 -46 -12 -57', 'M6.500 -39 Q14 -46 12 -57'), heart: A('M-6.500 -39 Q-15 -50 -2.500 -58', 'M6.500 -39 Q15 -50 2.500 -58'), think: A('M-6.500 -38 Q0 -33 5.500 -35', 'M6.500 -38.500 Q11.500 -40 4.500 -43'), pat: A('M6.500 -38 Q9 -30 8.500 -22', 'M-6.500 -38.500 Q-14 -42 -19 -48') },
+  h: { stand: A('M-5.500 -34 Q-8 -27 -7.500 -21', 'M5.500 -34 Q8 -27 7.500 -21'), wave: A('M-5.500 -34 Q-8 -27 -7.500 -21', 'M5.500 -34.500 Q12 -38 13 -47'), jump: A('M-5 -35 Q-12 -42 -10 -52', 'M5 -35 Q12 -42 10 -52'), heart: A('M-5 -35 Q-13 -45 -2.500 -54', 'M5 -35 Q13 -45 2.500 -54'), think: A('M-5.500 -34 Q0 -29 5 -31', 'M5.500 -34.500 Q10 -35 4 -38.500'), hold: A('M-5.500 -34 Q-11 -29 -5 -26', 'M5.500 -34 Q11 -29 5 -26') },
+  y: { stand: A('M-6.500 -38 Q-9 -30 -8.500 -22', 'M6.500 -38 Q9 -30 8.500 -22'), wave: A('M-6.500 -38 Q-9 -30 -8.500 -22', 'M6.500 -38.500 Q14 -42 15 -52'), jump: A('M-6.500 -39 Q-14 -46 -12 -57', 'M6.500 -39 Q14 -46 12 -57'), heart: A('M-6.500 -39 Q-15 -50 -2.500 -58', 'M6.500 -39 Q15 -50 2.500 -58'), think: A('M-6.500 -38 Q0 -33 5.500 -35', 'M6.500 -38.500 Q11.500 -40 4.500 -43'), pat: A('M6.500 -38 Q9 -30 8.500 -22', 'M-6.500 -38.500 Q-14 -42 -19 -48'), hold: A('M-6.500 -38 Q-12 -32 -5.500 -29', 'M6.500 -38 Q12 -32 5.500 -29') },
 };
 const JUMP_LEGS = { h: '<path d="M-2.500 -17 L-6 -4 M2.500 -17 L6 -4" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round"/>', y: '<path d="M-3.200 -20 L-7 -4 M3.200 -20 L7 -4" fill="none" stroke="currentColor" stroke-width="4.600" stroke-linecap="round"/>' };
 
@@ -55,14 +55,17 @@ export function figure(role, kind) {
   return `<svg class="chara" viewBox="${view}" aria-hidden="true">${f(0, { y: jump ? -7 : 0, arms: ARMS[role][kind], legs: jump ? JUMP_LEGS[role] : null })}</svg>`;
 }
 
-// ふたり: wave(手を振る)・think(考える)・heart(ハート)・pat(ゆうき→ひとみのよしよし)
+// ふたり: wave(手を振る)・think(考える)・heart(ハート)・cake(ケーキ)・gift(プレゼント)・pat(男性→女性のよしよし)
 export function pair(kind) {
   const hx = -11, yx = 11;
   const ex = {
     heart: { h: heartP(0, -60, 1.100), y: heartP(0, -64, 1.100) },
     think: { h: '<g fill="var(--muted)"><circle cx="9" cy="-52" r="1.300"/><circle cx="13" cy="-55" r="1.700"/><circle cx="18" cy="-59" r="2.200"/></g>', y: '<g fill="var(--muted)"><circle cx="9" cy="-56" r="1.300"/><circle cx="13" cy="-59" r="1.700"/><circle cx="18" cy="-63" r="2.200"/></g>' },
+    cake: { h: '<g transform="translate(0 -26)"><rect x="-8" y="-3" width="16" height="7" rx="2" fill="#ffe3ee" stroke="var(--cbg, var(--surface))" stroke-width="1"/><rect x="-5" y="-8" width="10" height="5" rx="1.500" fill="#fff3d9"/><rect x="-.6" y="-13" width="1.200" height="5" fill="#7fe0ff"/><ellipse cx="0" cy="-15" rx="1.300" ry="2.200" fill="#ffd966"/></g>', y: '<g transform="translate(0 -29)"><rect x="-8" y="-3" width="16" height="7" rx="2" fill="#ffe3ee" stroke="var(--cbg, var(--surface))" stroke-width="1"/><rect x="-5" y="-8" width="10" height="5" rx="1.500" fill="#fff3d9"/><rect x="-.6" y="-13" width="1.200" height="5" fill="#7fe0ff"/><ellipse cx="0" cy="-15" rx="1.300" ry="2.200" fill="#ffd966"/></g>' },
+    gift: { h: '<g transform="translate(0 -25)"><rect x="-7" y="-7" width="14" height="10" rx="1.500" fill="#b9a4ff" stroke="var(--cbg, var(--surface))" stroke-width="1"/><rect x="-1.200" y="-7" width="2.400" height="10" fill="#ffd966"/><path d="M0 -7 q-5 -6 -2 -6 q3 0 2 6 q-1 -6 2 -6 q3 0 -2 6Z" fill="#ffd966"/></g>', y: '<g transform="translate(0 -28)"><rect x="-7" y="-7" width="14" height="10" rx="1.500" fill="#b9a4ff" stroke="var(--cbg, var(--surface))" stroke-width="1"/><rect x="-1.200" y="-7" width="2.400" height="10" fill="#ffd966"/><path d="M0 -7 q-5 -6 -2 -6 q3 0 2 6 q-1 -6 2 -6 q3 0 -2 6Z" fill="#ffd966"/></g>' },
   }[kind] || {};
-  const a = kind === 'pat' ? { h: ARMS.h.stand, y: ARMS.y.pat } : { h: ARMS.h[kind], y: ARMS.y[kind] };
+  const arm = kind === 'cake' || kind === 'gift' ? 'hold' : kind;
+  const a = kind === 'pat' ? { h: ARMS.h.stand, y: ARMS.y.pat } : { h: ARMS.h[arm], y: ARMS.y[arm] };
   return `<svg class="chara" viewBox="-34 -68 68 74" aria-hidden="true"><g transform="translate(${hx} 0)">${woman(0, { head: kind === 'pat' ? 4 : 0, arms: a.h, extra: ex.h || '' })}</g><g transform="translate(${yx} 0)">${man(0, { arms: a.y, extra: ex.y || '' })}</g></svg>`;
 }
 

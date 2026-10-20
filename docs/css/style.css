@@ -343,3 +343,13 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 #chat-av { background: none; }
 #chat-av svg { width: 34px; height: 34px; }
 .mi-av svg { width: 30px; height: 30px; }
+
+/* 予定の持ち主のしるし・何もないときの絵 */
+.ev-mark { display: flex; flex: none; width: 30px; height: 32px; --cbg: var(--surface); }
+.ev-mark svg { width: 30px; height: 32px; }
+.empty-pose { display: flex; align-items: center; gap: 12px; padding: 8px 2px; color: var(--muted); font-size: 13px; --cbg: var(--screen); }
+.empty-pose svg { width: 56px; height: 60px; flex: none; }
+.gate-pose { --cbg: var(--screen); display: flex; justify-content: center; margin-bottom: 10px; }
+.gate-pose svg { width: 96px; height: 104px; }
+.bd-today > svg { width: 84px; height: 90px; align-self: center; --cbg: #fff; }
+.pat-banner.bd-pop > svg { width: 44px; height: 48px; flex: none; fill: initial; --cbg: var(--pink); }

@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-21';
+const VERSION = '2026.10.20-22';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -254,6 +254,7 @@ async function useKey(bytes) {
 }
 
 function buildGate() {
+  ['offline', 'unconfigured'].forEach((p) => { const s = $(`[data-panel="${p}"]`); if (s) s.prepend(h('div', { class: 'gate-pose' }, svgEl(Ch.pair('think')))); });
   $('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('#login-error');
@@ -559,9 +560,15 @@ function renderAll() {
 const kindOf = (ev) => (ev.who === 'both' ? 'both' : ((ev.who === 'me') === (ev.by === myUid()) ? 'me' : 'you'));
 const byDate = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''));
 
+// 予定の持ち主の色: ピンク=ひとみの役(飛ぶ人)、ミント=もうひとりの役
+const evColor = (kind) => (kind === 'both' ? 'both' : ((kind === 'me') === (myRole() === 'h') ? 'me' : 'you'));
+function eventMark(ev) {
+  const kind = kindOf(ev);
+  return h('span', { class: 'ev-mark' }, svgEl(kind === 'both' ? Ch.pair('heart') : Ch.bust(kind === 'me' ? myRole() : (myRole() === 'h' ? 'y' : 'h'), 30)));
+}
 function eventItem(ev, withDelete) {
   const li = h('li', { class: 'item' },
-    h('span', { class: `dot ${kindOf(ev)}` }),
+    eventMark(ev),
     h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${ev.time ? ` ${ev.time}` : ''}`)));
   if (withDelete) {
     const x = h('button', { class: 'x', type: 'button' }, '削除');
@@ -582,6 +589,8 @@ const periodDays = () => [...state.daysBy.values()].flatMap((m) => [...m.values(
 const myRole = () => moonRoles()[myUid()] || 'h';
 const roleOf = (uid) => (uid === myUid() ? myRole() : (myRole() === 'h' ? 'y' : 'h')); // ふたりだけのアプリ
 const isHer = () => myRole() === 'h';
+// 何もないときの一言に、ふたりの絵を添える
+const emptyWith = (text, pose, tag = 'li') => h(tag, { class: 'empty-pose' }, svgEl(Ch.pair(pose)), h('span', {}, text));
 const svgEl = (str) => { const t = document.createElement('template'); t.innerHTML = str.trim(); return t.content.firstElementChild; };
 const hasMoodRec = (r) => !!r && !!(r.l || (r.t && r.t.length) || r.m);
 // 記録のある人(ひとみ→ゆうきの順)
@@ -689,7 +698,7 @@ function renderHome() {
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
   const today = ymd(new Date());
   const upcoming = state.events.filter((e) => e.date >= today).sort(byDate).slice(0, 5);
-  $('#home-events').replaceChildren(...(upcoming.length ? upcoming.map((e) => eventItem(e, false)) : [h('li', { class: 'empty' }, '予定はまだありません')]));
+  $('#home-events').replaceChildren(...(upcoming.length ? upcoming.map((e) => eventItem(e, false)) : [emptyWith('予定はまだありません', 'think')]));
 }
 
 function renderChat() {
@@ -880,7 +889,7 @@ function renderCalendar() {
   for (let i = 0; i < first; i++) cells.push(h('div'));
   for (let d = 1; d <= count; d++) {
     const key = `${y}-${pad(m + 1)}-${pad(d)}`;
-    const kinds = new Set(state.events.filter((e) => e.date === key).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [kindOf(e)])));
+    const kinds = new Set(state.events.filter((e) => e.date === key).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [evColor(kindOf(e))])));
     const dots = [...kinds].map((k) => h('b', { class: k }));
     const recs = people.map((u) => ({ u, rec: recsOf(u).get(key) }));
     const isPeriod = recs.some((x) => x.rec && x.rec.p);
@@ -1348,7 +1357,7 @@ function renderBirthdayHome() {
   const gb = giftBox();
   const written = gb && (state.marks.get(gb.id) || []).some((m) => m.from === myUid());
   if (gb && gb.daysLeft >= 1 && gb.daysLeft <= POP_DAYS && !written) {
-    banner.replaceChildren(cakeIcon(), h('span', {}, 'お相手に誕生日メッセージをしたためておきましょう', h('br'), h('small', {}, '(当日、相手に届きます)')));
+    banner.replaceChildren(svgEl(Ch.pair('gift')), h('span', {}, 'お相手に誕生日メッセージをしたためておきましょう', h('br'), h('small', {}, '(当日、相手に届きます)')));
     banner.onclick = () => openCompose(gb.id, gb);
     banner.hidden = false;
   } else banner.hidden = true;
@@ -1360,9 +1369,9 @@ function renderBirthdayHome() {
     const id = `b${now.getFullYear()}-${uid}`;
     if (uid === myUid()) {
       const msgs = (state.items.get(id) || []).filter((i) => i.from !== myUid());
-      nodes.push(h('div', { class: 'bd-today' }, cakeIcon(), h('b', {}, `${myName()}、お誕生日おめでとう`), h('span', {}, `${partnerName()}から、${msgs.length ? 'メッセージが届いています' : 'おめでとうのきもちが届いています'}`), ...msgs.map((i) => h('div', { class: 'ans you' }, h('small', {}, partnerName()), i.text))));
+      nodes.push(h('div', { class: 'bd-today' }, svgEl(Ch.pair('cake')), h('b', {}, `${myName()}、お誕生日おめでとう`), h('span', {}, `${partnerName()}から、${msgs.length ? 'メッセージが届いています' : 'おめでとうのきもちが届いています'}`), ...msgs.map((i) => h('div', { class: 'ans you' }, h('small', {}, partnerName()), i.text))));
     } else {
-      nodes.push(h('div', { class: 'bd-today' }, cakeIcon(), h('b', {}, `今日は${partnerName()}の誕生日`), h('span', {}, 'おめでとうを伝えよう')));
+      nodes.push(h('div', { class: 'bd-today' }, svgEl(Ch.pair('cake')), h('b', {}, `今日は${partnerName()}の誕生日`), h('span', {}, 'おめでとうを伝えよう')));
     }
   });
   today.replaceChildren(...nodes);
@@ -1611,7 +1620,7 @@ function renderBoxes() {
       card.append(acts);
     }
     return card;
-  }) : [h('p', { class: 'lead' }, 'まだボックスがありません。下からタイムカプセルをつくれます。')]));
+  }) : [emptyWith('まだボックスがありません。下からタイムカプセルをつくれます。', 'gift', 'p')]));
 }
 
 function openBoxSheet(id) {
