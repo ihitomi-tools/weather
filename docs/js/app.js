@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-37';
+const VERSION = '2026.10.20-38';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -553,6 +553,7 @@ let settingsMore = false; // 注意が必要な設定は、ふだんは隠して
 function setView(v) {
   const prev = state.view;
   if (v === 'set' && prev !== 'set') settingsMore = false;
+  if (v === 'cal' && prev !== 'cal') { state.cal.bar = false; state.cal.end = null; state.cal.range = false; }
   state.view = v;
   $$('#app .view').forEach((el) => el.classList.toggle('on', el.id === `v-${v}`));
   $$('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.v === v));
@@ -590,7 +591,7 @@ function eventMark(ev) {
 function eventItem(ev, withDelete) {
   const li = h('li', { class: 'item' },
     eventMark(ev),
-    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}` : ''}${ev.time ? ` ${ev.time}` : ''}`)));
+    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}(${nightsLabel(ev.date, evEnd(ev))})` : ''}${ev.time ? ` ${ev.time}` : ''}`)));
   if (withDelete) {
     const x = h('button', { class: 'x', type: 'button' }, '削除');
     x.addEventListener('click', async () => {
@@ -944,8 +945,7 @@ function renderPatBanner() {
   b.onclick = () => {
     LS.set(K.patSeen, String(Math.max(...unseen.map((p) => p.at))));
     const dt = parseYmd(unseen[0].d);
-    state.cal = { y: dt.getFullYear(), m: dt.getMonth(), sel: unseen[0].d };
-    $('#ev-date').value = unseen[0].d;
+    state.cal = { y: dt.getFullYear(), m: dt.getMonth(), sel: unseen[0].d, end: null, bar: false, range: false };
     setView('cal');
   };
 }
@@ -966,24 +966,26 @@ function renderCalendar() {
     const dots = [...kinds].map((k) => h('b', { class: k }));
     const recs = people.map((u) => ({ u, rec: recsOf(u).get(key) }));
     const isPeriod = recs.some((x) => x.rec && x.rec.p);
-    const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', isPeriod ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
+    const inRange = !!state.cal.end && key > sel && key <= state.cal.end;
+    const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', key === sel && state.cal.end ? 'rstart' : '', inRange ? 'inrange' : '', isPeriod ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
     const moods = recs.filter((x) => hasMoodRec(x.rec));
     const hasPat = state.pats.has(key);
     const hasCake = birthdayOn(parseYmd(key));
     cells.push(h('button', {
       type: 'button',
       class: classes,
+      'data-key': key,
       onclick: () => {
-        if (state.cal.range && key > $('#ev-date').value) { $('#ev-end').value = key; state.cal.range = false; renderCalendar(); return; } // 終わりの日を、カレンダーで選ぶ
-        state.cal.sel = key; $('#ev-date').value = key; renderCalendar();
+        if (calDrag.suppress) return; // なぞって選んだあとの、おまけのタップは無視する
+        if (state.cal.range && key > sel) { state.cal.end = key; state.cal.range = false; state.cal.bar = true; renderCalendar(); return; } // 連続の、終わりの日を選ぶ
+        state.cal.sel = key; state.cal.end = null; state.cal.range = false; state.cal.bar = true; renderCalendar();
       },
     }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
   $('#past-record').hidden = !isHer();
-  $('#ev-range').setAttribute('aria-pressed', String(!!state.cal.range));
-  $('#ev-range').textContent = state.cal.range ? '終わりの日を、カレンダーで選んでください' : '連続する日(お泊まりなど)を、カレンダーで選ぶ';
+  renderEvBar();
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
@@ -1001,26 +1003,118 @@ function buildCalendar() {
   };
   $('#cal-prev').addEventListener('click', () => move(-1));
   $('#cal-next').addEventListener('click', () => move(1));
-  $('#ev-date').value = state.cal.sel;
   $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
-  $('#ev-range').addEventListener('click', () => { state.cal.range = !state.cal.range; renderCalendar(); });
   $('#past-record').addEventListener('click', openPastSheet);
-  $('#ev-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const who = $('input[name="who"]:checked').value;
-    const payload = { title: $('#ev-title').value.trim(), date: $('#ev-date').value, time: $('#ev-time').value, who, by: myUid() };
-    const end = $('#ev-end').value;
-    if (end && end > payload.date) payload.end = end;
-    $('#ev-title').value = '';
-    $('#ev-time').value = '';
-    $('#ev-end').value = '';
-    state.cal.range = false;
-    state.cal.sel = payload.date;
-    const d = parseYmd(payload.date);
-    state.cal.y = d.getFullYear();
-    state.cal.m = d.getMonth();
-    await state.store.saveEvent(null, await C.encryptJson(state.key, 'events', payload));
+
+  // 予定の入れかた: 日付をタップするか、指でなぞって期間を選ぶと、下に「デート」のバーが出る(入力欄は、そのほかのとき、シートで出る)
+  const month = $('#month');
+  let start = null;
+  month.addEventListener('pointerdown', (e) => {
+    const c = e.target.closest('button[data-key]');
+    start = c ? { key: c.dataset.key, moved: false } : null;
+    calDrag.suppress = false;
   });
+  month.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const c = el && el.closest && el.closest('#month button[data-key]');
+    if (!c) return;
+    if (c.dataset.key === start.key && !start.moved) return;
+    start.moved = true;
+    const [lo, hi] = [start.key, c.dataset.key].sort();
+    state.cal.sel = lo;
+    state.cal.end = hi > lo ? hi : null;
+    state.cal.bar = true;
+    state.cal.range = false;
+    paintRange();
+  });
+  const finish = () => {
+    if (start && start.moved) { calDrag.suppress = true; setTimeout(() => { calDrag.suppress = false; }, 50); renderCalendar(); }
+    start = null;
+  };
+  month.addEventListener('pointerup', finish);
+  month.addEventListener('pointercancel', finish);
+  $('#evb-close').addEventListener('click', () => { state.cal.bar = false; state.cal.end = null; state.cal.range = false; renderCalendar(); });
+  $('#evb-range').addEventListener('click', () => { state.cal.range = !state.cal.range; renderCalendar(); });
+  $('#evb-more').addEventListener('click', openEventSheet);
+  $('#evb-date').addEventListener('click', async () => {
+    const btn = $('#evb-date');
+    btn.disabled = true;
+    try {
+      const { sel, end } = state.cal;
+      await addEvent({ title: end ? 'お泊まりデート' : 'デート', date: sel, end, who: 'both', time: '' });
+      state.cal.bar = false; state.cal.end = null; state.cal.range = false;
+      renderCalendar();
+    } finally { btn.disabled = false; }
+  });
+}
+
+const calDrag = { suppress: false };
+// なぞっている間は、全部を描き直さず、色だけ付け替える
+function paintRange() {
+  const { sel, end } = state.cal;
+  $$('#month button[data-key]').forEach((b) => {
+    const k = b.dataset.key;
+    b.classList.toggle('sel', k === sel);
+    b.classList.toggle('rstart', k === sel && !!end);
+    b.classList.toggle('inrange', !!end && k > sel && k <= end);
+  });
+  renderEvBar();
+}
+
+const nightsLabel = (a, b) => { const n = dayNum(b) - dayNum(a); return `${n}泊${n + 1}日`; };
+const mdOf = (k) => { const d = parseYmd(k); return `${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; };
+
+// 画面の下の、予定を入れるバー。連続して選ぶと、自動で「お泊まりデート」になる
+function renderEvBar() {
+  const bar = $('#ev-bar');
+  const { sel, end, range } = state.cal;
+  bar.hidden = !(state.cal.bar && state.view === 'cal');
+  if (bar.hidden) return;
+  $('#evb-label').textContent = end ? `${mdOf(sel)}〜${mdOf(end)}` : mdOf(sel);
+  $('#evb-sub').textContent = range ? '終わりの日を、カレンダーでタップしてください' : end ? `連続で選んだので、お泊まり(${nightsLabel(sel, end)})` : 'この日に、ふたりの予定を入れる';
+  $('#evb-date').textContent = end ? '♥ お泊まりデート' : '♥ デート';
+  $('#evb-date').classList.toggle('stay', !!end);
+  $('#evb-range').textContent = range ? 'やめる' : end ? '日を選び直す' : '連続にする';
+  $('#evb-range').setAttribute('aria-pressed', String(!!range));
+}
+
+async function addEvent({ title, date, end, who, time }) {
+  const payload = { title, date, time: time || '', who, by: myUid() };
+  if (end && end > date) payload.end = end;
+  state.cal.sel = date;
+  const d = parseYmd(date);
+  state.cal.y = d.getFullYear();
+  state.cal.m = d.getMonth();
+  await state.store.saveEvent(null, await C.encryptJson(state.key, 'events', payload));
+}
+
+// 「そのほか」: 名前・日付・時刻・だれの予定か、を入れる
+function openEventSheet() {
+  const { sel, end } = state.cal;
+  const title = h('input', { id: 'evs-title', placeholder: '予定の名前', maxlength: '40', required: true, 'aria-label': '予定の名前' });
+  const date = h('input', { type: 'date', required: true, value: sel, 'aria-label': '日付' });
+  const time = h('input', { type: 'time', 'aria-label': '時刻' });
+  const endIn = h('input', { type: 'date', value: end || '', 'aria-label': '終わりの日(連続するとき)' });
+  const who = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'だれの予定' }, [['me', '自分'], ['you', '相手'], ['both', '両方']].map(([v, t]) => h('label', {}, h('input', { type: 'radio', name: 'who', value: v, checked: v === 'me' }), h('span', {}, t))));
+  const err = h('p', { class: 'error', role: 'alert' });
+  const form = h('form', { class: 'stack' },
+    title, h('div', { class: 'evrow' }, date, time),
+    h('div', { class: 'evrow end' }, h('label', {}, '連続するときの、終わりの日'), endIn),
+    who, err, h('button', { class: 'primary', type: 'submit' }, '予定を追加'));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const t = title.value.trim();
+    if (!t || !date.value) return;
+    try {
+      await addEvent({ title: t, date: date.value, end: endIn.value, who: $('input[name="who"]:checked', form).value, time: time.value });
+      state.cal.bar = false; state.cal.end = null;
+      closeSheet();
+      renderCalendar();
+    } catch (x) { err.textContent = '保存できませんでした。通信を確認してください。'; }
+  });
+  openSheet(h('h2', {}, '予定を入れる'), form);
+  title.focus();
 }
 
 async function sendPayload(payload) {

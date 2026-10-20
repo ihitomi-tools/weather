@@ -76,6 +76,19 @@ const wx = {
 };
 
 const more = async () => { const b = page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button'); if ((await b.textContent()) === 'ひらく') await b.click(); };
+const addEv = async ({ title, date, end = '', who = 'me', time = '' }) => {
+  await page.click('.tab[data-v="cal"]');
+  const today = page.locator('#month button.today');
+  await ((await today.count()) ? today : page.locator('#month button[data-key]').first()).click();
+  await page.click('#evb-more');
+  await page.fill('#sheet input[aria-label="予定の名前"]', title);
+  if (date) await page.fill('#sheet input[aria-label="日付"]', date);
+  if (end) await page.fill('#sheet input[aria-label="終わりの日(連続するとき)"]', end);
+  if (time) await page.fill('#sheet input[aria-label="時刻"]', time);
+  await page.check(`#sheet input[name="who"][value="${who}"]`);
+  await page.click('#sheet form button[type=submit]');
+  await page.waitForSelector('#sheet', { state: 'hidden' });
+};
 let failed = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${ok ? '' : extra}`); if (!ok) failed++; };
 
@@ -342,11 +355,7 @@ await page.waitForFunction(() => document.querySelectorAll('.row.mine .meta span
 check('相手が読むと、最後のメッセージに既読が付く', true);
 
 // 予定
-await page.click('.tab[data-v="cal"]');
-await page.fill('#ev-title', '映画');
-await page.fill('#ev-time', '18:30');
-await page.check('input[name="who"][value="both"]');
-await page.click('#ev-form button[type=submit]');
+await addEv({ title: '映画', time: '18:30', who: 'both' });
 await page.waitForSelector('#cal-events .item');
 check('予定が追加される', (await page.textContent('#cal-events .item')).includes('映画'));
 check('予定は暗号化されて保存', !JSON.stringify(await page.evaluate(() => window.__fake.ev[0])).includes('映画'));
@@ -467,10 +476,7 @@ check('見たあとは、帯が消える', !(await page.locator('#pat-banner').i
 }
 
 // ホームと設定
-await page.click('.tab[data-v="cal"]');
-await page.locator('#month button.today').click(); // 選択日を今日に戻す
-await page.fill('#ev-title', '歯医者');
-await page.click('#ev-form button[type=submit]');
+await addEv({ title: '歯医者', who: 'both' });
 await page.click('.tab[data-v="home"]');
 check('ホームに予定が出る', (await page.textContent('#home-events')).includes('歯医者'));
 // ホームのカード: 名前と日付を設定して、タップ・スライドで3つの面を切り替える
@@ -506,29 +512,53 @@ await page.waitForFunction(() => /「両方」を選んだ予定/.test(document.
 check('カード3: 「両方」の予定がなければ案内', true);
 // 「両方」の予定(明日)を入れると、カード3に出る
 const tm = new Date(); tm.setDate(tm.getDate() + 1);
-await page.click('.tab[data-v="cal"]');
-await page.fill('#ev-title', 'ごはん');
-await page.fill('#ev-date', `${tm.getFullYear()}-${String(tm.getMonth() + 1).padStart(2, '0')}-${String(tm.getDate()).padStart(2, '0')}`);
-await page.check('input[name="who"][value="both"]');
-await page.click('#ev-form button[type=submit]');
+await addEv({ title: 'ごはん', date: `${tm.getFullYear()}-${String(tm.getMonth() + 1).padStart(2, '0')}-${String(tm.getDate()).padStart(2, '0')}`, who: 'both' });
 await page.click('.tab[data-v="home"]');
 await page.waitForFunction(() => /ごはん/.test(document.querySelector('#days').textContent));
 check('カード3: 次の「両方」の予定まで、あと1日', (await page.textContent('#days')).includes('あと1日'));
 // 連続する予定(お泊まり)
 {
   const k = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  await page.click('.tab[data-v="cal"]');
-  await page.fill('#ev-title', 'お泊まり');
-  await page.fill('#ev-date', k(20));
-  await page.fill('#ev-end', k(22));
-  await page.check('input[name="who"][value="me"]');
-  await page.click('#ev-form button[type=submit]');
+  await addEv({ title: 'お泊まり', date: k(20), end: k(22) });
   await page.waitForFunction(() => /お泊まり/.test(document.querySelector('#cal-events').textContent));
   check('連続する予定は、「開始〜終了」で出る', /〜/.test(await page.textContent('#cal-events')));
   check('保存された予定に、終わりの日が入る', (await page.evaluate(() => window.__fake.ev.length)) >= 1);
-  await page.click('#ev-range');
-  check('「カレンダーで選ぶ」を押すと、選ぶ状態になる', (await page.getAttribute('#ev-range', 'aria-pressed')) === 'true');
-  await page.click('#ev-range');
+  check('予定の入力欄は、画面から無くなった(そのほかのシートで入れる)', (await page.locator('#ev-form').count()) === 0);
+}
+// デートをワンタップで入れる / なぞって選ぶと、お泊まりデート
+{
+  await page.click('.tab[data-v="home"]');
+  await page.click('.tab[data-v="cal"]');
+  while ((await page.locator('#month button.today').count()) === 0) await page.click('#cal-prev'); // 今月に戻る
+  check('はじめは、入れるバーが出ていない', await page.locator('#ev-bar').isHidden());
+  await page.locator('#month button.today').click();
+  check('日付をタップすると、下にバーが出る(♥ デート)', (await page.textContent('#evb-date')).includes('デート') && !(await page.textContent('#evb-date')).includes('お泊まり'));
+  const before = await page.evaluate(() => window.__fake.ev.length);
+  await page.click('#evb-date');
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 1, before);
+  const dt = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
+  check('ワンタップで「デート」が、両方の予定として入る', dt.title === 'デート' && dt.who === 'both' && !dt.end, JSON.stringify(dt));
+  // なぞって、連続する日を選ぶ
+  const cells = page.locator('#month button[data-key]');
+  const a = await cells.nth(10).boundingBox();
+  const b = await cells.nth(12).boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.up();
+  check('なぞって選ぶと、期間が選ばれ、ボタンが「お泊まりデート」に変わる', (await page.textContent('#evb-date')).includes('お泊まりデート') && (await page.textContent('#evb-sub')).includes('2泊3日') && (await page.locator('#month button.inrange').count()) === 2);
+  await page.click('#evb-date');
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 2, before);
+  const dt2 = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
+  check('連続で選ぶと、自動で「お泊まりデート」になる', dt2.title === 'お泊まりデート' && dt2.who === 'both' && !!dt2.end && dt2.end > dt2.date, JSON.stringify(dt2));
+  // タップで、終わりの日を選ぶ
+  await page.locator('#month button.today').click();
+  await page.click('#evb-range');
+  check('「連続にする」を押すと、終わりの日を選ぶ状態になる', (await page.getAttribute('#evb-range', 'aria-pressed')) === 'true');
+  await cells.nth(20).click();
+  check('終わりの日をタップすると、期間になる', (await page.locator('#month button.inrange').count()) >= 1 && (await page.textContent('#evb-date')).includes('お泊まりデート'));
+  await page.click('#evb-close');
+  check('×でバーが閉じる', await page.locator('#ev-bar').isHidden());
   await page.click('.tab[data-v="home"]');
 }
 // スライド(右へ)で前の面に戻る

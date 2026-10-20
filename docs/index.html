@@ -214,24 +214,6 @@
     </div>
     <div class="sec" id="cal-day"></div>
     <ul class="list" id="cal-events"></ul>
-    <form class="evform" id="ev-form">
-      <input id="ev-title" placeholder="予定の名前" maxlength="40" required aria-label="予定の名前">
-      <div class="evrow">
-        <input id="ev-date" type="date" required aria-label="日付">
-        <input id="ev-time" type="time" aria-label="時刻">
-      </div>
-      <div class="evrow end">
-        <label for="ev-end">連続するときの、終わりの日</label>
-        <input id="ev-end" type="date" aria-label="終わりの日(連続するとき)">
-      </div>
-      <button class="ghost sm" id="ev-range" type="button" aria-pressed="false">連続する日(お泊まりなど)を、カレンダーで選ぶ</button>
-      <div class="seg" role="radiogroup" aria-label="だれの予定">
-        <label><input type="radio" name="who" value="me" checked><span>自分</span></label>
-        <label><input type="radio" name="who" value="you"><span>相手</span></label>
-        <label><input type="radio" name="who" value="both"><span>両方</span></label>
-      </div>
-      <button class="primary" type="submit">予定を追加</button>
-    </form>
   </section>
 
   <section class="view" id="v-set" aria-label="設定">
@@ -239,6 +221,14 @@
     <ul class="set" id="settings"></ul>
   </section>
 
+  <div class="evbar" id="ev-bar" hidden>
+    <div class="evbar-t"><b id="evb-label"></b><small id="evb-sub"></small><button class="evbar-x" id="evb-close" type="button" aria-label="とじる">×</button></div>
+    <div class="evbar-b">
+      <button class="go" id="evb-date" type="button">♥ デート</button>
+      <button class="ghost sm" id="evb-range" type="button" aria-pressed="false">連続にする</button>
+      <button class="ghost sm" id="evb-more" type="button">そのほか</button>
+    </div>
+  </div>
   <nav class="tabs" id="tabs" role="tablist">
     <button class="tab" role="tab" data-v="home" type="button"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg>ホーム</button>
     <button class="tab" role="tab" data-v="chat" type="button"><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>おはなし</button>

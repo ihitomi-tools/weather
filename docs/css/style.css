@@ -421,3 +421,22 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .pat-done svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
 .pat-done small { color: var(--muted); font-weight: 500; font-size: 12px; }
 .pat-done.pop svg { animation: pat-pop .5s ease; }
+
+/* 予定を入れるバー(下に出る)と、なぞって選ぶ期間 */
+.evbar { padding: 10px 14px 12px; border-top: 1px solid var(--line); background: var(--screen); display: flex; flex-direction: column; gap: 8px; }
+.evbar-t { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.evbar-t b { font-size: 15px; }
+.evbar-t small { color: var(--muted); font-size: 12px; flex: 1; min-width: 0; }
+.evbar-x { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 0 4px; cursor: pointer; margin-left: auto; }
+.evbar-b { display: flex; gap: 8px; align-items: center; }
+.evbar .go { flex: 1; border: 0; border-radius: 99px; padding: 12px 14px; background: var(--pink-deep); color: #fff; font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .evbar .go { color: var(--on-pink); } }
+:root[data-theme="dark"] .evbar .go { color: var(--on-pink); }
+.evbar .go.stay { background: #8f78ff; color: #fff; }
+.evbar .go:disabled { opacity: .6; }
+.month { user-select: none; -webkit-user-select: none; }
+.month button { touch-action: pan-y; }
+.month button.inrange { background: var(--mint); color: var(--on-mint); border-radius: 0; font-weight: 800; }
+.month button.sel { border-radius: 12px 0 0 12px; }
+.month button.sel:not(:has(+ .inrange)) { border-radius: 12px; }
+.month button.rstart { background: var(--mint); color: var(--on-mint); font-weight: 800; border-radius: 12px 0 0 12px; }
