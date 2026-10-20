@@ -132,7 +132,8 @@ const floatHeart = () => bigHeart(0, -66);
 
 // ハグ(参考: 腕がX字に交差)
 function hugScene() {
-  return Tg(woman(-5.500, { tilt: 3, head: 9 }) + man(5.500, { tilt: -3, head: -9 }) + armsOf('h', 'M-1 -33.500 Q5 -32 11.500 -26.500') + armsOf('y', 'M-1.500 -38 Q-6 -34 -12 -27.500') + floatHeart());
+  // 向かい合って、ぎゅっ。からだは並べて、頭はよせ合う。おたがいの腕が、相手の背中にまわる(それぞれ1本ずつ見える)
+  return Tg(woman(-8, { tilt: 4, head: 11 }) + man(8, { tilt: -4, head: -11 }) + armsOf('h', 'M-4 -33 Q5 -29 14.500 -31.500') + armsOf('y', 'M4 -37 Q-4 -33 -14 -28') + floatHeart());
 }
 // キス: 近づいて、ちゅっ。しばらくして離れ、またくり返す
 function kissScene() {
