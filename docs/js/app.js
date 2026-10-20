@@ -32,9 +32,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-34';
+const VERSION = '2026.10.20-35';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -199,6 +199,7 @@ function startRecording(view) {
 }
 
 function lock() {
+  closePatOverlay();
   state.sheetClose = null;
   settingsMore = false;
   state.moodChecked = false;
@@ -257,6 +258,7 @@ async function enter() {
   if (state.view === 'home') moonEnterHome();
   moodAskMaybe();
   refreshRain();
+  patOverlayMaybe();
 }
 
 async function useKey(bytes) {
@@ -509,6 +511,7 @@ function startWatching() {
     state.pats = next;
     state.loaded.pt = true;
     renderAll();
+    patOverlayMaybe();
   }));
 
   state.unsubs.push(s.watchEvents(async (docs) => {
@@ -845,7 +848,7 @@ function renderDayDetail(date) {
     }
     nodes.push(h('div', { class: 'dd-p' },
       h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
-      level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lv' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
+      level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lvtxt' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
       rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', { class: role }, t))) : null,
       rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
       patArea));
@@ -893,6 +896,38 @@ function openMoodAsk(date) {
   state.sheetClose = () => LS.set(K.moodAsk, date);
   openSheet(h('h2', {}, '今日の調子は?'), pic, scale, note, err,
     h('p', { class: 'lock' }, '気分やメモは、カレンダーから入れられます。「とじる」と、今日はもう聞きません。'));
+}
+
+// よしよしが届いたとき、イラストを大きく映す(数秒の動きつき。タップで閉じる)
+let patTimer = 0;
+function closePatOverlay() {
+  clearTimeout(patTimer);
+  const el = $('#yoshi');
+  if (el) el.remove();
+  moonPause();
+}
+function patOverlayMaybe() {
+  if (!state.loaded.pt || !state.user || $('#app').hidden || $('#yoshi')) return;
+  const all = [...state.pats.values()].flat().filter((p) => p.by !== myUid());
+  const shown = LS.get(K.patShown);
+  if (shown == null) { // はじめて: これまでの分は、出さない
+    LS.set(K.patShown, String(Math.max(0, Number(LS.get(K.patSeen)) || 0, ...all.map((p) => p.at))));
+    return;
+  }
+  const fresh = all.filter((p) => p.at > Number(shown)).sort((x, y) => y.at - x.at);
+  if (!fresh.length) return;
+  LS.set(K.patShown, String(fresh[0].at));
+  const from = fresh[0].by;
+  const box = h('div', { class: 'yoshi-box' },
+    h('div', { class: 'yoshi-pic' }, svgEl(roleOf(from) === 'h' ? Ch.lapPat() : Ch.pair('pat'))),
+    h('div', { class: 'yoshi-hearts' }, [0, 1, 2, 3, 4].map((i) => h('i', { style: `--i:${i}` }, heartIcon()))),
+    h('b', {}, `${nameOfUid(from)}から よしよし`),
+    h('small', {}, 'タップでとじる'));
+  const el = h('div', { id: 'yoshi', class: 'yoshi', role: 'dialog', 'aria-label': 'よしよしが届きました' }, box);
+  el.addEventListener('click', closePatOverlay);
+  document.body.append(el);
+  moonPause();
+  patTimer = setTimeout(closePatOverlay, 6500);
 }
 
 // 他の人から届いた「よしよし」を、ホームに知らせる

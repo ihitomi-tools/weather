@@ -459,6 +459,16 @@ check('帯をタップすると、その日の記録に飛び、よしよしが�
 check('よしよしが届いた日に、ハートの印が付く', (await page.locator('#month button em.pat-mark').count()) === 1);
 await page.click('.tab[data-v="home"]');
 check('見たあとは、帯が消える', !(await page.locator('#pat-banner').isVisible()));
+// よしよしが届いたとき、イラストが大きく出る
+{
+  const day = new Date(); const dk = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+  const doc = await enc('pats', { d: dk, by: 'u2', at: Date.now() + 5000 });
+  await page.evaluate((d) => { window.__fake.pt.push({ id: 'newpat', ...d, from: 'u2' }); window.__fake.notify(); }, doc);
+  await page.waitForSelector('#yoshi');
+  check('よしよしが届くと、イラストが大きく出る', (await page.textContent('#yoshi')).includes('から よしよし') && (await page.locator('#yoshi svg.chara').count()) >= 1 && (await page.locator('#yoshi .pata, #yoshi .lapa').count()) === 1);
+  await page.click('#yoshi');
+  check('タップでとじる', (await page.locator('#yoshi').count()) === 0);
+}
 
 // ホームと設定
 await page.click('.tab[data-v="cal"]');

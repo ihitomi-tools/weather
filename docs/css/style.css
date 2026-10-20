@@ -247,7 +247,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dd-badge { background: var(--pink); color: var(--on-pink); border-radius: 99px; padding: 3px 11px; font-size: 12px; }
 .dd-level { display: flex; align-items: center; gap: 12px; }
 .dd-level .pose svg { width: 64px; height: 72px; flex: none; display: block; }
-.dd-level .lv { display: flex; flex-direction: column; gap: 2px; }
+.dd-level .lvtxt { display: flex; flex-direction: column; gap: 2px; }
 .dd-patrow { display: flex; align-items: center; gap: 10px; }
 .dd-patrow .pat { flex: 1; }
 .dd-patpic svg { width: 92px; height: 56px; display: block; fill: initial; }
@@ -397,3 +397,22 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .chip2.h, .dd-tags span.h { background: var(--pink); color: var(--on-pink); }
 .chip2.y, .dd-tags span.y { background: var(--mint); color: var(--on-mint); }
 .mi-memo { font-size: 13.5px; line-height: 1.6; overflow-wrap: anywhere; }
+
+/* よしよしが届いたとき */
+.yoshi { position: fixed; inset: 0; z-index: 90; background: rgba(10, 12, 30, .6); display: flex; align-items: center; justify-content: center; padding: 20px; cursor: pointer; animation: yfade .35s ease both; }
+.yoshi-box { position: relative; width: min(86vw, 340px); background: var(--screen); border-radius: 30px; padding: 22px 22px 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; --cbg: var(--screen); animation: ypop .6s cubic-bezier(.2, 1.4, .4, 1) both; }
+.yoshi-pic { width: 82%; }
+.yoshi-pic svg { width: 100%; height: auto; display: block; }
+.yoshi-box b { font-size: 18px; color: var(--pink-deep); }
+.yoshi-box small { font-size: 12px; color: var(--muted); }
+.yoshi-hearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: 30px; }
+.yoshi-hearts i { position: absolute; bottom: 38%; left: calc(18% + var(--i) * 16%); width: 22px; height: 22px; opacity: 0; animation: yheart 2.4s ease-out infinite; animation-delay: calc(var(--i) * .45s + .5s); }
+.yoshi-hearts svg { width: 100%; height: 100%; fill: var(--pink-deep); }
+.pata { transform-origin: -6.5px -38.5px; animation: ypata .55s ease-in-out infinite alternate; }
+.lapa { transform-origin: 10px -22px; animation: ylapa .8s ease-in-out infinite alternate; }
+@keyframes yfade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ypop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes yheart { 0% { opacity: 0; transform: translateY(8px) scale(.5); } 25% { opacity: .95; } 100% { opacity: 0; transform: translateY(-90px) scale(1.1); } }
+@keyframes ypata { from { transform: rotate(-7deg); } to { transform: rotate(9deg); } }
+@keyframes ylapa { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
+@media (prefers-reduced-motion: reduce) { .yoshi, .yoshi-box, .yoshi-hearts i, .pata, .lapa { animation: none; } .yoshi-hearts i { opacity: 0; } }
