@@ -96,3 +96,17 @@ test('前のお題と同じカテゴリは、続けて選ばない(2台で同じ
   assert.equal(pickStock([...s].reverse(), 7, 'daily').id, pickStock(s, 7, 'daily').id); // 並びがちがっても同じ
   assert.equal(pickStock(s, 5).id, pickStock([...s].reverse(), 5).id); // カテゴリを使わないときは、今まで通り
 });
+
+test('足した人が、できるだけ交互になる。片方しか無いときは、そのまま選ぶ', () => {
+  const s = [{ id: 'a', from: 'u1' }, { id: 'b', from: 'u1' }, { id: 'c', from: 'u2' }, { id: 'd', from: 'u2' }];
+  for (let n = 1; n <= 20; n++) {
+    assert.equal(pickStock(s, n, null, 'u1').from, 'u2');
+    assert.equal(pickStock(s, n, null, 'u2').from, 'u1');
+  }
+  assert.equal(pickStock([{ id: 'a', from: 'u1' }], 3, null, 'u1').id, 'a'); // 相手のお題が無ければ、同じ人でも選ぶ
+  // 交互が先。同じ人のお題のなかで、カテゴリを避ける
+  const t = [{ id: 'a', from: 'u2', cat: 'daily' }, { id: 'b', from: 'u2', cat: 'mem' }, { id: 'c', from: 'u1', cat: 'mem' }];
+  for (let n = 1; n <= 20; n++) assert.equal(pickStock(t, n, 'daily', 'u1').id, 'b');
+  for (let n = 1; n <= 20; n++) assert.equal(pickStock(t, n, 'mem', 'u1').id, 'a');
+  assert.equal(pickStock([...t].reverse(), 9, 'mem', 'u1').id, pickStock(t, 9, 'mem', 'u1').id); // 並びがちがっても同じ
+});

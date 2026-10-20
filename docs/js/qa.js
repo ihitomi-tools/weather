@@ -47,13 +47,13 @@ export function availableStock(stock, cards) {
 }
 
 // 番号から決まる「ランダム」。2人の端末で、同じストックなら同じお題を選ぶ。
-// lastCat があれば、前のお題と同じカテゴリは避ける(ほかに選べるものが無いときは、そのまま選ぶ)。
-// 2人の端末で同じ結果になるように、ストックと番号とlastCatだけで決める。
-export function pickStock(avail, n, lastCat = null) {
+// 選びかた: ①前のお題を足した人(lastBy)と、ちがう人が足したお題を優先 ②そのなかで、前と同じカテゴリ(lastCat)を避ける。
+// どちらも、ほかに選べるものが無いときは、そのまま選ぶ。2台の端末で同じ結果になるように、ストックと番号と前のお題だけで決める。
+export function pickStock(avail, n, lastCat = null, lastBy = null) {
   if (!avail.length) return null;
-  const sorted = [...avail].sort((a, b) => a.id.localeCompare(b.id));
-  const other = lastCat ? sorted.filter((s) => (s.cat || null) !== lastCat) : sorted;
-  const pool = other.length ? other : sorted;
+  let pool = [...avail].sort((a, b) => a.id.localeCompare(b.id));
+  if (lastBy) { const o = pool.filter((s) => s.from !== lastBy); if (o.length) pool = o; }
+  if (lastCat) { const o = pool.filter((s) => (s.cat || null) !== lastCat); if (o.length) pool = o; }
   return pool[(Math.imul(n, 2654435761) >>> 0) % pool.length];
 }
 

@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-39';
+const VERSION = '2026.10.20-40';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1622,7 +1622,7 @@ async function createCard(n, text, stockId, by, cat) {
 
 async function makeNextCard(n) {
   const prev = state.qcards.find((c) => c.n === n - 1);
-  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat); // 前のお題と同じカテゴリが続かないようにする
+  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by); // ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
   if (!pick) { state.needInput = n; renderTalk(); return; }
   await createCard(n, pick.text, pick.id, pick.from, pick.cat);
 }
@@ -1852,7 +1852,7 @@ function openStockSheet() {
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます(前のお題と同じカテゴリは続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, one, oneHint, addOne, bulk, bulkHint, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 
