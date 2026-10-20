@@ -5,10 +5,8 @@
 .mn .scene .perf.h { color: var(--s-pink); }
 .mn .scene .perf.y { color: var(--s-mint); }
 .mn .scene .st { stroke: currentColor; stroke-width: 3.8; stroke-linecap: round; fill: none; }
-.mn .scene .arm, .mn .scene .leg, .mn .scene .reach { transform-box: fill-box; transform-origin: 50% 0%; }
-.mn .scene .arm.up { transform-origin: 50% 100%; }
 .mn .scene .hand { stroke: #121640; stroke-width: .9; }
-.mn .scene .hair { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-swish 1.9s ease-in-out infinite alternate; }
+.mn .scene .hair { animation: mn-swish 1.9s ease-in-out infinite alternate; }
 .mn .perf.h.air .hair { animation-duration: .35s; }
 @keyframes mn-swish { from { transform: rotate(-14deg); } to { transform: rotate(12deg); } }
 .mn .pairh { transform-origin: 0 0; animation: mn-lag 1.9s ease-in-out infinite alternate; }
@@ -52,9 +50,6 @@
 .mn .air .bob { animation: mn-bob .5s ease-in-out infinite alternate; }
 .mn .catcher { transform-origin: 0 0; animation: mn-flip .6s ease-out; }
 .mn .catcher .reach { animation: mn-reach 1.2s ease-in-out infinite alternate; transform-origin: 100% 0%; }
-.mn .moon-glow { animation: mn-glow 2s ease 1s; }
-@keyframes mn-glow { 0% { filter: drop-shadow(0 0 0 transparent); } 40% { filter: drop-shadow(0 0 var(--gl, 14px) #ffd966); } 100% { filter: drop-shadow(0 0 0 transparent); } }
-.mn .moon-glow.big { --gl: 22px; }
 .mn .drip { fill: var(--s-lit); opacity: 0; animation: mn-drip .9s ease-in .1s forwards; }
 @keyframes mn-drip { 0% { opacity: 0; translate: 150px 6px; } 15% { opacity: 1; } 85% { opacity: 1; translate: 150px 40px; } 100% { opacity: 0; translate: 150px 44px; scale: 1.6 .4; } }
 .mn .heart { fill: var(--s-pink); opacity: 0; }
@@ -76,7 +71,7 @@
 .mn .air.tired .bob { animation-duration: 1.4s; }
 .mn .spark { fill: var(--s-lit); opacity: 0; animation: mn-twinkle 1.4s ease 1.1s 2; }
 @keyframes mn-twinkle { 0%, 100% { opacity: 0; transform: scale(.3); } 50% { opacity: 1; transform: scale(1); } }
-.mn .spark { transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .spark { transform-origin: 0 0; }
 .mn .shoot { opacity: 0; fill: none; stroke: url(#streak); stroke-width: 1.5; stroke-linecap: round; }
 .mn .shoot.s1 { rotate: 24deg; animation: mn-shoot1 14s linear 3s infinite; }
 .mn .shoot.s2 { rotate: 30deg; animation: mn-shoot2 19s linear 9s infinite; }
@@ -88,7 +83,7 @@
 .mn .perf.happy .leg.l { animation: mn-kickL .2s ease-in-out infinite alternate; }
 .mn .perf.happy .leg.r { animation: mn-kickR .2s ease-in-out infinite alternate; }
 .mn .perf.happy .hair { animation-duration: .3s; }
-.mn .scene .rope { transform-box: fill-box; transform-origin: 50% 0%; }
+.mn .scene .rope { transform-origin: 0 0; }
 .mn .pend.carry .hangers { animation: mn-jolt .5s ease .95s both; }
 .mn .pend.carry .rope { animation: mn-stretch .5s ease .95s both; }
 .mn .pend.rest .hangers { translate: 0 3px; }
@@ -107,19 +102,18 @@
 @media (prefers-reduced-motion: reduce) { .mn .together, .mn .together .perf, .mn .fheart, .mn .cloud { animation: none; } }
 .mn .fall { translate: var(--x0) -10px; animation: mn-fallk var(--d) linear infinite; }
 @keyframes mn-fallk { 0% { translate: var(--x0) -10px; rotate: 0deg; } 50% { translate: calc(var(--x0) + var(--dx) * .6) 90px; } 100% { translate: calc(var(--x0) + var(--dx)) 196px; rotate: var(--rot); } }
-.mn .firefly { fill: #d6ff7a; filter: drop-shadow(0 0 3px #d6ff7a); animation: mn-flit 6s ease-in-out infinite; }
+.mn .firefly { fill: #d6ff7a; animation: mn-flit 6s ease-in-out infinite; }
 @keyframes mn-flit { 0%, 100% { opacity: .1; transform: translate(0, 0); } 30% { opacity: 1; transform: translate(6px, -8px); } 60% { opacity: .4; transform: translate(-5px, -14px); } }
-.mn .fw { stroke: #ffd966; stroke-width: 1.400; stroke-linecap: round; opacity: 0; animation: mn-fw 15s ease-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .fw { stroke: #ffd966; stroke-width: 1.400; stroke-linecap: round; opacity: 0; animation: mn-fw 15s ease-out infinite; transform-origin: 0 0; }
 .mn .fw.b { stroke: #ff9cc4; animation-delay: -7s; animation-duration: 19s; }
 @keyframes mn-fw { 0%, 90% { opacity: 0; scale: .2; } 92% { opacity: 1; scale: .6; } 100% { opacity: 0; scale: 1.5; } }
-.mn .susuki { transform-box: fill-box; transform-origin: 50% 100%; animation: mn-sway2 3.4s ease-in-out infinite alternate; }
+.mn .susuki { animation: mn-sway2 3.4s ease-in-out infinite alternate; }
 @keyframes mn-sway2 { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
 .mn .tree { animation: none; }
 .mn .together.walk .walker { animation: mn-walkx 14s ease-in-out infinite alternate; }
 @keyframes mn-walkx { from { translate: -42px 0; } to { translate: 42px 0; } }
 .mn .together.walk .leg.l { animation: mn-kickL .8s ease-in-out infinite alternate; }
 .mn .together.walk .leg.r { animation: mn-kickR .8s ease-in-out infinite alternate; }
-.mn .patarm { animation: mn-patk 1s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 100% 100%; }
 @keyframes mn-patk { from { transform: rotate(-6deg); } to { transform: rotate(7deg); } }
 .mn .tiptoe { animation: mn-tip 1.6s ease-in-out infinite alternate; }
 @keyframes mn-tip { from { translate: 0 0; } to { translate: 0 -3px; } }
@@ -128,18 +122,18 @@
 .mn .pic { fill: currentColor; }
 .mn .pic.h { color: var(--s-pink); }
 .mn .pic.y { color: var(--s-mint); }
-.mn .pic .hair { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-swish 1.9s ease-in-out infinite alternate; }
-.mn .kickback { transform-box: fill-box; transform-origin: 0% 0%; animation: mn-kb .55s ease-in-out infinite alternate; }
+.mn .pic .hair { animation: mn-swish 1.9s ease-in-out infinite alternate; }
+.mn .kickback { animation: mn-kb .55s ease-in-out infinite alternate; }
 @keyframes mn-kb { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
 .mn .umb { animation: mn-umbsway 2.6s ease-in-out infinite alternate; }
 @keyframes mn-umbsway { from { transform: rotate(-1.500deg); } to { transform: rotate(1.500deg); } }
-.mn .bfw { fill: none; stroke-width: 1.600; stroke-linecap: round; opacity: 0; animation: mn-bfw 8s ease-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .bfw { fill: none; stroke-width: 1.600; stroke-linecap: round; opacity: 0; animation: mn-bfw 8s ease-out infinite; transform-origin: 0 0; }
 @keyframes mn-bfw { 0%, 70% { opacity: 0; scale: .1; } 74% { opacity: 1; scale: .55; } 100% { opacity: 0; scale: 1.4; } }
-.mn .flame { animation: mn-flick .35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+.mn .flame { animation: mn-flick .35s ease-in-out infinite alternate; }
 @keyframes mn-flick { from { transform: scale(1, 1); } to { transform: scale(.8, 1.2); } }
 .mn .rise { translate: var(--bx) 196px; animation: mn-risek var(--d) linear infinite; }
 @keyframes mn-risek { 0% { translate: var(--bx) 196px; } 50% { translate: calc(var(--bx) + 10px) 90px; } 100% { translate: calc(var(--bx) - 6px) -30px; } }
-.mn .aura-spark { fill: #ffe9a0; animation: mn-aspark 2.600s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+.mn .aura-spark { fill: #ffe9a0; animation: mn-aspark 2.600s ease-in-out infinite; transform-origin: 0 0; }
 @keyframes mn-aspark { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
 .mn .aura-ring, .mn .aura-orbit { transform-box: view-box; transform-origin: 150px 88px; animation: mn-spinr 80s linear infinite; }
 .mn .aura-orbit { animation-duration: 55s; animation-direction: reverse; }
@@ -164,7 +158,6 @@
 @keyframes mn-rdrift { from { translate: -10px 0; } to { translate: 10px 0; } }
 .mn .bfw.hb { stroke: none; }
 @media (prefers-reduced-motion: reduce) { .mn .bulb, .mn .wheel, .mn .dballoon, .mn .dheart, .mn .pend.excited, .mn .drop2, .mn .ripple, .mn .rclouds { animation: none; } }
-.mn .stp { transform-box: fill-box; transform-origin: 50% 0%; }
 .mn .stp.a { animation: mn-stpa 1s ease-in-out infinite alternate; }
 .mn .stp.b { animation: mn-stpb 1s ease-in-out infinite alternate; }
 @keyframes mn-stpa { from { transform: rotate(-13deg); } to { transform: rotate(13deg); } }
@@ -182,7 +175,6 @@
 @keyframes mn-kissheadm { 0%, 8% { rotate: 0deg; } 22%, 62% { rotate: -19deg; } 76%, 100% { rotate: 0deg; } }
 .mn .kisspop { opacity: 0; animation: mn-kisspopk 9s ease-out infinite; }
 @keyframes mn-kisspopk { 0%, 21% { opacity: 0; translate: 0 4px; scale: .4; } 25% { opacity: 1; translate: 0 0; scale: 1.2; } 31% { scale: 1; } 52% { opacity: 1; translate: 0 -3px; } 62%, 100% { opacity: 0; translate: 0 -8px; } }
-@keyframes mn-hint { 0% { opacity: .55; scale: .6; } 100% { opacity: 0; scale: 1.15; } }
 @media (prefers-reduced-motion: reduce) { .mn .stp, .mn .rbob, .mn .kissW, .mn .kissM, .mn .kissarms, .mn .kw, .mn .km, .mn .kisspop, .mn .hintring { animation: none; } .mn .kissW, .mn .kissM { translate: var(--dx) 0; } }
 .mn .patback { animation: mn-patbk 10s ease-in-out infinite; }
 @keyframes mn-patbk { 0%, 58% { translate: 0 0; } 62% { translate: 0 -1.600px; } 66% { translate: 0 .4px; } 70% { translate: 0 -1.600px; } 74% { translate: 0 .4px; } 78% { translate: 0 -1.600px; } 82%, 100% { translate: 0 0; } }
@@ -197,8 +189,6 @@
 .mn .mn-t b i { font-style: normal; font-size: 13px; color: var(--muted); margin-left: 2px; }
 .mn .mn-bar { display: block; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .mn .mn-bar i { display: block; height: 100%; background: #f6c453; border-radius: 99px; transition: width .5s ease; }
-.mn .mn-hint { position: absolute; left: 50%; top: 82px; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 2px solid var(--pink-deep); opacity: 0; pointer-events: none; animation: mn-hint 3s ease-out infinite; }
-@keyframes mn-hint { 0% { opacity: .55; scale: .6; } 100% { opacity: 0; scale: 1.15; } }
 .mn .mn-panel { background: var(--surface); border-radius: 18px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
 .mn .mn-panel[hidden] { display: none; }
 .mn .mn-row { display: flex; align-items: center; gap: 8px; }
@@ -221,4 +211,12 @@
 .mstats div { background: var(--surface); border-radius: 16px; padding: 10px 4px; text-align: center; }
 .mstats b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
 .mstats small { font-size: 11px; color: var(--muted); font-weight: 700; }
-@media (prefers-reduced-motion: reduce) { .mn .mn-hint { animation: none; } }
+.mn .glowdisc { opacity: 0; animation: mn-glowd 2.600s ease 1s both; }
+.mn .glowdisc.big { r: 78px; }
+@keyframes mn-glowd { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
+.mn .sky-dot { fill: #fff; opacity: .7; }
+.mn .hintc { fill: none; stroke: #ff7fb0; stroke-width: 2; opacity: 0; transform-origin: 150px 88px; animation: mn-hintc 3s ease-out infinite; }
+@keyframes mn-hintc { 0% { opacity: .65; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }
+#mn-scene { contain: layout paint; }
+.mn.paused, .mn.paused * { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) { .mn .hintc, .mn .glowdisc { animation: none; } }

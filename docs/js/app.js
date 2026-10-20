@@ -527,6 +527,7 @@ function setView(v) {
   if (v === 'chat') { const c = $('#chat'); c.scrollTop = c.scrollHeight; refreshItems(); }
   markRead();
   if (v === 'home' && prev !== 'home') moonEnterHome();
+  moonPause();
 }
 
 function renderAll() {
@@ -886,12 +887,14 @@ function buildChat() {
 function openSheet(...nodes) {
   $('#sheet-body').replaceChildren(...nodes);
   $('#sheet').hidden = false;
+  moonPause();
 }
 function closeSheet() {
   state.pastRender = null;
   state.sheetRender = null;
   $('#sheet').hidden = true;
   $('#sheet-body').replaceChildren();
+  moonPause();
 }
 
 /* ================= 生理・気分の記録 ================= */
@@ -1686,6 +1689,14 @@ function moonEnterHome() {
   renderMoon();
 }
 
+// 画面に見えていないときは、動きを止めて、スマホの負担を減らす
+function moonPause() {
+  const el = $('#moon');
+  if (!el) return;
+  const off = document.hidden || state.view !== 'home' || !$('#app') || $('#app').hidden || !$('#sheet').hidden;
+  el.classList.toggle('paused', off);
+}
+
 function renderMoon() {
   if ($('#app').hidden || !$('#mn-scene') || !myUid()) return;
   const now = Date.now();
@@ -1704,22 +1715,22 @@ function renderMoon() {
   const popOn = now < state.moonPop.until;
   const tired = !!(t.h != null && !t.resolved && t.y == null && now - t.h > MOON_WIN);
   const ready = !!state.loaded.moon;
-  const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired]);
+  const hint = ready && !t.resolved && t[roles[myUid()]] == null;
+  const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired, hint]);
   if (key !== moonSig) {
     moonSig = key;
     $('#mn-scene').innerHTML = moonScene({
       pts: A.pts, sig: { h: ready ? t.h : null, y: ready ? t.y : null }, first: t.first, resolved: ready && t.resolved, kind: t.kind,
       cheerUntil: state.moonCheerUntil, revisit: state.moonVisit, variant: state.moonVariant, special, season, now, winMs: MOON_WIN,
-      pop: state.moonPop.w, popUntil: state.moonPop.until, sigAt: moonObs,
+      pop: state.moonPop.w, popUntil: state.moonPop.until, sigAt: moonObs, hint,
     });
   }
   $('#mn-pts').textContent = String(A.pts);
   $('#mn-bar-i').style.width = `${A.pts}%`;
   $('#mn-phase').textContent = phaseName(A.pts);
-  const myRole = roles[myUid()];
-  $('#mn-hint').hidden = !(ready && !t.resolved && t[myRole] == null);
   if (ready && t.resolved && !cheerOn && state.moonVisit === 0) LS.set(K.moonSeen, t.key);
   renderMoonPanel(A, roles);
+  moonPause();
   if (popOn) setTimeout(() => { moonSig = ''; renderMoon(); }, Math.max(0, state.moonPop.until - now) + 50);
 }
 
@@ -1799,7 +1810,9 @@ function init() {
 
   // アプリを離れたら最初の画面に戻す
   const away = () => { if (LS.get(K.auto) !== '0' && $('#cover').hidden) lock(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { markRead(); renderBadges(); } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { markRead(); renderBadges(); }
+    moonPause();
+  });
   window.addEventListener('pagehide', away);
   document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 

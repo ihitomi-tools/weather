@@ -258,13 +258,18 @@ check('おしゃべりを開くと印が消える', await page.locator('#talk-se
 // 月(ふたりのブランコ)
 await page.click('.tab[data-v="home"]');
 await page.waitForSelector('#mn-scene svg.scene');
+await page.waitForTimeout(400);
+await page.evaluate(() => document.getAnimations().forEach((a) => { a.pause(); a.currentTime = 900; }));
+await page.locator('#mn-card').screenshot({ path: '/tmp/ring.png' });
+const ringBox = await page.evaluate(() => { const r = document.querySelector('#mn-scene .hintc'); const m = document.querySelector('#mn-scene circle[r="46"]'); if (!r || !m) return null; const a = r.getBoundingClientRect(); const b = m.getBoundingClientRect(); return [a.x + a.width / 2 - (b.x + b.width / 2), a.y + a.height / 2 - (b.y + b.height / 2)]; });
+check('合図の輪は、月の中心から広がる', ringBox && Math.abs(ringBox[0]) < 1 && Math.abs(ringBox[1]) < 1, JSON.stringify(ringBox));
 check('ホームの一番上に、月の舞台が出る', await page.locator('#moon').isVisible() && (await page.locator('#v-home > *').evaluateAll((els) => els.map((e) => e.id || e.className)))[ 4 ] !== undefined);
-check('触れる前は、合図の輪が出て、ボタンはない', await page.locator('#mn-hint').isVisible() && (await page.locator('#moon button:has-text("月に触れる")').count()) === 0);
+check('触れる前は、合図の輪が出て、ボタンはない', (await page.locator('#mn-scene .hintc').count()) === 1 && (await page.locator('#moon button:has-text("月に触れる")').count()) === 0);
 await page.click('#mn-card');
 await page.waitForSelector('#mn-panel:not([hidden])');
 await page.waitForFunction(() => window.__fake.mn.length === 1);
 check('月を押すと、触れた記録が暗号文で保存され、状況パネルが開く', !JSON.stringify(await page.evaluate(() => window.__fake.mn)).includes('"at"') && (await page.textContent('#mn-panel')).includes('まだ'));
-check('触れたあとは、合図の輪が消える', !(await page.locator('#mn-hint').isVisible()));
+check('触れたあとは、合図の輪が消える', (await page.locator('#mn-scene .hintc').count()) === 0);
 await page.click('#mn-card');
 check('もう一度押すと、パネルが閉じる(2回目は記録されない)', !(await page.locator('#mn-panel').isVisible()) && (await page.evaluate(() => window.__fake.mn.length)) === 1);
 await page.click('#mn-card');
