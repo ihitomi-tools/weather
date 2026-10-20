@@ -81,7 +81,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodAsked: false, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -189,6 +189,7 @@ function startRecording(view) {
 
 function lock() {
   state.sheetClose = null;
+  state.moodChecked = false;
   if (DEMO) { closeSheet(); return; } // デモ中は、天気の画面に戻さない
   picked = [];
   recording = null;
@@ -811,7 +812,8 @@ function renderDayDetail(date) {
 
 // 今日の調子が、まだのとき、アプリを開いたタイミングで聞く。✕で閉じたら、その日はもう出さない。
 function moodAskMaybe() {
-  if (!state.loaded.dy || !state.user || !state.key || $('#app').hidden || !$('#sheet').hidden) return;
+  if (state.moodChecked || !state.loaded.dy || !state.user || !state.key || $('#app').hidden || !$('#sheet').hidden) return;
+  state.moodChecked = true; // 開いたときに1回だけ確かめる(途中で相手の記録が届いても、急に出さない)
   const today = ymd(new Date());
   if (LS.get(K.moodAsk) === today) return;
   const mine = myRecs().get(today);
@@ -1740,7 +1742,9 @@ function moonRoles() {
   let other = partnerUid();
   if (!other) { const m = state.moon.find((x) => x.from !== me); other = m && m.from; }
   const prof = (u) => (u && state.profiles[u] && state.profiles[u].role) || null;
-  return rolesOf(me, other, LS.get(K.role) || prof(me), prof(other));
+  // 役を決めていなくても、生理を記録している人は、ひとみ(飛ぶ人)として扱う
+  const her = (u) => (u && recsOf(u).size && [...recsOf(u).values()].some((r) => r.p) ? 'h' : null);
+  return rolesOf(me, other, LS.get(K.role) || prof(me) || her(me), prof(other) || her(other));
 }
 function moonAnalysis(now = Date.now()) {
   const roles = moonRoles();
@@ -1895,7 +1899,7 @@ function init() {
   document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 
   if (DEMO) {
-    window.addEventListener('demo-tick', () => { moonSigReset(); renderAll(); moodAskMaybe(); });
+    window.addEventListener('demo-tick', () => { moonSigReset(); renderAll(); state.moodChecked = false; moodAskMaybe(); });
     enter();
   } else if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
