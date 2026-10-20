@@ -9,7 +9,7 @@ import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeA
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
-import { moonScene, VARIANTS, phaseName } from './moon.js';
+import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
 import { analyzeMoon, rolesOf, seasonOf, specialOf, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-31';
+const VERSION = '2026.10.20-32';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1924,7 +1924,28 @@ function moonPause() {
   el.classList.toggle('paused', off);
 }
 
+// 場面の中で、ときどき、ランダムなしぐさをさせる(描き直さず、いっとき、クラスを付けるだけ)
+let gestureTimer = 0;
+function scheduleGesture() {
+  if (gestureTimer || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+  gestureTimer = setTimeout(() => {
+    gestureTimer = 0;
+    const svg = $('#mn-scene .scene');
+    const wrap = $('#moon');
+    if (svg && svg.querySelector('.gx') && wrap && !wrap.classList.contains('paused')) {
+      const list = gesturesFor(state.moonVariant);
+      if (list.length) {
+        const g = `g-${list[Math.floor(Math.random() * list.length)]}`;
+        svg.classList.add(g);
+        setTimeout(() => svg.classList.remove(g), 1700);
+      }
+    }
+    scheduleGesture();
+  }, 3500 + Math.random() * 6500);
+}
+
 function renderMoon() {
+  scheduleGesture();
   if ($('#app').hidden || !$('#mn-scene') || !myUid()) return;
   const now = Date.now();
   const { A, roles } = moonAnalysis(now);

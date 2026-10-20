@@ -37,3 +37,15 @@ test('特別な日の飾り', () => {
   assert.ok(moonScene({ ...base, special: 'milestone' }).includes('hb'));
   assert.ok(moonScene({ ...base, special: 'date' }).includes('wheel'));
 });
+
+test('場面が12こ。しぐさのハートが入り、キスにはしぐさを付けない', async () => {
+  const { gesturesFor } = await import('../docs/js/moon.js');
+  assert.equal(VARIANTS.length, 12);
+  assert.deepEqual(gesturesFor('kiss'), []);
+  assert.ok(gesturesFor('hug').length >= 3);
+  for (const v of VARIANTS) {
+    const svg = moonScene({ pts: 10, sig: { h: 1, y: 2 }, first: 'h', resolved: true, kind: 'sync', cheerUntil: 0, revisit: 1, variant: v, special: 'none', season: 'autumn', now: Date.now(), winMs: 600000, sigAt: { h: 0, y: 0 }, hint: false });
+    assert.ok(svg.includes('class="gx"'), v);
+    assert.ok(!svg.includes('NaN') && !svg.includes('undefined'), v);
+  }
+});

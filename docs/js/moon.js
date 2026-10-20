@@ -167,8 +167,51 @@ function hillScene() {
   const him = `<g class="pic y" transform="translate(8.500 -1) rotate(-3)"><rect x="-6.800" y="-31" width="13.600" height="29" rx="4.800"/><circle cx="0" cy="-36.500" r="5.700"/></g>`;
   return Tg(her + him + `<g class="patback">${armsOf('y', 'M-3 -28.500 Q-9 -27 -15.500 -25')}</g>`);
 }
-const VARIANT_LABEL = { cheek: 'ほっぺにちゅ', hill: '丘に座って月を見る', umbrella: '相合傘', kiss: 'キス', hug: 'ハグ', hands: '手をつないでハート' };
-const VARIANT_FN = { cheek: cheekScene, hill: hillScene, umbrella: umbrellaScene, kiss: kissScene, hug: hugScene, hands: handsScene };
+
+// ---- ふえた場面 ----
+// 後ろからぎゅっ(ゆうきがうしろから、ひとみのおなかに腕をまわす)
+function backhugScene() {
+  const him = man(3.500, { head: -8 });
+  const her = woman(-3.500, { head: 8 });
+  const arms = armsOf('y', 'M-5.500 -37 Q-11 -28 -0.500 -25', 'M11.500 -37 Q15 -27 1.500 -25.500');
+  return Tg(him + her + arms + floatHeart());
+}
+// 肩を組んで、ゆらゆら(ふたりで同じほうにゆれる)
+function shoulderScene() {
+  const arms = armsOf('y', 'M1 -38.500 Q-6 -38.500 -12 -33.500') + armsOf('h', 'M-2 -33 Q5 -28.500 13.500 -27.500');
+  return Tg(`<g class="swaypair">${woman(-8, { head: 7 })}${man(8, { head: -6 })}${arms}</g>`);
+}
+// 手をつないで、くるくる(ひとみがくるっと回る)
+function danceScene() {
+  const arms = armsOf('y', 'M8 -38 Q4.500 -32 0.500 -27.500') + armsOf('h', 'M-9.500 -33.500 Q-5 -30 0 -27');
+  return Tg(`<g class="bobpair"><g class="spinw">${woman(-14, { head: 0 })}</g>${man(14, { head: -6 })}${arms}</g>`);
+}
+// 頭ぽんぽん(ゆうきが、ひとみの頭をぽんぽん)
+function headpatScene() {
+  const arm = `<g class="hpat">${armsOf('y', 'M2 -38.500 Q-5 -42 -8 -47.500')}</g>`;
+  return Tg(woman(-9, { head: 6 }) + man(8, { head: -6 }) + arm + floatHeart());
+}
+// おんぶ(ひとみがゆうきの背中に乗る)
+function piggyScene() {
+  const her = `<g transform="translate(0 -13)">${woman(0, { head: 0, legs: '' })}</g>`;
+  const knees = armsOf('h', 'M-6.500 -26 L-11.500 -19', 'M6.500 -26 L11.500 -19');
+  const around = armsOf('h', 'M-5 -43.500 Q0 -39 5 -43.500');
+  return `<g class="together" transform="translate(150 154) scale(1.45)"><g class="rbob">${her}${man(0, { head: 0 })}${knees}${around}${hairQ.splice(0).join('')}${bigHeart(15, -60, 0.9)}</g></g>`;
+}
+// お姫さま抱っこ(ひとみが、ゆうきの腕の中で横になる)
+function cradleScene() {
+  const her = `<g transform="translate(24 -33) rotate(-90)">${woman(0, { head: -10 })}</g>`;
+  const arms = armsOf('y', 'M-5 -38 Q-10 -31 -3 -27.500', 'M6 -38 Q13 -30 7 -25.500');
+  return Tg(`<g class="swaypair">${man(0, { head: 0 })}${her}${arms}${hairQ.splice(0).join('')}</g>${bigHeart(2, -64, 1)}`);
+}
+const VARIANT_LABEL = { cheek: 'ほっぺにちゅ', hill: '丘に座って月を見る', umbrella: '相合傘', kiss: 'キス', hug: 'ハグ', hands: '手をつないでハート', backhug: '後ろからぎゅっ', shoulder: '肩を組んでゆらゆら', dance: '手をつないでくるくる', headpat: '頭ぽんぽん', piggy: 'おんぶ', cradle: 'お姫さま抱っこ' };
+const VARIANT_FN = { cheek: cheekScene, hill: hillScene, umbrella: umbrellaScene, kiss: kissScene, hug: hugScene, hands: handsScene, backhug: backhugScene, shoulder: shoulderScene, dance: danceScene, headpat: headpatScene, piggy: piggyScene, cradle: cradleScene };
+
+// 場面の中で、ときどき出る、ランダムなしぐさ(app.js が時間をおいて、ひとつ選んで付ける)。キスは自分の動きがあるので、しぐさは付けない
+const GESTURES = ['hopW', 'hopM', 'hopB', 'nudge', 'heart'];
+export const gesturesFor = (variant) => (variant === 'kiss' ? [] : variant === 'umbrella' ? ['heart'] : GESTURES);
+// しぐさのハート(ふだんは見えない)
+const gestureHearts = () => '<g class="gx">' + [[-16, 108, 0], [14, 100, 0.25], [0, 92, 0.5]].map(([x, y, d]) => `<path class="gh" style="animation-delay:${d}s" d="M0 5.500 C-7 0 -8 -6 -4 -7 C-2 -7.500 0 -5.500 0 -4.500 C0 -5.500 2 -7.500 4 -7 C8 -6 7 0 0 5.500Z" transform="translate(${150 + x} ${y})"/>`).join('') + '</g>';
 const VARIANTS = Object.keys(VARIANT_FN);
 
 // ---- 誕生日の豪華な飾り / ポイントに応じた華やかさ ----
@@ -272,7 +315,7 @@ function scene() {
   } else if (st.resolved && st.revisit > 0) {
     h = pend('h', 'empty', '');
     y = pend('y', 'empty', '');
-    extra += VARIANT_FN[st.variant]();
+    extra += VARIANT_FN[st.variant]() + gestureHearts();
   } else if (st.resolved) {
     h = pend('h', 'empty', '');
     y = pend('y', 'rest', pairBody('rest'));
