@@ -166,7 +166,10 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .month button.future { border: 2px dashed var(--pink-deep); }
 .month button.today { box-shadow: inset 0 0 0 2px var(--mint-deep); }
 .month button.sel { outline: 2px solid var(--fg); outline-offset: 1px; }
-.month button em.mood { position: absolute; top: 4px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--mint-deep); }
+.month button .mdots { position: absolute; top: 3px; right: 4px; display: flex; gap: 3px; }
+.month button em.mood { width: 7px; height: 7px; border-radius: 50%; background: var(--mint-deep); font-style: normal; }
+.month button em.mood.h { box-shadow: 0 0 0 1.5px var(--pink-deep); }
+.month button em.mood.y { box-shadow: 0 0 0 1.5px var(--mint-deep); }
 .month button i { position: absolute; bottom: 4px; display: flex; gap: 2px; }
 .month button i b { width: 5px; height: 5px; border-radius: 50%; }
 .month button i .me { background: var(--pink-deep); } .month button i .you { background: var(--mint-deep); }
@@ -232,12 +235,21 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .lock { font-size: 11px; color: var(--muted); line-height: 1.6; margin: 0; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pair label { font-size: 11px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
-.daydetail { margin: 8px 18px 4px; padding: 16px 18px 18px; border-radius: 22px; background: var(--surface); display: flex; flex-direction: column; gap: 12px; }
+.daydetail { margin: 8px 18px 4px; display: flex; flex-direction: column; gap: 10px; }
+.dd-date { font-size: 13px; font-weight: 800; color: var(--muted); padding: 0 4px; }
+.dd-p { padding: 14px 16px 16px; border-radius: 22px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; --cbg: var(--surface); }
+.dd-who { display: flex; align-items: center; gap: 8px; color: var(--fg); }
+.dd-who svg { width: 28px; height: 28px; }
 .dd-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 800; color: var(--muted); }
 .dd-head > span:first-child { flex: 1; }
 .dd-badge { background: var(--pink); color: var(--on-pink); border-radius: 99px; padding: 3px 11px; font-size: 12px; }
 .dd-level { display: flex; align-items: center; gap: 12px; }
-.dd-level svg { width: 56px; height: 56px; flex: none; }
+.dd-level .pose svg { width: 64px; height: 72px; flex: none; display: block; }
+.dd-level .lv { display: flex; flex-direction: column; gap: 2px; }
+.dd-patrow { display: flex; align-items: center; gap: 10px; }
+.dd-patrow .pat { flex: 1; }
+.dd-patpic svg { width: 92px; height: 56px; display: block; fill: initial; }
+.dd-patpic.sm svg { width: 54px; height: 34px; }
 .dd-level b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dd-level span { font-size: 18px; font-weight: 800; }
 .dd-tags { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -319,3 +331,15 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .seg4 button.has-new::after { content: ""; position: absolute; top: 5px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--pink-deep); }
 .pat-banner.news { cursor: default; }
 .news-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on-pink); flex: none; }
+
+/* ひとみ・ゆうきの人型を置く場所 */
+.ask-pic { --cbg: var(--screen); display: flex; justify-content: center; margin: 4px 0 10px; }
+.ask-pic svg { width: 96px; height: 110px; }
+.ask-note { text-align: center; font-weight: 800; color: var(--pink-deep); min-height: 1.4em; margin: 6px 0; }
+.chat-empty { --cbg: var(--screen); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 0; color: var(--muted); font-size: 13px; }
+.chat-empty svg { width: 96px; height: 100px; }
+.ans.wait { display: flex; align-items: center; gap: 10px; }
+.ans.wait svg { width: 56px; height: 60px; flex: none; --cbg: var(--surface); }
+#chat-av { background: none; }
+#chat-av svg { width: 34px; height: 34px; }
+.mi-av svg { width: 30px; height: 30px; }

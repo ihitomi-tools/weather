@@ -4,7 +4,7 @@ import { loadWeather } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
-import { canRecord as canRecordNow, unseenPats } from './share.js';
+import { unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
@@ -12,6 +12,7 @@ import { sectionKeys, newFlags } from './news.js';
 import { moonScene, VARIANTS, phaseName } from './moon.js';
 import { analyzeMoon, rolesOf, seasonOf, specialOf, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
+import * as Ch from './chara.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -30,9 +31,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-20';
+const VERSION = '2026.10.20-21';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -80,7 +81,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], days: new Map(), dayOwners: new Set(), pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodAsked: false, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -187,6 +188,7 @@ function startRecording(view) {
 }
 
 function lock() {
+  state.sheetClose = null;
   if (DEMO) { closeSheet(); return; } // デモ中は、天気の画面に戻さない
   picked = [];
   recording = null;
@@ -240,6 +242,7 @@ async function enter() {
   screen('app');
   setView(state.view);
   if (state.view === 'home') moonEnterHome();
+  moodAskMaybe();
 }
 
 async function useKey(bytes) {
@@ -349,27 +352,30 @@ function startWatching() {
     renderAll();
   }));
 
-  state.unsubs.push(s.watchDays(async (docs) => {
+  state.unsubs.push(s.watchDays(async (rows) => {
     const my = ++seq.dy;
-    const next = new Map();
-    const owners = new Set();
+    const by = new Map();
+    const ids = new Map();
     const legacy = [];
-    for (const d of docs) {
+    for (const d of rows) {
       const ck = `d:${d.id}:${d.iv}`;
       if (!cache.has(ck)) cache.set(ck, await decrypt('days', d));
       const p = cache.get(ck);
-      if (d.owner) owners.add(d.owner);
-      if (p && p.d) {
-        next.set(p.d, p);
+      const owner = d.owner || (p && p.by);
+      if (p && p.d && owner) {
+        if (!by.has(owner)) by.set(owner, new Map());
+        by.get(owner).set(p.d, p);
+        ids.set(`${owner}|${p.d}`, d.id);
         if (!d.owner && p.by === myUid()) legacy.push(d.id); // 古い版で作った自分の記録
       }
     }
     if (my !== seq.dy) return;
-    state.days = next;
-    state.dayOwners = owners;
+    state.daysBy = by;
+    state.dayDocs = ids;
     state.loaded.dy = true;
     renderAll();
-    if (legacy.length && canRecord()) s.claimDays(legacy).catch(() => {});
+    if (legacy.length) s.claimDays(legacy).catch(() => {});
+    moodAskMaybe();
   }));
 
   state.unsubs.push(s.watchStock(async (docs) => {
@@ -567,7 +573,22 @@ function eventItem(ev, withDelete) {
   return li;
 }
 
-const periodDays = () => [...state.days.values()].filter((r) => r.p).map((r) => r.d);
+// 調子・気分の記録は、人ごと。生理は、ひとみ(飛ぶ人の役)の分だけを数える。
+const recsOf = (uid) => state.daysBy.get(uid) || new Map();
+const myRecs = () => recsOf(myUid());
+const allDays = () => new Map([...state.daysBy.entries()].flatMap(([u, m]) => [...m.entries()].map(([d, r]) => [`${u}|${d}`, r])));
+const periodDays = () => [...state.daysBy.values()].flatMap((m) => [...m.values()]).filter((r) => r.p).map((r) => r.d);
+const myRole = () => moonRoles()[myUid()] || 'h';
+const roleOf = (uid) => (uid === myUid() ? myRole() : (myRole() === 'h' ? 'y' : 'h')); // ふたりだけのアプリ
+const isHer = () => myRole() === 'h';
+const svgEl = (str) => { const t = document.createElement('template'); t.innerHTML = str.trim(); return t.content.firstElementChild; };
+const hasMoodRec = (r) => !!r && !!(r.l || (r.t && r.t.length) || r.m);
+// 記録のある人(ひとみ→ゆうきの順)
+function peopleOf() {
+  const ids = new Set([myUid(), partnerUid(), ...state.daysBy.keys()].filter(Boolean));
+  return [...ids].sort((a, b) => (roleOf(a) === 'h' ? 0 : 1) - (roleOf(b) === 'h' ? 0 : 1));
+}
+const nameOfUid = (uid) => (uid === myUid() ? myName() : partnerName());
 const mdLabel = (key) => { const d = parseYmd(key); return `${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; };
 
 function renderNextMoon() {
@@ -586,8 +607,8 @@ function moodItem(r) {
   const detail = [...(r.t || []), r.m].filter(Boolean).join('、');
   const d = parseYmd(r.d);
   return h('li', { class: 'item' },
-    h('span', { style: 'display:flex;flex:none;width:26px;height:26px' }, r.l ? moonIcon(r.l) : h('span', { class: 'dot both' })),
-    h('div', { class: 't' }, r.l ? `調子 ${r.l}/5` : '記録', h('small', {}, detail)),
+    h('span', { class: 'mi-av', style: 'display:flex;flex:none;width:30px;height:30px' }, svgEl(Ch.bust(roleOf(r.u), 30))),
+    h('div', { class: 't' }, `${nameOfUid(r.u)}  ${r.l ? `調子 ${r.l}/5` : '記録'}`, h('small', {}, detail)),
     h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`));
 }
 
@@ -663,7 +684,7 @@ function renderHome() {
   renderBirthdayHome();
   renderMoon();
   renderNextMoon();
-  const recent = [...state.days.values()].filter((r) => r.l || (r.t && r.t.length) || r.m).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 3);
+  const recent = peopleOf().flatMap((u) => [...recsOf(u).values()].filter(hasMoodRec).map((r) => ({ ...r, u }))).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 4);
   $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
   const today = ymd(new Date());
   const upcoming = state.events.filter((e) => e.date >= today).sort(byDate).slice(0, 5);
@@ -673,7 +694,7 @@ function renderHome() {
 function renderChat() {
   const chat = $('#chat');
   $('#chat-title').textContent = partnerName();
-  $('#chat-av').textContent = partnerName().slice(0, 1);
+  $('#chat-av').replaceChildren(svgEl(Ch.bust(myRole() === 'h' ? 'y' : 'h', 34)));
   const nearBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
   const nodes = [];
   let lastDay = '';
@@ -700,7 +721,7 @@ function renderChat() {
       del,
       h('div', { class: 'meta' }, mine && lastRead === m ? h('span', {}, '既読', h('br')) : null, `${pad(d.getHours())}:${pad(d.getMinutes())}`)));
   });
-  if (!nodes.length) nodes.push(h('span', { class: 'dayline' }, 'メッセージはまだありません'));
+  if (!nodes.length) nodes.push(h('div', { class: 'chat-empty' }, svgEl(Ch.pair('wave')), h('span', {}, 'メッセージはまだありません')));
   chat.replaceChildren(...nodes);
   if (nearBottom || state.view === 'chat') chat.scrollTop = chat.scrollHeight;
   markRead();
@@ -725,7 +746,6 @@ function markRead() {
 }
 
 // 選んだ日に気分の記録があれば、内容を大きく見せる
-const canRecord = () => canRecordNow(state.dayOwners, myUid());
 
 const heartIcon = () => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -748,39 +768,85 @@ async function togglePat(date, mine) {
   } catch (e) { /* 送れなかったときは、押す前の表示のまま */ }
 }
 
-// 選んだ日に気分の記録があれば、内容を大きく見せる
+// 調子のポーズ: 1 しんどい=雨雲の下 / 2 いまいち=ため息 / 3 ふつう=立つ / 4 まあまあ=手を振る / 5 元気=ジャンプ
+const MOOD_POSE = [null, 'rain', 'sigh', 'stand', 'wave', 'jump'];
+
+// 選んだ日の、ふたりの記録を、同じ大きさで並べる(ひとみ → ゆうきの順)
 function renderDayDetail(date) {
   const box = $('#day-detail');
-  const rec = state.days.get(date);
-  const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
-  if (!hasMood) { box.hidden = true; box.replaceChildren(); return; }
   const d = parseYmd(date);
-  const level = LEVELS.find((x) => x[1] === rec.l);
-  const mineRecord = canRecord();
+  const blocks = peopleOf().map((u) => ({ u, rec: recsOf(u).get(date) })).filter((x) => hasMoodRec(x.rec));
+  if (!blocks.length) { box.hidden = true; box.replaceChildren(); return; }
   const pats = state.pats.get(date) || [];
-  let edit = null;
-  if (mineRecord) {
-    edit = h('button', { class: 'ghost sm', type: 'button' }, '編集');
-    edit.addEventListener('click', () => openDaySheet(date));
-  }
-  let patArea = null;
-  if (!mineRecord) {
-    const mine = pats.find((p) => p.by === myUid());
-    const btn = h('button', { class: `pat${mine ? ' on' : ''}${state.justPat === date ? ' pop' : ''}`, type: 'button', 'aria-pressed': String(!!mine) }, heartIcon(), mine ? 'よしよししたよ' : 'よしよし');
-    btn.addEventListener('click', () => togglePat(date, mine));
-    patArea = btn;
-    state.justPat = null;
-  } else if (pats.length) {
-    patArea = h('div', { class: 'stack' }, pats.sort((a, b) => b.at - a.at).map((p) => h('div', { class: 'dd-pat' }, heartIcon(), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
-  }
-  box.replaceChildren(...[
-    h('div', { class: 'dd-head' }, h('span', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})${mineRecord ? '' : `  ・ ${partnerName()}の記録`}`), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
-    level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, moonIcon(level[1]), h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0])) : null,
-    rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
-    rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
-    patArea,
-  ].filter(Boolean));
+  const nodes = [h('div', { class: 'dd-date' }, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`)];
+  blocks.forEach(({ u, rec }) => {
+    const mine = u === myUid();
+    const role = roleOf(u);
+    const level = LEVELS.find((x) => x[1] === rec.l);
+    let edit = null;
+    if (mine) { edit = h('button', { class: 'ghost sm', type: 'button' }, '編集'); edit.addEventListener('click', () => openDaySheet(date)); }
+    let patArea = null;
+    // ひとみ→ゆうきは、ひざまくら。ゆうき→ひとみは、あたまをなでる
+    const patPic = (from) => svgEl(from === 'h' ? Ch.lapPat() : Ch.pair('pat'));
+    if (!mine) {
+      const sent = pats.find((p) => p.by === myUid());
+      const btn = h('button', { class: `pat${sent ? ' on' : ''}${state.justPat === date ? ' pop' : ''}`, type: 'button', 'aria-pressed': String(!!sent) }, heartIcon(), sent ? 'よしよししたよ' : 'よしよし');
+      btn.addEventListener('click', () => togglePat(date, sent));
+      patArea = h('div', { class: 'dd-patrow' }, h('span', { class: 'dd-patpic' }, patPic(roleOf(myUid()))), btn);
+      state.justPat = null;
+    } else {
+      const got = pats.filter((p) => p.by !== myUid()).sort((a, b) => b.at - a.at);
+      if (got.length) patArea = h('div', { class: 'stack' }, got.map((p) => h('div', { class: 'dd-pat' }, h('span', { class: 'dd-patpic sm' }, patPic(roleOf(p.by))), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
+    }
+    nodes.push(h('div', { class: 'dd-p' },
+      h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
+      level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lv' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
+      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', {}, t))) : null,
+      rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
+      patArea));
+  });
+  box.replaceChildren(...nodes);
   box.hidden = false;
+}
+
+// 今日の調子が、まだのとき、アプリを開いたタイミングで聞く。✕で閉じたら、その日はもう出さない。
+function moodAskMaybe() {
+  if (!state.loaded.dy || !state.user || !state.key || $('#app').hidden || !$('#sheet').hidden) return;
+  const today = ymd(new Date());
+  if (LS.get(K.moodAsk) === today) return;
+  const mine = myRecs().get(today);
+  if (mine && mine.l) return;
+  openMoodAsk(today);
+}
+
+function openMoodAsk(date) {
+  const role = myRole();
+  const pic = h('div', { class: 'ask-pic' }, svgEl(Ch.figure(role, 'stand')));
+  const note = h('p', { class: 'ask-note' }, '');
+  const err = h('p', { class: 'error', role: 'alert' });
+  const scale = h('div', { class: 'scale' });
+  LEVELS.forEach(([label, lv]) => {
+    const b = h('button', { type: 'button' }, moonIcon(lv), label);
+    b.style.setProperty('--c', `var(--m${lv})`);
+    b.addEventListener('click', async () => {
+      pic.replaceChildren(svgEl(Ch.figure(role, MOOD_POSE[lv])));
+      $$('button', scale).forEach((x) => { x.disabled = true; });
+      try {
+        const cur = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
+        await writeDays([{ date, rec: { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '' } }]);
+        state.sheetClose = null;
+        note.textContent = 'カレンダーに入れたよ';
+        setTimeout(closeSheet, 1300);
+      } catch (e) {
+        err.textContent = SAVE_ERROR;
+        $$('button', scale).forEach((x) => { x.disabled = false; });
+      }
+    });
+    scale.append(b);
+  });
+  state.sheetClose = () => LS.set(K.moodAsk, date);
+  openSheet(h('h2', {}, '今日の調子は?'), pic, scale, note, err,
+    h('p', { class: 'lock' }, '気分やメモは、カレンダーから入れられます。「とじる」と、今日はもう聞きません。'));
 }
 
 // 他の人から届いた「よしよし」を、ホームに知らせる
@@ -788,7 +854,7 @@ function renderPatBanner() {
   const b = $('#pat-banner');
   const all = [...state.pats.entries()].flatMap(([d, list]) => list.map((p) => ({ ...p, d })));
   const unseen = unseenPats(all, myUid(), Number(LS.get(K.patSeen)) || 0);
-  if (!unseen.length || !canRecord()) { b.hidden = true; return; }
+  if (!unseen.length) { b.hidden = true; return; }
   b.replaceChildren(heartIcon(), `${partnerName()}から よしよしが届いています(${unseen.length}件)`);
   b.hidden = false;
   b.onclick = () => {
@@ -807,26 +873,28 @@ function renderCalendar() {
   const count = new Date(y, m + 1, 0).getDate();
   const todayKey = ymd(new Date());
   const cyc = predict(periodDays(), todayKey);
+  const people = peopleOf();
   const cells = [...WEEK].map((w) => h('div', { class: 'w' }, w));
   for (let i = 0; i < first; i++) cells.push(h('div'));
   for (let d = 1; d <= count; d++) {
     const key = `${y}-${pad(m + 1)}-${pad(d)}`;
     const kinds = new Set(state.events.filter((e) => e.date === key).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [kindOf(e)])));
     const dots = [...kinds].map((k) => h('b', { class: k }));
-    const rec = state.days.get(key);
-    const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', rec && rec.p ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
-    const hasMood = rec && (rec.l || (rec.t && rec.t.length) || rec.m);
+    const recs = people.map((u) => ({ u, rec: recsOf(u).get(key) }));
+    const isPeriod = recs.some((x) => x.rec && x.rec.p);
+    const classes = [key === todayKey ? 'today' : '', key === sel ? 'sel' : '', isPeriod ? 'period' : cyc.days.has(key) ? 'future' : ''].filter(Boolean).join(' ');
+    const moods = recs.filter((x) => hasMoodRec(x.rec));
     const hasPat = state.pats.has(key);
     const hasCake = birthdayOn(parseYmd(key));
     cells.push(h('button', {
       type: 'button',
       class: classes,
       onclick: () => { state.cal.sel = key; $('#ev-date').value = key; renderCalendar(); },
-    }, String(d), hasMood ? h('em', { class: 'mood', style: rec.l ? `background:var(--m${rec.l})` : null }) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
+    }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
-  $('.actions').hidden = !canRecord();
+  $('#past-record').hidden = !isHer();
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
@@ -892,11 +960,14 @@ function buildChat() {
 
 /* ================= 設定 ================= */
 function openSheet(...nodes) {
-  $('#sheet-body').replaceChildren(...nodes);
+  $('#sheet-body').replaceChildren(...nodes.filter(Boolean));
   $('#sheet').hidden = false;
   moonPause();
 }
 function closeSheet() {
+  const onClose = state.sheetClose;
+  state.sheetClose = null;
+  if (onClose) onClose();
   state.pastRender = null;
   state.sheetRender = null;
   $('#sheet').hidden = true;
@@ -913,20 +984,20 @@ async function writeDays(changes) {
   const saves = [];
   const removes = [];
   for (const { date, rec } of changes) {
-    const id = await C.dayId(state.keyBytes, date);
-    if (!rec || emptyRec(rec)) removes.push(id);
-    else saves.push({ id, payload: await C.encryptJson(state.key, 'days', { ...rec, d: date, by: myUid() }) });
+    const old = state.dayDocs.get(`${myUid()}|${date}`); // 古い版で作った記録は、同じ書類に上書きする
+    if (!rec || emptyRec(rec)) { if (old) removes.push(old); continue; }
+    const id = old || await C.dayId(state.keyBytes, `${date}|${myUid()}`);
+    saves.push({ id, payload: await C.encryptJson(state.key, 'days', { ...rec, d: date, by: myUid() }) });
   }
   // 通信できないときは、端末に保存して先に進む(つながったら送られる)。拒否されたときは例外になる。
   if (saves.length) await withTimeout(state.store.saveDays(saves), 5000);
   if (removes.length) await withTimeout(state.store.removeDays(removes), 5000);
 }
 
-const SAVE_ERROR = '保存できませんでした。通信と、アクセスルールの更新(days の許可)を確認してください。';
+const SAVE_ERROR = '保存できませんでした。通信を確認してください。';
 
 function openDaySheet(date) {
-  if (!canRecord()) return;
-  const rec = state.days.get(date) || { p: false, l: 0, t: [], m: '' };
+  const rec = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
   const draft = { p: !!rec.p, l: rec.l || 0, t: [...(rec.t || [])] };
   const d = parseYmd(date);
 
@@ -974,7 +1045,7 @@ function openDaySheet(date) {
 
   openSheet(
     h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`),
-    h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日は生理', h('small', {}, '連続した日が、ひとまとまりになります')), period),
+    isHer() ? h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日は生理', h('small', {}, '連続した日が、ひとまとまりになります')), period) : null,
     h('div', {}, h('p', { class: 'lab' }, '今日の調子(新月 → 満月)'), scale),
     h('div', {}, h('p', { class: 'lab' }, '気分(いくつでも)'), tags),
     memo,
@@ -985,7 +1056,7 @@ function openDaySheet(date) {
 }
 
 function openPastSheet() {
-  if (!canRecord()) return;
+  if (!isHer()) return;
   const start = h('input', { type: 'date', 'aria-label': 'はじまった日' });
   const end = h('input', { type: 'date', 'aria-label': 'おわった日' });
   const err = h('p', { class: 'error', role: 'alert' });
@@ -1001,7 +1072,7 @@ function openPastSheet() {
         const changes = [];
         for (let n = dayNum(r.start); n <= dayNum(r.end); n++) {
           const k = keyOf(n);
-          changes.push({ date: k, rec: { ...(state.days.get(k) || {}), p: false } });
+          changes.push({ date: k, rec: { ...(myRecs().get(k) || {}), p: false } });
         }
         try { await writeDays(changes); } catch (e) { err.textContent = SAVE_ERROR; }
       });
@@ -1020,7 +1091,7 @@ function openPastSheet() {
     const changes = [];
     for (let n = a; n <= b; n++) {
       const k = keyOf(n);
-      changes.push({ date: k, rec: { ...(state.days.get(k) || { l: 0, t: [], m: '' }), p: true } });
+      changes.push({ date: k, rec: { ...(myRecs().get(k) || { l: 0, t: [], m: '' }), p: true } });
     }
     try { await writeDays(changes); start.value = ''; end.value = ''; } catch (e) { err.textContent = SAVE_ERROR; }
   });
@@ -1080,7 +1151,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'css/moon.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'css/moon.css',
 ];
 
 async function refreshApp(btn) {
@@ -1152,7 +1223,7 @@ function renderSettings() {
   const exportBtn = h('button', { class: 'act', type: 'button' }, '書き出す');
   exportBtn.addEventListener('click', () => {
     if (!confirm('暗号化されていない、読める形のファイルが端末に保存されます。人に見られない場所で保管してください。')) return;
-    const text = buildExport({ me: myName(), partner: partnerName(), myUid: myUid(), messages: state.messages.map((m) => ({ ...m, ts: m.ts && m.ts.toMillis ? m.ts.toMillis() : m.ts })), events: state.events, days: state.days, qcards: state.qcards, answers: state.answers, boxes: state.boxes, items: state.items });
+    const text = buildExport({ me: myName(), partner: partnerName(), myUid: myUid(), messages: state.messages.map((m) => ({ ...m, ts: m.ts && m.ts.toMillis ? m.ts.toMillis() : m.ts })), events: state.events, days: allDays(), qcards: state.qcards, answers: state.answers, boxes: state.boxes, items: state.items });
     const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })), download: `記録の書き出し-${ymd(new Date())}.txt` });
     document.body.append(a);
     a.click();
@@ -1352,7 +1423,7 @@ function answersBlock(n) {
   const theirs = otherAnswer(n);
   const bubble = (a, cls, who) => h('div', { class: `ans ${cls}` }, h('small', {}, who), a.text, h('span', { class: 'meta' }, describeAnswer(a)));
   if (mine && theirs) return [bubble(mine, 'me flip-in', myName()), bubble(theirs, 'you flip-in', partnerName())];
-  if (mine) return [bubble(mine, 'me', myName()), h('div', { class: 'ans wait' }, `${partnerName()}の答えを待っています`)];
+  if (mine) return [bubble(mine, 'me', myName()), h('div', { class: 'ans wait' }, svgEl(Ch.pair('think')), `${partnerName()}の答えを待っています`)];
   if (theirs) return [h('div', { class: 'ans wait' }, `${partnerName()}はもう答えました。あなたが答えると、ふたり同時に見られます`)];
   return [];
 }
@@ -1640,7 +1711,7 @@ function readSeen() {
 function renderBadges() {
   const L = state.loaded;
   if (!(L.msg && L.ev && L.qcards && L.answers && L.bx && L.mk && L.dy && L.pt) || !myUid()) return;
-  const keys = sectionKeys({ me: myUid(), messages: state.messages, qcards: state.qcards, answers: state.answers, boxes: state.boxes, marks: state.marks, items: state.items, events: state.events, days: state.days, pats: state.pats, now: Date.now() });
+  const keys = sectionKeys({ me: myUid(), messages: state.messages, qcards: state.qcards, answers: state.answers, boxes: state.boxes, marks: state.marks, items: state.items, events: state.events, days: allDays(), pats: state.pats, now: Date.now() });
   let seen = readSeen();
   let dirty = false;
   if (!seen) { seen = keys; dirty = true; } // 初めては、いまあるものを「見た」ことにする
@@ -1824,7 +1895,7 @@ function init() {
   document.addEventListener('click', () => { if (state.delId && Date.now() - state.delAt > 700) { state.delId = null; renderChat(); } });
 
   if (DEMO) {
-    window.addEventListener('demo-tick', () => { moonSigReset(); renderAll(); });
+    window.addEventListener('demo-tick', () => { moonSigReset(); renderAll(); moodAskMaybe(); });
     enter();
   } else if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
