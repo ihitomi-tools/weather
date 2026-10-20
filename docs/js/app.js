@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-27';
+const VERSION = '2026.10.20-28';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1427,9 +1427,17 @@ function answerForm(card) {
   let edits = 0;
   const box = h('textarea', { rows: '4', maxlength: '500', placeholder: 'あなたの答え', 'aria-label': 'あなたの答え' });
   box.value = draft.get(card.n) || '';
+  // 「書き直し」は、消した回数ではなく、続けて3文字以上まとめて消した回数(連続して消している間は1回)
+  let prevLen = box.value.length;
+  let removed = 0;
+  let counted = false;
   box.addEventListener('input', (e) => {
     draft.set(card.n, box.value);
-    if (e.inputType && e.inputType.startsWith('delete')) edits += 1;
+    if (e.inputType && e.inputType.startsWith('delete')) {
+      removed += Math.max(0, prevLen - box.value.length);
+      if (!counted && removed >= 3) { edits += 1; counted = true; }
+    } else { removed = 0; counted = false; }
+    prevLen = box.value.length;
     send.disabled = !box.value.trim();
   });
   const err = h('p', { class: 'error', role: 'alert' });

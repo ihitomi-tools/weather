@@ -177,10 +177,16 @@ await page.click('#q-area form button[type=submit]');
 await page.waitForFunction(() => document.querySelector('#q-text').textContent === '最近うれしかったことは?');
 check('入力したお題がカードになる(自分の色)', (await page.getAttribute('#qcard', 'data-by')) === 'me');
 check('お題は暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.qc)).includes('うれしかった'));
+await page.click('#q-area textarea');
+await page.keyboard.type('あいうえお');
+await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); // 2文字だけ消しても、書き直しに数えない
+await page.keyboard.type('か');
+await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); // 続けて3文字消すと、1回
 await page.fill('#q-area textarea', '友だちと会えたこと');
 await page.click('#q-area form button[type=submit]');
 await page.waitForSelector('#q-area .ans.me');
 check('答えたあとは、相手を待つ表示(相手の答えは見えない)', (await page.textContent('#q-area')).includes('ゆうきの答えを待っています') && (await page.locator('#q-area .ans.you').count()) === 0);
+check('書き直しは、まとめて消した回数で数える(バックスペースの回数ではない)', (await page.textContent('#q-area .ans.me .meta')).includes('書き直し1回'));
 check('答えは暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.an)).includes('友だち'));
 const partnerAns = await enc('answers', { n: 1, text: '新しい本を買った', at: Date.now(), t0: Date.now() - 600000, edits: 3 });
 await page.evaluate((doc) => { window.__fake.an.push({ id: 'pa1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerAns);
