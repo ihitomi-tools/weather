@@ -214,8 +214,16 @@ await page.locator('#sheet-body button', { hasText: '似たものを除いて追
 await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 4);
 check('「似たものを除いて追加」で、似ていない分だけ入る', true);
 await page.fill('#sheet-body input[type=text]', '');
+await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', 'dream');
+await page.fill('#sheet-body input[type=text]', '十年後は、どうしていたい?');
+await page.locator('#sheet-body button', { hasText: /^追加$/ }).click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 5);
+check('カテゴリを付けて足せる。一覧に名前が出る', (await page.textContent('#sheet-body')).includes('将来・夢'));
+await page.locator('#sheet-body .chips button', { hasText: '将来・夢' }).click();
+check('カテゴリで絞り込める', (await page.locator('#sheet-body .sitem').count()) === 1);
+await page.locator('#sheet-body .chips button', { hasText: 'ぜんぶ' }).click();
 await page.click('#sheet-close');
-check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '4');
+check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '5');
 
 // カード
 await page.click('#talk-seg [data-t="c"]');
@@ -354,8 +362,12 @@ await page.click('.tab[data-v="cal"]');
 await page.locator('#month button', { hasText: /^5$/ }).click();
 await page.click('#day-record');
 await page.waitForSelector('#sheet:not([hidden]) .scale');
-check('日の記録シートに、5つの月と気分のタグが出る', (await page.locator('#sheet .scale button').count()) === 5 && (await page.locator('#sheet .tags button').count()) === 9);
+check('日の記録シートに、5つの月と気分のタグが出る', (await page.locator('#sheet .scale button').count()) === 5 && (await page.locator('#sheet .tags button').count()) === 17);
 await page.locator('#sheet .sw').check();
+check('生理のスイッチを入れると、生理まわりのタグが出る', (await page.locator('#sheet .tags button').count()) === 23);
+await page.fill('#sheet input[aria-label="自分のタグを足す"]', 'ねむねむ');
+await page.locator('#sheet button', { hasText: /^足す$/ }).click();
+check('自分でタグを足せる(選んだ状態で並ぶ)', (await page.locator('#sheet .tags button[aria-pressed="true"]', { hasText: 'ねむねむ' }).count()) === 1);
 await page.locator('#sheet .scale button', { hasText: 'いまいち' }).click();
 await page.locator('#sheet .tags button', { hasText: 'おなかが痛い' }).click();
 await page.fill('#sheet textarea', 'テストメモ');

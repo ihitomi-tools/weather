@@ -88,3 +88,11 @@ test('開封日は端末の0時', () => {
   assert.equal(new Date(midnightMs('2026-12-01')).getHours(), 0);
   assert.equal(new Date(midnightMs('2026-12-01')).getDate(), 1);
 });
+
+test('前のお題と同じカテゴリは、続けて選ばない(2台で同じ結果)', () => {
+  const s = [{ id: 'a', cat: 'daily' }, { id: 'b', cat: 'daily' }, { id: 'c', cat: 'mem' }];
+  for (let n = 1; n <= 20; n++) assert.equal(pickStock(s, n, 'daily').id, 'c');
+  assert.equal(pickStock([{ id: 'a', cat: 'daily' }], 3, 'daily').id, 'a'); // ほかに無ければ、そのまま選ぶ
+  assert.equal(pickStock([...s].reverse(), 7, 'daily').id, pickStock(s, 7, 'daily').id); // 並びがちがっても同じ
+  assert.equal(pickStock(s, 5).id, pickStock([...s].reverse(), 5).id); // カテゴリを使わないときは、今まで通り
+});

@@ -34,11 +34,17 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-29';
+const VERSION = '2026.10.20-30';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
-const MOOD_TAGS = ['元気', '眠い', 'イライラ', '不安', '落ち込み', 'おなかが痛い', '頭が痛い', 'だるい', 'うれしい'];
+// 気分のタグ。気持ち・からだ・(生理のスイッチを入れた日だけ)生理まわり。ほかに、自分で足せる
+const TAG_GROUPS = [
+  ['気持ち', ['うれしい', 'たのしい', 'おだやか', 'わくわく', '元気', 'さみしい', 'イライラ', '不安', '落ち込み', '疲れた']],
+  ['からだ', ['眠い', 'だるい', '頭が痛い', 'おなかが痛い', '肩こり', '食欲がない', 'よく眠れた']],
+];
+const PERIOD_TAGS = ['生理痛', '量が多い', '量が少ない', '腰が痛い', '胸が張る', 'むくみ'];
+const PRESET_TAGS = new Set([...TAG_GROUPS.flatMap((g) => g[1]), ...PERIOD_TAGS]);
 const LIT = ['', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 1 12 3Z', 'M12 3A9 9 0 0 0 12 21Z', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 0 12 3Z', 'M12 3A9 9 0 1 0 12 21A9 9 0 1 0 12 3Z'];
 
 function moonIcon(level) {
@@ -61,6 +67,10 @@ const STAMPS = [
   '☀️', '☁️', '☔', '🌈', '⛄', '🌙', '⭐', '🔥',
   '🐱', '🐶', '🐰', '🐻', '🚃', '🏠', '🛏️', '📞',
 ];
+// お題のカテゴリ(足す人が選ぶ。コードに書いてあるのは名前だけで、言葉の判定はしない)
+const CATS = [['fav', '好きな○○'], ['mem', '思い出'], ['dream', '将来・夢'], ['daily', '日常'], ['us', 'ふたりのこと'], ['if', 'もしも'], ['work', '仕事・学び']];
+const catLabel = (id) => { const c = CATS.find((x) => x[0] === id); return c ? c[1] : ''; };
+const catSelect = (label = 'カテゴリ') => h('select', { 'aria-label': label }, h('option', { value: '' }, 'カテゴリなし'), ...CATS.map(([id, nm]) => h('option', { value: id }, nm)));
 const EXPIRE_MS = { '24h': 24 * 3600e3, '7d': 7 * 24 * 3600e3, off: 0 };
 
 // 子要素は textContent で入れる(相手が送った文字をHTMLとして解釈しない)
@@ -390,7 +400,7 @@ function startWatching() {
       const ck = `s:${d.id}:${d.iv}`;
       if (!cache.has(ck)) cache.set(ck, await decrypt('stock', d));
       const p = cache.get(ck);
-      if (p && p.text) out.push({ id: d.id, text: p.text, from: d.from, at: p.at || 0 });
+      if (p && p.text) out.push({ id: d.id, text: p.text, from: d.from, at: p.at || 0, cat: p.cat || null });
     }
     if (my !== seq.st) return;
     state.stock = out.sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
@@ -406,7 +416,7 @@ function startWatching() {
       const ck = `q:${d.id}:${d.iv}`;
       if (!cache.has(ck)) cache.set(ck, await decrypt('qcards', d));
       const p = cache.get(ck);
-      if (p && p.text) out.push({ id: d.id, n: d.n, text: p.text, stockId: p.stockId || null, date: p.date, by: p.by || d.from });
+      if (p && p.text) out.push({ id: d.id, n: d.n, text: p.text, stockId: p.stockId || null, date: p.date, by: p.by || d.from, cat: p.cat || null });
     }
     if (my !== seq.qc) return;
     state.qcards = out.sort((a, b) => a.n - b.n);
@@ -1045,16 +1055,45 @@ function openDaySheet(date) {
     scale.append(b);
   });
 
-  const tags = h('div', { class: 'tags' });
-  MOOD_TAGS.forEach((t) => {
+  // 気分のタグ: 気持ち・からだ・(生理の日だけ)生理まわり・よく使うタグ・自分で足す
+  const tags = h('div', { class: 'stack' });
+  const MAX_TAGS = 12;
+  const freq = new Map();
+  [...myRecs().values()].forEach((r) => (r.t || []).forEach((t) => { if (!PRESET_TAGS.has(t)) freq.set(t, (freq.get(t) || 0) + 1); }));
+  const chip = (t) => {
     const b = h('button', { type: 'button', 'aria-pressed': String(draft.t.includes(t)) }, t);
     b.addEventListener('click', () => {
-      const i = draft.t.indexOf(t);
-      if (i >= 0) draft.t.splice(i, 1); else draft.t.push(t);
-      b.setAttribute('aria-pressed', String(i < 0));
+      const k = draft.t.indexOf(t);
+      if (k >= 0) draft.t.splice(k, 1);
+      else if (draft.t.length < MAX_TAGS) draft.t.push(t);
+      b.setAttribute('aria-pressed', String(draft.t.includes(t)));
     });
-    tags.append(b);
-  });
+    return b;
+  };
+  const group = (title, list) => h('div', {}, h('p', { class: 'lab' }, title), h('div', { class: 'tags' }, list.map(chip)));
+  const customInput = h('input', { type: 'text', maxlength: '10', placeholder: '自分のタグを足す(10文字まで)', 'aria-label': '自分のタグを足す' });
+  const customAdd = h('button', { class: 'ghost sm', type: 'button' }, '足す');
+  const addCustom = () => {
+    const t = customInput.value.trim().slice(0, 10);
+    if (!t) return;
+    customInput.value = '';
+    if (!draft.t.includes(t) && draft.t.length < MAX_TAGS) draft.t.push(t);
+    renderTags();
+  };
+  customAdd.addEventListener('click', addCustom);
+  customInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
+  function renderTags() {
+    const usedCustom = [...new Set([...[...freq.entries()].sort((x, y) => y[1] - x[1]).map((x) => x[0]).slice(0, 12), ...draft.t.filter((t) => !PRESET_TAGS.has(t))])];
+    const showPeriod = isHer() && (draft.p || draft.t.some((t) => PERIOD_TAGS.includes(t)));
+    tags.replaceChildren(...[
+      ...TAG_GROUPS.map(([title, list]) => group(title, list)),
+      showPeriod ? group('生理まわり', PERIOD_TAGS) : null,
+      usedCustom.length ? group('よく使うタグ', usedCustom) : null,
+      h('div', { class: 'tagadd' }, customInput, customAdd),
+    ].filter(Boolean));
+  }
+  period.addEventListener('change', renderTags);
+  renderTags();
 
   const memo = h('textarea', { maxlength: '200', placeholder: 'ひとことメモ', 'aria-label': 'ひとことメモ' });
   memo.value = rec.m || '';
@@ -1076,7 +1115,7 @@ function openDaySheet(date) {
     h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日(${WEEK[d.getDay()]})`),
     isHer() ? h('div', { class: 'srow' }, h('div', { class: 't' }, 'この日は生理', h('small', {}, '連続した日が、ひとまとまりになります')), period) : null,
     h('div', {}, h('p', { class: 'lab' }, '今日の調子(新月 → 満月)'), scale),
-    h('div', {}, h('p', { class: 'lab' }, '気分(いくつでも)'), tags),
+    h('div', {}, h('p', { class: 'lab' }, '気分(いくつでも・12個まで)'), tags),
     memo,
     h('p', { class: 'lock' }, '調子・気分・メモは、ふたりに共有されます。'),
     err,
@@ -1403,15 +1442,16 @@ function renderBirthdayHome() {
 }
 
 /* ---- お題 ---- */
-async function createCard(n, text, stockId, by) {
-  const payload = await C.encryptJson(state.key, 'qcards', { text, stockId: stockId || null, date: ymd(new Date()), by: by || myUid() });
+async function createCard(n, text, stockId, by, cat) {
+  const payload = await C.encryptJson(state.key, 'qcards', { text, stockId: stockId || null, date: ymd(new Date()), by: by || myUid(), ...(cat ? { cat } : {}) });
   await state.store.createQCard(`q${n}`, n, payload);
 }
 
 async function makeNextCard(n) {
-  const pick = pickStock(availableStock(state.stock, state.qcards), n);
+  const prev = state.qcards.find((c) => c.n === n - 1);
+  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat); // 前のお題と同じカテゴリが続かないようにする
   if (!pick) { state.needInput = n; renderTalk(); return; }
-  await createCard(n, pick.text, pick.id, pick.from);
+  await createCard(n, pick.text, pick.id, pick.from, pick.cat);
 }
 
 async function maybeAdvance() {
@@ -1475,13 +1515,14 @@ function forcedForm(n) {
   const input = h('input', { type: 'text', maxlength: '80', placeholder: '今日のお題を入力', 'aria-label': '今日のお題' });
   const err = h('p', { class: 'error', role: 'alert' });
   const btn = h('button', { class: 'primary', type: 'submit' }, 'このお題にする');
-  const f = h('form', { class: 'stack' }, h('p', { class: 'lead' }, 'お題のストックがありません。今日のお題を入力してください。'), input, err, btn);
+  const cat = catSelect();
+  const f = h('form', { class: 'stack' }, h('p', { class: 'lead' }, 'お題のストックがありません。今日のお題を入力してください。'), input, cat, err, btn);
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
     btn.disabled = true;
-    try { await createCard(n, text, null, myUid()); state.needInput = null; } catch (x) { state.needInput = null; err.textContent = 'すでに次のお題が出ていました'; renderTalk(); }
+    try { await createCard(n, text, null, myUid(), cat.value); state.needInput = null; } catch (x) { state.needInput = null; err.textContent = 'すでに次のお題が出ていました'; renderTalk(); }
   });
   return f;
 }
@@ -1501,7 +1542,7 @@ function renderQuestion() {
   const q = $('#qcard');
   if (last) {
     q.dataset.by = whoClass(last.by);
-    $('#q-meta').textContent = `第${last.n}問 ・ ${last.date.slice(5).replace('-', '/')}`;
+    $('#q-meta').textContent = `第${last.n}問 ・ ${last.date.slice(5).replace('-', '/')}${last.cat ? ` ・ ${catLabel(last.cat)}` : ''}`;
     $('#q-text').textContent = last.text;
   } else {
     q.dataset.by = '';
@@ -1535,7 +1576,7 @@ function renderCards() {
     const st = cardStatus(c, state.qcards, state.answers);
     const line = st === 'complete' ? '回答済' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
     const cls = st === 'complete' ? 'me' : 'none';
-    const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
+    const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
     b.addEventListener('click', () => openQCardSheet(c.n));
     return b;
   }));
@@ -1565,22 +1606,32 @@ function openQCardSheet(n) {
 /* ---- お題ストック ---- */
 function openStockSheet() {
   const list = h('ul', { class: 'stack', style: 'list-style:none;padding:0;margin:0' });
+  let catFilter = 'all';
+  const filterRow = h('div', { class: 'chips' });
   const fill = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
-    list.replaceChildren(...(state.stock.length ? state.stock.map((s) => {
+    const opts = [['all', 'ぜんぶ'], ...CATS, ['none', 'カテゴリなし']];
+    filterRow.replaceChildren(...opts.map(([id, nm]) => {
+      const b = h('button', { type: 'button', 'aria-pressed': String(catFilter === id) }, nm);
+      b.addEventListener('click', () => { catFilter = id; fill(); });
+      return b;
+    }));
+    const shown = state.stock.filter((s) => catFilter === 'all' || (catFilter === 'none' ? !s.cat : s.cat === catFilter));
+    list.replaceChildren(...(shown.length ? shown.map((s) => {
       const isUsed = used.has(s.id);
       const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
       if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
-      return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
+      return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
     }) : [h('li', { class: 'empty' }, 'まだありません')]));
   };
   const one = h('input', { type: 'text', maxlength: '80', placeholder: 'お題を1つ追加', 'aria-label': 'お題を1つ追加' });
   const addOne = h('button', { class: 'ghost sm', type: 'button' }, '追加');
   const bulk = h('textarea', { rows: '4', placeholder: 'まとめて追加(1行に1つ)', 'aria-label': 'まとめて追加' });
   const addBulk = h('button', { class: 'ghost sm', type: 'button' }, 'まとめて追加');
+  const catSel = catSelect('足すお題のカテゴリ');
   const push = async (texts) => {
     for (const t of texts) {
-      await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now() }));
+      await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now(), ...(catSel.value ? { cat: catSel.value } : {}) }));
     }
   };
   // 似たお題の見つけかた: ストックと、これまでのお題カードを見比べる(文字の重なり具合だけ。ほとんど同じものだけ)
@@ -1628,7 +1679,7 @@ function openStockSheet() {
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます。ふたりとも足せます。角の色は、足した人です。'), list, one, oneHint, addOne, bulk, bulkHint, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここからランダムに選ばれます(前のお題と同じカテゴリは続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 

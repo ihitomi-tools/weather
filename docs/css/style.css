@@ -370,3 +370,11 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .sim-list small { opacity: .8; }
 .sim-row { display: flex; flex-direction: column; gap: 2px; }
 .sim-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* タグ・カテゴリ */
+.tagadd { display: flex; gap: 8px; align-items: center; }
+.tagadd input { flex: 1; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { border: 0; border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 700; background: var(--surface); color: var(--muted); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--mint); color: var(--on-mint); }
+.catname { color: var(--muted); font-weight: 700; margin-left: 4px; }

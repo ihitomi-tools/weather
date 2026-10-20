@@ -47,10 +47,14 @@ export function availableStock(stock, cards) {
 }
 
 // 番号から決まる「ランダム」。2人の端末で、同じストックなら同じお題を選ぶ。
-export function pickStock(avail, n) {
+// lastCat があれば、前のお題と同じカテゴリは避ける(ほかに選べるものが無いときは、そのまま選ぶ)。
+// 2人の端末で同じ結果になるように、ストックと番号とlastCatだけで決める。
+export function pickStock(avail, n, lastCat = null) {
   if (!avail.length) return null;
   const sorted = [...avail].sort((a, b) => a.id.localeCompare(b.id));
-  return sorted[(Math.imul(n, 2654435761) >>> 0) % sorted.length];
+  const other = lastCat ? sorted.filter((s) => (s.cat || null) !== lastCat) : sorted;
+  const pool = other.length ? other : sorted;
+  return pool[(Math.imul(n, 2654435761) >>> 0) % pool.length];
 }
 
 export function fmtDuration(ms) {
