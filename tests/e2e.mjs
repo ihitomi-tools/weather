@@ -401,6 +401,16 @@ await page.click('.tab[data-v="home"]');
 await page.waitForFunction(() => /あと\d+日/.test(document.querySelector('#next-moon').textContent));
 check('ホームに「次の生理」が出る', (await page.textContent('#next-moon')).includes('次の生理(予想)'));
 check('ホームの最近の気分に出る', (await page.textContent('#home-mood')).includes('おなかが痛い'));
+{
+  const old = await enc('days', { d: '2025-09-01', l: 3, t: [], m: '前の記録', p: false, by: 'u1' });
+  await page.evaluate((doc) => { window.__fake.dy.push({ id: 'oldday', ...doc, owner: 'u1' }); window.__fake.notify(); }, old);
+  await page.waitForSelector('#home-mood .more-btn');
+  check('最近の気分は、いちばん新しい分だけ。前の分はたたんである', !(await page.textContent('#home-mood')).includes('前の記録') && (await page.textContent('#home-mood .more-btn')).includes('これまでの気分を見る'));
+  await page.click('#home-mood .more-btn');
+  check('押すと、前の分が出る。もう一度押すとたためる', (await page.textContent('#home-mood')).includes('前の記録'));
+  await page.click('#home-mood .more-btn');
+  check('たたむと、また隠れる', !(await page.textContent('#home-mood')).includes('前の記録'));
+}
 await page.click('.tab[data-v="cal"]');
 await page.click('#past-record');
 const before = await page.locator('#sheet .mini-list .item').count();

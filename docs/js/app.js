@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-32';
+const VERSION = '2026.10.20-33';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -92,7 +92,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -712,8 +712,21 @@ function renderHome() {
   renderBirthdayHome();
   renderMoon();
   renderNextMoon();
-  const recent = peopleOf().flatMap((u) => [...recsOf(u).values()].filter(hasMoodRec).map((r) => ({ ...r, u }))).sort((a, b) => b.d.localeCompare(a.d)).slice(0, 4);
-  $('#home-mood').replaceChildren(...(recent.length ? recent.map(moodItem) : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
+  // 最近の気分: ひとりずつの、いちばん新しい記録だけを出す。それ以前は、たたんでおいて、押すと出る
+  const mine = peopleOf().flatMap((u) => [...recsOf(u).values()].filter(hasMoodRec).map((r) => ({ ...r, u }))).sort((x, y) => y.d.localeCompare(x.d));
+  const latest = [];
+  const seenUid = new Set();
+  const older = [];
+  mine.forEach((r) => { if (!seenUid.has(r.u)) { seenUid.add(r.u); latest.push(r); } else older.push(r); });
+  const olderShown = older.slice(0, 10);
+  const items = latest.map(moodItem);
+  if (olderShown.length) {
+    const more = h('button', { class: 'more-btn', type: 'button', 'aria-expanded': String(state.moodMore) }, state.moodMore ? 'たたむ' : `これまでの気分を見る(${olderShown.length}件)`);
+    more.addEventListener('click', () => { state.moodMore = !state.moodMore; renderHome(); });
+    items.push(h('li', { class: 'more' }, more));
+    if (state.moodMore) items.push(...olderShown.map(moodItem));
+  }
+  $('#home-mood').replaceChildren(...(latest.length ? items : [h('li', { class: 'empty' }, 'まだ記録がありません')]));
   const today = ymd(new Date());
   const upcoming = state.events.filter((e) => evEnd(e) >= today).sort(byDate).slice(0, 5);
   $('#home-events').replaceChildren(...(upcoming.length ? upcoming.map((e) => eventItem(e, false)) : [emptyWith('予定はまだありません', 'think')]));

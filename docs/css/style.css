@@ -378,3 +378,6 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .chips button { border: 0; border-radius: 99px; padding: 6px 12px; font: inherit; font-size: 12px; font-weight: 700; background: var(--surface); color: var(--muted); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: var(--mint); color: var(--on-mint); }
 .catname { color: var(--muted); font-weight: 700; margin-left: 4px; }
+
+.more-btn { width: 100%; border: 0; border-radius: 14px; padding: 10px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; }
+.more-btn:hover { background: var(--surface); }
