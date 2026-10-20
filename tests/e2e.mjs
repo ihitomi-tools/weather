@@ -75,6 +75,7 @@ const wx = {
   daily: { time: Array.from({ length: 7 }, (_, i) => { const d = new Date(Date.now() + i * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), weather_code: [3, 61, 0, 1, 2, 95, 71], temperature_2m_max: [21, 18, 20, 23, 24, 22, 19], temperature_2m_min: [14, 13, 13, 15, 16, 15, 13] },
 };
 
+const more = async () => { const b = page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button'); if ((await b.textContent()) === 'ひらく') await b.click(); };
 let failed = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${ok ? '' : extra}`); if (!ok) failed++; };
 
@@ -235,6 +236,7 @@ check('メッセージを入れるとポップが消える', true);
 check('誕生日ボックスは、相手あてで作られる', (await page.evaluate(() => window.__fake.bx.length)) === 2);
 await page.click('.tab[data-v="set"]');
 const nowD = new Date();
+await more();
 await page.selectOption('select[aria-label="誕生日の月"]', String(nowD.getMonth() + 1));
 await page.selectOption('select[aria-label="誕生日の日"]', String(nowD.getDate()));
 await page.click('.tab[data-v="home"]');
@@ -243,6 +245,7 @@ check('誕生日当日は、お祝いが出る', (await page.textContent('#bd-to
 await page.click('.tab[data-v="cal"]');
 check('カレンダーのその日にケーキの印が付く', (await page.locator('#month button em.cake').count()) >= 1);
 await page.click('.tab[data-v="set"]');
+await more();
 await page.selectOption('select[aria-label="誕生日の月"]', String((nowD.getMonth() + 1) % 12 + 1));
 
 // 新着の印
@@ -428,6 +431,7 @@ check('ホームに予定が出る', (await page.textContent('#home-events')).in
 const aw = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 check('設定前のカード1は、案内と初期の名前', (await page.textContent('#days')).includes('記念日1') && (await page.textContent('#days')).includes('設定の「ホームのカード」'));
 await page.click('.tab[data-v="set"]');
+await more();
 await page.locator('#settings li', { hasText: 'ホームのカード' }).locator('button').click();
 await page.locator('#sheet input[type=text]').nth(0).fill('出会った日');
 await page.locator('#sheet input[type=date]').nth(0).fill(aw(450));
@@ -483,7 +487,8 @@ check('点で、いまの面が分かる', (await page.locator('#days .dots i.on
 // バックアップコード・確認番号
 await page.click('.tab[data-v="set"]');
 check('危ない項目は、ふだん隠れている(バージョン更新・ログアウトなど)', (await page.locator('#settings li', { hasText: /機種変更|バックアップコードがないと/ }).count()) === 0);
-await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
+check('ふだんは、画面の色・起動パターン・バージョンだけ見える。名前などは隠れている', (await page.locator('#settings li', { hasText: /画面の色|起動パターン|バージョン/ }).count()) === 3 && (await page.locator('#settings li', { hasText: /あなたの名前|既読を相手に|ログアウト/ }).count()) === 0);
+await more();
 await page.locator('#settings li', { hasText: '機種変更' }).locator('button').click();
 check('設定から同じバックアップコードを再表示できる', (await page.textContent('#sheet .code')) === code);
 await page.click('#sheet-close');
@@ -507,7 +512,6 @@ await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: f
 await tap(['札幌', '福岡', '東京', '那覇', '大阪', '仙台']);
 await page.waitForSelector('#app:not([hidden])');
 await page.click('.tab[data-v="set"]');
-await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
 await page.locator('#settings li', { hasText: '起動パターン' }).locator('button').click();
 check('登録中の表示が出る', await page.locator('#rec').isVisible());
 await tap(['金沢', '金沢', '那覇', '札幌', '仙台', '東京']);
@@ -521,7 +525,6 @@ check('新しいパターンで開く', true);
 
 // 「最新版にする」で、ファイルを取り直して再読み込みする
 await page.click('.tab[data-v="set"]');
-await page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button').click();
 const reloaded = page.waitForNavigation();
 await page.locator('#settings li', { hasText: 'バージョン' }).locator('button').click();
 await reloaded;
