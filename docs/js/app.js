@@ -33,7 +33,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-23';
+const VERSION = '2026.10.20-24';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1292,21 +1292,21 @@ function renderSettings(force = false) {
   const active = document.activeElement;
   if (!force && active && $('#settings').contains(active)) return; // 入力中に作り直さない
   $('#settings').replaceChildren(
-    row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
-    row('誕生日', '月と日だけ。相手にも見えます', h('span', { style: 'display:flex;gap:6px' }, bdM, bdD)),
     row('画面の色', '自動は、端末の設定に合わせます', theme),
-    row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
-    row('月のブランコの役', 'ふたりで別々の役にします。おまかせなら、自動で決まります', roleSel),
-    row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),
-    row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
-    row('そのほかの設定', 'パターン・バックアップコード・ログアウト・更新など。ふだんは触らない項目です', moreBtn),
+    row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
+    row('バージョン', VERSION, refreshBtn),
+    row('そのほかの設定', '名前・誕生日・カード・役・既読・データ・鍵・ログアウトなど。ふだんは触らない項目です', moreBtn),
     ...(settingsMore ? [
-      row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
+      row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
+      row('誕生日', '月と日だけ。相手にも見えます', h('span', { style: 'display:flex;gap:6px' }, bdM, bdD)),
+      row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
+      row('月のブランコの役', 'ふたりで別々の役にします。おまかせなら、自動で決まります', roleSel),
+      row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),
+      row('メッセージを自動で消す', '自分が送る分に適用されます', expire),
       row('データの書き出し', '読める文章のファイルで保存します(暗号化されません)', exportBtn),
       row('バックアップコード', '機種変更やデータが消えたときに使います', showCode),
       row('キーの確認番号', '同じ番号か見比べます', showFp),
-      row('バージョン', VERSION, refreshBtn),
       row('ログアウト', null, out),
       row('この端末からキーを消す', 'バックアップコードがないと、過去の会話は読めなくなります', wipe),
     ] : []),
@@ -1510,7 +1510,7 @@ function renderCards() {
   $('#c-count').textContent = `${cards.length}枚`;
   $('#c-grid').replaceChildren(...cards.map((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
-    const line = st === 'complete' ? 'ふたりとも答えた' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
+    const line = st === 'complete' ? '回答済' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
     const cls = st === 'complete' ? 'me' : 'none';
     const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
     b.addEventListener('click', () => openQCardSheet(c.n));
