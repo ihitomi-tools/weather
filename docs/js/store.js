@@ -94,6 +94,10 @@ export const createQCard = (id, n, payload) => setDoc(doc(db, 'qcards', id), { .
 export const watchAnswers = (cb) => watchPlain('answers', cb);
 export const saveAnswer = (id, payload) => setDoc(doc(db, 'answers', id), { ...payload, owner: auth.currentUser.uid });
 
+// 予想(自分の分だけ書き直せる。サーバー側の決まりは firestore.rules)
+export const watchGuesses = (cb) => watchPlain('guesses', cb);
+export const saveGuess = (id, payload) => setDoc(doc(db, 'guesses', id), { ...payload, owner: auth.currentUser.uid });
+
 // ---- ボックス(タイムカプセル・誕生日) ----
 // 中身(items)は、開く日(openAt)まで、サーバーが読ませない。件数の印(marks)だけ、いつでも読める。
 export const watchBoxes = (cb) => watchPlain('boxes', cb);

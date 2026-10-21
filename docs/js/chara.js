@@ -72,3 +72,30 @@ export function pair(kind) {
 // ひざまくら(ひとみ→ゆうきのよしよし)
 export const lapPat = () => hiza().replace('<svg', '<svg class="chara"');
 export { bust };
+
+// 判定の表情(顔だけ)。role は 'h'(ひとみ)/'y'(もうひとり)。
+// 予想した人: yay(ぴったり・ドヤ顔) / near(おしい・くやしがりながら笑う) / wow(ぜんぜん・びっくり)
+// 答えた人  : hit(照れ) / smirk(ふふっ) / laugh(大笑い)
+export const REACT_FACE = { hit: ['yay', 'hit'], near: ['near', 'smirk'], miss: ['wow', 'laugh'] };
+export function reactFace(role, k, size = 40) {
+  const hc = role === 'h' ? 'var(--pink-deep)' : 'var(--mint-deep)';
+  const ink = '#2d2630';
+  const st = `stroke="${ink}" stroke-width="1.700" fill="none" stroke-linecap="round"`;
+  const cheek = '<circle cx="8" cy="21" r="3" fill="#f58a9a" opacity=".75"/><circle cx="26" cy="21" r="3" fill="#f58a9a" opacity=".75"/>';
+  const spark = (d) => `<path d="${d}" stroke="#f0b94d" stroke-width="1.500" stroke-linecap="round"/>`;
+  const mouth = (d) => `<path d="${d}" fill="#e9707c" stroke="${ink}" stroke-width="1.400" stroke-linejoin="round"/>`;
+  const eyeO = (x) => `<circle cx="${x}" cy="15" r="3.300" fill="#fff" stroke="${ink}" stroke-width="1.400"/><circle cx="${x}" cy="15" r="1.200" fill="${ink}"/>`;
+  const P = {
+    yay: `<path d="M8.500 16l3.500-4 3.500 4M18.500 16l3.500-4 3.500 4" ${st}/>${mouth('M11 21q6 8 12 0z')}${cheek}${spark('M2 6l2 2M2 8l2-2M32 4l2 2M32 6l2-2')}`,
+    hit: `<path d="M9 15q2.500-3.500 5 0M20 15q2.500-3.500 5 0" ${st}/><path d="M13 22q4 3.500 8 0" ${st}/>${cheek}`,
+    smirk: `<circle cx="12" cy="15" r="1.700" fill="${ink}"/><path d="M20 15q2.500-3.500 5 0" ${st}/><path d="M13 22q5 3 9-1" ${st}/>`,
+    near: `<path d="M8 12l5 3-5 3M26 12l-5 3 5 3" ${st}/>${mouth('M10 21q7 8 14 0z')}${cheek}${spark('M30 6l3-2M31 10l3 1')}`,
+    wow: `${eyeO(12)}${eyeO(22)}<ellipse cx="17" cy="24" rx="3" ry="3.700" fill="#e9707c" stroke="${ink}" stroke-width="1.300"/>${spark('M4 6l3 3M8 3l1 4M30 6l-3 3M26 3l-1 4')}`,
+    laugh: `<path d="M8.500 15l5-2.500M25.500 15l-5-2.500" ${st}/>${mouth('M8 19q9 12 18 0z')}<path d="M7 16c-2 2-2 4 0 5M27 16c2 2 2 4 0 5" stroke="#8fd0ee" stroke-width="2" fill="none" stroke-linecap="round"/>`
+  }[k];
+  const hair = role === 'h'
+    ? `<path d="M2.500 17C1 6 8 1.500 17 1.500S33 6 31.500 17C29 9 24 7 17 7S5 9 2.500 17z" fill="${hc}"/><path d="M31 14q4 9 0 16" stroke="${hc}" stroke-width="4" fill="none" stroke-linecap="round"/>`
+    : `<path d="M2 16C1 5 8 1 17 1s16 4 15 15c-3-7-8-9-15-9S5 9 2 16z" fill="${hc}"/>`;
+  return `<svg class="rface" width="${size}" height="${size}" viewBox="-2 -3 40 40" aria-hidden="true"><g${k === 'laugh' ? ' transform="rotate(-8 17 18)"' : ''}><circle cx="17" cy="18" r="15" fill="#ffe3d0"/>${hair}${P}</g></svg>`;
+}
+

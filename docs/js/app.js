@@ -5,7 +5,7 @@ import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
 import { unseenPats } from './share.js';
-import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer } from './qa.js';
+import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-40';
+const VERSION = '2026.10.20-41';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -92,7 +92,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -346,7 +346,7 @@ function startWatching() {
   if (state.unsubs.length) return;
   const s = state.store;
   const cache = new Map();
-  const seq = { msg: 0, ev: 0, dy: 0, pt: 0, st: 0, qc: 0, an: 0, bx: 0, mk: 0, mn: 0 };
+  const seq = { msg: 0, ev: 0, dy: 0, pt: 0, st: 0, qc: 0, an: 0, gs: 0, bx: 0, mk: 0, mn: 0 };
 
   state.unsubs.push(s.watchProfiles(async (docs) => {
     const next = {};
@@ -442,6 +442,20 @@ function startWatching() {
     state.loaded.answers = true;
     renderAll();
     maybeAdvance();
+  }));
+
+  state.unsubs.push(s.watchGuesses(async (docs) => {
+    const my = ++seq.gs;
+    const next = new Map();
+    for (const d of docs) {
+      const ck = `g:${d.id}:${d.iv}`;
+      if (!cache.has(ck)) cache.set(ck, await decrypt('guesses', d));
+      const p = cache.get(ck);
+      if (p && typeof p.n === 'number' && d.owner) next.set(answerKey(p.n, d.owner), { ...p, owner: d.owner });
+    }
+    if (my !== seq.gs) return;
+    state.guesses = next;
+    renderAll();
   }));
 
   state.unsubs.push(s.watchBoxes(async (docs) => {
@@ -727,6 +741,7 @@ function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
   renderCard();
   renderPatBanner();
+  renderGuessBanner();
   renderBirthdayHome();
   renderMoon();
   renderNextMoon();
@@ -947,6 +962,19 @@ function patOverlayMaybe() {
 }
 
 // 他の人から届いた「よしよし」を、ホームに知らせる
+// ホームの合図: 予想できるとき・答え合わせができるとき
+function renderGuessBanner() {
+  const b = $('#guess-banner');
+  const last = state.qcards[state.qcards.length - 1];
+  const phase = last && myUid() ? guessPhase(last.n, myUid(), state.answers, state.guesses) : 'none';
+  const hasGuess = last && !!guessOf(last.n, myUid(), state.guesses);
+  const text = phase === 'judge' ? '予想の答え合わせができるよ' : phase === 'open' && !hasGuess ? '予想できるよ' : '';
+  b.hidden = !text;
+  if (!text) return;
+  b.replaceChildren(heartIcon(), text);
+  b.onclick = () => { setView('chat'); const t = $('#talk-seg button[data-t="q"]'); if (t) t.click(); };
+}
+
 function renderPatBanner() {
   const b = $('#pat-banner');
   const all = [...state.pats.entries()].flatMap(([d, list]) => list.map((p) => ({ ...p, d })));
@@ -1657,7 +1685,10 @@ function answerForm(card) {
   const err = h('p', { class: 'error', role: 'alert' });
   const send = h('button', { class: 'primary', type: 'submit' }, 'こたえる');
   send.disabled = !box.value.trim();
-  const f = h('form', { class: 'stack' }, h('small', { class: 'lead' }, 'こたえると、あとから書き直せません。'), box, err, send);
+  // 先に答える人だけ、相手の答えを予想できる(任意)
+  const canGuess = !otherAnswer(card.n);
+  const gbox = canGuess ? h('textarea', { rows: '2', maxlength: '200', placeholder: `${partnerName()}の答えを予想(任意)`, 'aria-label': `${partnerName()}の答えを予想` }) : null;
+  const f = h('form', { class: 'stack' }, h('small', { class: 'lead' }, 'こたえると、あとから書き直せません。'), box, ...(gbox ? [gbox] : []), err, send);
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = box.value.trim();
@@ -1669,9 +1700,70 @@ function answerForm(card) {
       await state.store.saveAnswer(id, payload);
       draft.delete(card.n);
       LS.del(t0Key);
+      const gt = gbox ? gbox.value.trim() : '';
+      if (gt) { try { await saveGuessText(card.n, gt); } catch (x) { /* 予想は、あとからも書ける */ } }
     } catch (x) { err.textContent = '送れませんでした。もう一度ためしてください。'; send.disabled = false; }
   });
   return f;
+}
+
+async function saveGuessText(n, text, prev) {
+  const payload = await C.encryptJson(state.key, 'guesses', { n, text, at: (prev && prev.at) || Date.now(), up: Date.now(), ...(prev && isRate(prev.r) ? { r: prev.r, jat: prev.jat } : {}) });
+  await state.store.saveGuess(await C.dayId(state.keyBytes, `gs|${n}|${myUid()}`), payload);
+}
+async function saveJudge(n, g, r) {
+  const payload = await C.encryptJson(state.key, 'guesses', { n, text: g.text, at: g.at, up: g.up || g.at, r, jat: Date.now() });
+  await state.store.saveGuess(await C.dayId(state.keyBytes, `gs|${n}|${myUid()}`), payload);
+}
+const RATE_WORD = { hit: 'ぴったり', near: 'おしい', miss: 'ぜんぜん' };
+const RATE_SAY = { hit: '当たりー！', near: 'くやしい〜！でも楽しい！', miss: 'わぁお！そんな予想してたの！？' };
+// 予想した人(g)と答えた人(a)の顔が並んで、ひとことが出る
+function reactScene(r, guesserUid, text) {
+  const [gk, ak] = Ch.REACT_FACE[r];
+  const gRole = roleOf(guesserUid);
+  const aRole = gRole === 'h' ? 'y' : 'h';
+  return h('div', { class: `react r-${r}` }, h('div', { class: 'rc' }, svgEl(Ch.reactFace(gRole, gk, 52)), svgEl(Ch.reactFace(aRole, ak, 52))), h('b', {}, RATE_SAY[r]), text ? h('div', { class: 'gtext' }, h('small', {}, `${nameOfUid(guesserUid)}の予想`), text) : null);
+}
+const lockIcon = () => svgOf('<rect x="5" y="11" width="14" height="9" rx="2.500"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 'lock');
+
+const guessSig = (n) => [...state.guesses.values()].filter((g) => g.n === n).map((g) => [g.owner, g.text, g.r || '']);
+
+function guessBlock(n) {
+  const me = myUid();
+  const phase = guessPhase(n, me, state.answers, state.guesses);
+  const mine = guessOf(n, me, state.guesses);
+  const out = [];
+  if (phase === 'open') {
+    const box = h('textarea', { rows: '2', maxlength: '200', placeholder: `${partnerName()}の答えを予想(任意)`, 'aria-label': `${partnerName()}の答えを予想` });
+    box.value = mine ? mine.text : '';
+    const err = h('p', { class: 'error', role: 'alert' });
+    const btn = h('button', { class: 'ghost', type: 'submit' }, mine ? '書き直す' : '予想をつける');
+    const f = h('form', { class: 'stack guess' }, h('small', { class: 'lead' }, mine ? '答えが来るまで、書き直せます。' : 'いまのうちに、予想をつけられます。'), box, err, btn);
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const t = box.value.trim();
+      if (!t) return;
+      btn.disabled = true;
+      try { await saveGuessText(n, t, mine); } catch (x) { err.textContent = '送れませんでした。もう一度ためしてください。'; btn.disabled = false; }
+    });
+    out.push(f);
+  } else if (phase === 'judge') {
+    const err = h('p', { class: 'error', role: 'alert' });
+    const trio = h('div', { class: 'rates' }, ['hit', 'near', 'miss'].map((r) => {
+      const [gk, ak] = Ch.REACT_FACE[r];
+      const b = h('button', { class: 'rate', type: 'button', 'data-r': r }, h('span', { class: 'pr' }, svgEl(Ch.reactFace(roleOf(me), gk, 34)), svgEl(Ch.reactFace(roleOf(me) === 'h' ? 'y' : 'h', ak, 34))), RATE_WORD[r]);
+      b.addEventListener('click', async () => { trio.querySelectorAll('button').forEach((x) => { x.disabled = true; }); try { await saveJudge(n, mine, r); } catch (x) { err.textContent = '送れませんでした。もう一度ためしてください。'; trio.querySelectorAll('button').forEach((y) => { y.disabled = false; }); } });
+      return b;
+    }));
+    out.push(h('div', { class: 'judge stack' }, h('div', { class: 'gtext' }, h('small', {}, `${myName()}の予想`), mine.text), h('p', { class: 'lead' }, 'どのくらい近かった？'), trio, err));
+  } else if (phase === 'done') {
+    out.push(reactScene(mine.r, me, mine.text));
+  }
+  const pv = partnerGuessView(n, me, state.answers, state.guesses);
+  const theirG = otherGuessOf(n, me, state.guesses);
+  if (pv === 'locked') out.push(h('div', { class: 'ans wait glock' }, lockIcon(), `${partnerName()}の予想があります。判定のあとで見られます`));
+  else if (pv === 'shown') out.push(reactScene(theirG.r, theirG.owner, theirG.text));
+  return out;
 }
 
 function answersBlock(n) {
@@ -1708,7 +1800,7 @@ function renderQuestion() {
   const avail = availableStock(state.stock, cards).length;
   $('#stock-n').textContent = String(avail);
   const act = ready ? nextAction(cards, state.answers, ymd(new Date())) : null;
-  const sig = JSON.stringify([ready, last && last.id, last && [!!myAnswer(last.n), !!otherAnswer(last.n)], act && act.type, state.needInput, partnerName()]);
+  const sig = JSON.stringify([ready, last && last.id, last && [!!myAnswer(last.n), !!otherAnswer(last.n), guessSig(last.n)], act && act.type, state.needInput, partnerName()]);
   if (sig === qSig) return;
   qSig = sig;
   const area = $('#q-area');
@@ -1724,7 +1816,7 @@ function renderQuestion() {
   }
   const nodes = [];
   if (last) {
-    nodes.push(...answersBlock(last.n));
+    nodes.push(...answersBlock(last.n), ...guessBlock(last.n));
     if (!myAnswer(last.n)) nodes.push(answerForm(last));
     if (act && act.type === 'wait' && act.until === 'tomorrow') nodes.push(h('p', { class: 'lead' }, '次のお題は、明日の0時に届きます。'));
     if (act && act.type === 'skip-ok') {
@@ -1761,12 +1853,12 @@ function openQCardSheet(n) {
   const fill = () => {
     const c = state.qcards.find((x) => x.n === n);
     if (!c) return;
-    const s = JSON.stringify([!!myAnswer(n), !!otherAnswer(n), partnerName()]);
+    const s = JSON.stringify([!!myAnswer(n), !!otherAnswer(n), guessSig(n), partnerName()]);
     if (s === sig) return;
     sig = s;
     const st = cardStatus(c, state.qcards, state.answers);
     const q = h('div', { class: 'qcard', 'data-by': whoClass(c.by) }, h('small', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}${st === 'rest' ? ' ・ お休み' : ''}`), h('b', {}, c.text));
-    const kids = [q, ...answersBlock(n)];
+    const kids = [q, ...answersBlock(n), ...guessBlock(n)];
     if (!myAnswer(n)) kids.push(answerForm(c));
     body.replaceChildren(...kids);
   };

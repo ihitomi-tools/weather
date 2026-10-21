@@ -18,7 +18,7 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 const fakeStore = `
 let user = null, cb = null;
-const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], mn: [], rd: [], sk: [], qc: [], an: [], bx: [], mk: [], it: [] };
+const data = { msg: [], ev: [], pr: [], sh: [], dy: [], pt: [], mn: [], rd: [], sk: [], qc: [], an: [], gs: [], bx: [], mk: [], it: [] };
 const subs = [];
 let n = 0;
 const notify = () => subs.forEach((s) => s());
@@ -51,6 +51,8 @@ export const watchQCards = watch('qc');
 export const createQCard = async (id, num, payload) => { if (data.qc.some((x) => x.id === id)) throw new Error('exists'); data.qc.push({ id, n: num, ...payload, from: user.uid }); notify(); };
 export const watchAnswers = watch('an');
 export const saveAnswer = async (id, payload) => { if (data.an.some((x) => x.id === id)) throw new Error('exists'); data.an.push({ id, ...payload, owner: user.uid }); notify(); };
+export const watchGuesses = watch('gs');
+export const saveGuess = async (id, payload) => { data.gs = data.gs.filter((x) => x.id !== id); data.gs.push({ id, ...payload, owner: user.uid }); notify(); };
 export const watchBoxes = watch('bx');
 export const createBox = async (id, payload, at) => { if (data.bx.some((x) => x.id === id)) throw new Error('exists'); data.bx.push({ id, ...payload, openAt: at, from: user.uid }); notify(); };
 export const removeBox = async (id) => { data.bx = data.bx.filter((x) => x.id !== id); notify(); };
@@ -195,17 +197,40 @@ await page.keyboard.type('あいうえお');
 await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); // 2文字だけ消しても、書き直しに数えない
 await page.keyboard.type('か');
 await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); await page.keyboard.press('Backspace'); // 続けて3文字消すと、1回
-await page.fill('#q-area textarea', '友だちと会えたこと');
+await page.locator('#q-area textarea').first().fill('友だちと会えたこと');
+check('先に答える人には、予想の欄が出る(任意)', (await page.locator('#q-area textarea').count()) === 2);
+await page.locator('#q-area textarea').nth(1).fill('映画の話かな');
 await page.click('#q-area form button[type=submit]');
 await page.waitForSelector('#q-area .ans.me');
 check('答えたあとは、相手を待つ表示(相手の答えは見えない)', (await page.textContent('#q-area')).includes('ゆうきの答えを待っています') && (await page.locator('#q-area .ans.you').count()) === 0);
 check('書き直しは、まとめて消した回数で数える(バックスペースの回数ではない)', (await page.textContent('#q-area .ans.me .meta')).includes('書き直し1回'));
 check('答えは暗号文で保存される', !JSON.stringify(await page.evaluate(() => window.__fake.an)).includes('友だち'));
+check('答えたあと、相手を待つ間は、予想を書き直せる', (await page.locator('#q-area .guess button', { hasText: '書き直す' }).count()) === 1 && (await page.inputValue('#q-area .guess textarea')) === '映画の話かな');
+await page.fill('#q-area .guess textarea', '映画か読書かな');
+await page.click('#q-area .guess button[type=submit]');
+await page.waitForFunction(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const d = await C.decryptJson(key, 'guesses', window.__fake.gs[0]); return d.text === '映画か読書かな'; });
+check('書き直しても、予想は1つだけ', (await page.evaluate(() => window.__fake.gs.length)) === 1);
 const partnerAns = await enc('answers', { n: 1, text: '新しい本を買った', at: Date.now(), t0: Date.now() - 601000, edits: 3 });
 await page.evaluate((doc) => { window.__fake.an.push({ id: 'pa1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerAns);
 await page.waitForSelector('#q-area .ans.you');
 const meta = await page.textContent('#q-area .ans.you .meta');
 check('ふたりそろうと答えが見える(悩んだ跡つき)', (await page.textContent('#q-area .ans.you')).includes('新しい本を買った') && meta.includes('考えた時間 10分') && meta.includes('書き直し3回'), meta);
+await page.waitForSelector('#q-area .judge');
+check('予想は暗号文で保存される', (await page.evaluate(() => window.__fake.gs.length)) === 1 && !JSON.stringify(await page.evaluate(() => window.__fake.gs)).includes('映画'));
+check('相手が答えると、自分の予想と判定ボタンが出る', (await page.textContent('#q-area .judge')).includes('映画か読書かな') && (await page.locator('#q-area .rate').count()) === 3);
+await page.locator('#q-area .rate[data-r=near]').click();
+await page.waitForSelector('#q-area .react');
+const g1 = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); return C.decryptJson(key, 'guesses', window.__fake.gs[0]); });
+check('判定が、予想といっしょに保存される', g1.r === 'near' && g1.text === '映画か読書かな' && g1.n === 1, JSON.stringify(g1));
+check('判定のあとは、表情とひとことが出る', (await page.textContent('#q-area .react')).includes('くやしい') && (await page.locator('#q-area .react .rface').count()) === 2);
+const partnerG = await enc('guesses', { n: 1, text: '散歩かな', at: Date.now() });
+await page.evaluate((doc) => { window.__fake.gs.push({ id: 'pg1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerG);
+await page.waitForSelector('#q-area .glock');
+check('相手の予想は、判定まで「あること」だけ見える', !(await page.textContent('#q-area')).includes('散歩かな'));
+const partnerJ = await enc('guesses', { n: 1, text: '散歩かな', at: Date.now(), r: 'miss', jat: Date.now() });
+await page.evaluate((doc) => { window.__fake.gs = window.__fake.gs.filter((x) => x.id !== 'pg1'); window.__fake.gs.push({ id: 'pg1', ...doc, owner: 'u2' }); window.__fake.notify(); }, partnerJ);
+await page.waitForFunction(() => !document.querySelector('#q-area .glock'));
+check('相手が判定すると、予想と表情が見える', (await page.textContent('#q-area')).includes('散歩かな') && (await page.textContent('#q-area')).includes('そんな予想してたの'));
 check('同じ日は、次のお題を待つ案内', (await page.textContent('#q-area')).includes('明日の0時'));
 
 // ストック(まとめて追加)
@@ -570,7 +595,8 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.locator('#month button.today').click();
   await page.click('#evb-range');
   check('「連続にする」を押すと、終わりの日を選ぶ状態になる', (await page.getAttribute('#evb-range', 'aria-pressed')) === 'true');
-  await cells.nth(20).click();
+  const todayN = new Date().getDate();
+  await cells.nth((todayN <= 26 ? todayN + 2 : todayN - 3) - 1).click(); // 今日とは別の日(日付によらず動くように)
   check('終わりの日をタップすると、期間になる', (await page.locator('#month button.inrange').count()) >= 1 && (await page.textContent('#evb-date')).includes('お泊まりデート'));
   await page.click('#evb-close');
   check('×でバーが閉じる', await page.locator('#ev-bar').isHidden());

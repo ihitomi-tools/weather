@@ -110,3 +110,26 @@ test('足した人が、できるだけ交互になる。片方しか無いと�
   for (let n = 1; n <= 20; n++) assert.equal(pickStock(t, n, 'mem', 'u1').id, 'a');
   assert.equal(pickStock([...t].reverse(), 9, 'mem', 'u1').id, pickStock(t, 9, 'mem', 'u1').id); // 並びがちがっても同じ
 });
+
+import { guessPhase, partnerGuessView, isRate } from '../docs/js/qa.js';
+{
+  const A = (...o) => new Map(o.map((u) => [answerKey(1, u), { n: 1, owner: u }]));
+  const G = (...gs) => new Map(gs.map((g) => [answerKey(1, g.owner), { n: 1, ...g }]));
+  test('予想: 答える前は予想できない', () => assert.equal(guessPhase(1, 'a', A(), G()), 'none'));
+  test('予想: 先に答えたら書ける(書き直しOK)', () => {
+    assert.equal(guessPhase(1, 'a', A('a'), G()), 'open');
+    assert.equal(guessPhase(1, 'a', A('a'), G({ owner: 'a', text: 'x' })), 'open');
+  });
+  test('予想: 相手が先に答えていたら予想できない', () => assert.equal(guessPhase(1, 'a', A('b', 'a'), G()), 'none'));
+  test('予想: 相手が答えたら判定待ち、判定したら完了', () => {
+    assert.equal(guessPhase(1, 'a', A('a', 'b'), G({ owner: 'a', text: 'x' })), 'judge');
+    assert.equal(guessPhase(1, 'a', A('a', 'b'), G({ owner: 'a', text: 'x', r: 'near' })), 'done');
+  });
+  test('予想: 相手の予想は、判定まで「あること」だけ見える', () => {
+    assert.equal(partnerGuessView(1, 'b', A('a', 'b'), G({ owner: 'a', text: 'x' })), 'locked');
+    assert.equal(partnerGuessView(1, 'b', A('a', 'b'), G({ owner: 'a', text: 'x', r: 'hit' })), 'shown');
+    assert.equal(partnerGuessView(1, 'b', A('a'), G({ owner: 'a', text: 'x' })), null);
+    assert.equal(partnerGuessView(1, 'b', A('a', 'b'), G()), null);
+  });
+  test('予想: 判定は3つだけ', () => { assert.ok(isRate('hit') && isRate('near') && isRate('miss')); assert.ok(!isRate('x') && !isRate(undefined)); });
+}

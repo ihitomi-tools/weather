@@ -74,3 +74,34 @@ export function describeAnswer(a) {
   if (a.edits > 0) parts.push(`書き直し${a.edits}回`);
   return parts.join(' ・ ');
 }
+
+// ---- 予想 ----
+// 先に答えた人が、相手の答えを予想できる(任意)。予想は答えが来るまで書き直せて、
+// 相手が答えたら、予想した本人が「ぴったり/おしい/ぜんぜん」を選ぶ。選ぶまで、相手には「予想がある」ことだけ見せる。
+export const RATES = ['hit', 'near', 'miss'];
+export const isRate = (r) => RATES.includes(r);
+export const guessOf = (n, owner, guesses) => guesses.get(answerKey(n, owner));
+export const otherGuessOf = (n, me, guesses) => [...guesses.values()].find((g) => g.n === n && g.owner !== me);
+
+// 自分の予想の段階
+//  none : 予想できない(まだ答えていない / 相手が先に答えていた)、または予想していない
+//  open : 答えたあと、相手が答えるまで。書く・書き直せる
+//  judge: 相手が答えた。判定待ち
+//  done : 判定ずみ
+export function guessPhase(n, me, answers, guesses) {
+  if (!answers.has(answerKey(n, me))) return 'none';
+  const g = guessOf(n, me, guesses);
+  const theirs = ownersOf(n, answers).size >= 2;
+  if (g && isRate(g.r)) return 'done';
+  if (g && theirs) return 'judge';
+  return theirs ? 'none' : 'open';
+}
+
+// 相手の予想がこちらにどう見えるか: null(なし) / 'locked'(あるが判定待ち) / 'shown'(判定ずみ)
+// 自分が答えたあとにだけ見える(答える前に、予想があることを匂わせない)
+export function partnerGuessView(n, me, answers, guesses) {
+  if (!answers.has(answerKey(n, me))) return null;
+  const g = otherGuessOf(n, me, guesses);
+  if (!g) return null;
+  return isRate(g.r) ? 'shown' : 'locked';
+}

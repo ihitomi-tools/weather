@@ -65,6 +65,18 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
       allow update, delete: if false;
     }
+    // 予想: 先に答えた人が書く、相手の答えの予想。自分の分だけ、書き直せる(判定を足すのも書き直し)。消せない。
+    match /guesses/{id} {
+      allow read: if isUs();
+      allow create: if isUs()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
+      allow update: if isUs()
+        && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
+      allow delete: if false;
+    }
     // ボックス(タイムカプセル・誕生日)。
     match /boxes/{id} {
       allow read: if isUs();

@@ -48,6 +48,9 @@ export const createQCard = async (id, n, payload) => { if (exists('qcards', id))
 export const watchAnswers = watch('answers');
 export const saveAnswer = async (id, payload) => { if (exists('answers', id)) throw new Error('exists'); put('answers', { id, ...payload, owner: uid }); };
 
+export const watchGuesses = watch('guesses');
+export const saveGuess = async (id, payload) => put('guesses', { id, ...payload, owner: uid });
+
 export const watchBoxes = watch('boxes');
 export const createBox = async (id, payload, openAt) => { if (exists('boxes', id)) throw new Error('exists'); put('boxes', { id, ...payload, openAt, from: uid }); };
 export const removeBox = async (id) => { D().boxes = D().boxes.filter((x) => x.id !== id); notify(); };
