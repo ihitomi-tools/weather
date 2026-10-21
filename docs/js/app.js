@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-41';
+const VERSION = '2026.10.20-42';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -869,11 +869,11 @@ function renderDayDetail(date) {
         tail = h('button', { class: 'pat', type: 'button' }, heartIcon(), 'よしよし');
         tail.addEventListener('click', () => { tail.disabled = true; sendPat(date); });
       }
-      patArea = h('div', { class: 'dd-patrow' }, h('span', { class: 'dd-patpic' }, patPic(roleOf(myUid()))), tail);
+      patArea = h('div', { class: 'dd-patrow' }, h('span', { class: `dd-patpic${roleOf(myUid()) === 'h' ? ' lap' : ''}` }, patPic(roleOf(myUid()))), tail);
       state.justPat = null;
     } else {
       const got = pats.filter((p) => p.by !== myUid()).sort((a, b) => b.at - a.at);
-      if (got.length) patArea = h('div', { class: 'stack' }, got.map((p) => h('div', { class: 'dd-pat' }, h('span', { class: 'dd-patpic sm' }, patPic(roleOf(p.by))), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
+      if (got.length) patArea = h('div', { class: 'stack' }, got.map((p) => h('div', { class: 'dd-pat' }, h('span', { class: `dd-patpic${roleOf(p.by) === 'h' ? ' lap' : ''}` }, patPic(roleOf(p.by))), `${partnerName()}から よしよし`, h('small', {}, timeLabel(p.at)))));
     }
     nodes.push(h('div', { class: 'dd-p' },
       h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),

@@ -251,7 +251,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dd-patrow { display: flex; align-items: center; gap: 10px; }
 .dd-patrow .pat { flex: 1; }
 .dd-patpic svg { width: 92px; height: 56px; display: block; fill: initial; }
-.dd-patpic.sm svg { width: 54px; height: 34px; }
+.dd-patpic.lap svg { width: 76px; height: 41px; } /* ひざまくらは横に長いので、ふたり立ちの絵と見た目の大きさをそろえる */
 .dd-level b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dd-level span { font-size: 18px; font-weight: 800; }
 .dd-tags { display: flex; flex-wrap: wrap; gap: 8px; }
