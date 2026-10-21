@@ -260,7 +260,16 @@ check('カテゴリを付けて足せる。一覧に名前が出る', (await pag
 await page.locator('#sheet-body .chips button', { hasText: '将来・夢' }).click();
 check('カテゴリで絞り込める', (await page.locator('#sheet-body .sitem').count()) === 1);
 await page.locator('#sheet-body .chips button', { hasText: 'ぜんぶ' }).click();
+// 使われたストックは、下にまとめて、ふだんはたたまれている
+const usedCard = await enc('qcards', { text: '好きな季節は?', stockId: await page.evaluate(() => window.__fake.sk[1].id), date: '2026-10-19', by: 'u2' });
+await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qx2', n: 2, ...doc, from: 'u2' }); window.__fake.notify(); }, usedCard);
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem').length === 4);
+check('使用済みは、ふだんはたたまれていて、「使用済みを見る」が出る', (await page.locator('#sheet-body .used-toggle button').textContent()).includes('使用済みを見る(1個)') && !(await page.textContent('#sheet-body')).includes('(使用済み)'));
+await page.locator('#sheet-body .used-toggle button').click();
+check('押すと、使用済みが一覧の下に出る', (await page.locator('#sheet-body .sitem').count()) === 5 && (await page.locator('#sheet-body .sitem').last().textContent()).includes('使用済み'));
+await page.locator('#sheet-body .used-toggle button').click();
 await page.click('#sheet-close');
+await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qx2'); window.__fake.notify(); });
 check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '5');
 
 // カード

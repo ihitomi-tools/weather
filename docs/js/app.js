@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-42';
+const VERSION = '2026.10.20-43';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1872,6 +1872,7 @@ function openQCardSheet(n) {
 function openStockSheet() {
   const list = h('ul', { class: 'stack', style: 'list-style:none;padding:0;margin:0' });
   let catFilter = 'all';
+  let showUsed = false;
   const filterRow = h('div', { class: 'chips' });
   const fill = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
@@ -1882,12 +1883,24 @@ function openStockSheet() {
       return b;
     }));
     const shown = state.stock.filter((s) => catFilter === 'all' || (catFilter === 'none' ? !s.cat : s.cat === catFilter));
-    list.replaceChildren(...(shown.length ? shown.map((s) => {
+    const left = shown.filter((s) => !used.has(s.id));
+    const done = shown.filter((s) => used.has(s.id));
+    // 使用済みは下にまとめて、ふだんはたたんでおく(押すと出る)
+    const rowOf = (s) => {
       const isUsed = used.has(s.id);
       const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
       if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
       return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
-    }) : [h('li', { class: 'empty' }, 'まだありません')]));
+    };
+    const rows = left.map(rowOf);
+    if (!rows.length) rows.push(h('li', { class: 'empty' }, done.length ? 'つかっていないお題は、ありません' : 'まだありません'));
+    if (done.length) {
+      const toggle = h('button', { class: 'ghost sm', type: 'button', 'aria-expanded': String(showUsed) }, showUsed ? '使用済みをとじる' : `使用済みを見る(${done.length}個)`);
+      toggle.addEventListener('click', () => { showUsed = !showUsed; fill(); });
+      rows.push(h('li', { class: 'used-toggle' }, toggle));
+      if (showUsed) rows.push(...done.map(rowOf));
+    }
+    list.replaceChildren(...rows);
   };
   const one = h('input', { type: 'text', maxlength: '80', placeholder: 'お題を1つ追加', 'aria-label': 'お題を1つ追加' });
   const addOne = h('button', { class: 'ghost sm', type: 'button' }, '追加');
