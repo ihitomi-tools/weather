@@ -79,3 +79,13 @@ test('いっしょの仕事の日は、デートの日にならない。ごは�
   assert.equal(workOn({ todayKey: '2026-03-10', events: [m] }), false);
   assert.equal(workOn({ todayKey: '2026-03-11', events: [w] }), false);
 });
+
+test('月: 仕事・出張・通院・勉強・飲み会は、いつもの月。旅行・買い物・特別な日・ごはんは、デートの日と同じ', () => {
+  const base = { todayKey: '2026-03-10', today: new Date(2026, 2, 10), birthdays: [], anns: [] };
+  const on = (kind) => ({ date: '2026-03-10', who: 'both', kind, title: 'x' });
+  ['work', 'train', 'car', 'clinic', 'drink', 'study'].forEach((k) => assert.equal(specialOf({ ...base, events: [on(k)] }), 'none', k));
+  ['date', 'meal', 'trip', 'shop', 'star', undefined].forEach((k) => assert.equal(specialOf({ ...base, events: [on(k)] }), 'date', String(k)));
+  // 一言は、仕事・出張・通院・勉強の日(飲み会は出さない)
+  ['work', 'train', 'car', 'clinic', 'study'].forEach((k) => assert.equal(workOn({ todayKey: '2026-03-10', events: [on(k)] }), true, k));
+  ['drink', 'meal', 'trip'].forEach((k) => assert.equal(workOn({ todayKey: '2026-03-10', events: [on(k)] }), false, k));
+});

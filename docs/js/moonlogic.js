@@ -1,6 +1,6 @@
 // 月のしくみ(触れた記録 → ポイント・満月・今日の様子)。画面には触らない。
 import { localKey } from './qa.js';
-import { daysSince } from './card.js';
+import { daysSince, CALM_KINDS, SAY_KINDS } from './card.js';
 import { isBirthdayOn } from './dates.js';
 
 export const DAY_START_HOUR = 4; // 1日の区切りは朝4時
@@ -63,7 +63,7 @@ export function isMilestone(dateKey, todayKey) {
 export function specialOf({ todayKey, today, birthdays, anns, events }) {
   if (birthdays.some((b) => b && isBirthdayOn(b.m, b.d, today))) return 'bday';
   if (anns.some((a) => a && a.d && isMilestone(a.d, todayKey))) return 'milestone';
-  if (events.some((e) => e.who === 'both' && e.kind !== 'work' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date))) return 'date';
+  if (events.some((e) => e.who === 'both' && !CALM_KINDS.includes(e.kind) && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date))) return 'date';
   return 'none';
 }
 
@@ -81,5 +81,5 @@ export function rolesOf(myUid, otherUid, myRole, otherRole) {
   return out;
 }
 
-// 今日が「いっしょの仕事」の日か(ホームの月に、一言を出す)
-export const workOn = ({ todayKey, events }) => events.some((e) => e.kind === 'work' && e.who === 'both' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date));
+// 今日が、仕事・出張・通院・勉強のような「いっしょの日」か(ホームの月に、一言を出す)
+export const workOn = ({ todayKey, events }) => events.some((e) => SAY_KINDS.includes(e.kind) && e.who === 'both' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date));

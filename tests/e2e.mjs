@@ -87,7 +87,7 @@ const addEv = async ({ title, date, end = '', who = 'me', time = '' }) => {
   if (date) await page.fill('#sheet input[aria-label="日付"]', date);
   if (end) await page.fill('#sheet input[aria-label="終わりの日(連続するとき)"]', end);
   if (time) await page.fill('#sheet input[aria-label="時刻"]', time);
-  await page.check(`#sheet input[name="who"][value="${who}"]`);
+  check('「そのほか」に、誰の予定かの欄はない(ぜんぶふたりの予定)', (await page.locator('#sheet input[name="who"]').count()) === 0 && (await page.locator('#sheet .kpick input').count()) === 12);
   await page.click('#sheet form button[type=submit]');
   await page.waitForSelector('#sheet', { state: 'hidden' });
 };
@@ -599,18 +599,37 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.waitForFunction((n) => window.__fake.ev.length === n + 3, before);
   const workEv = await decLast();
   check('「いっしょの仕事」が、種類つきで入る', workEv.title === 'いっしょの仕事' && workEv.kind === 'work' && workEv.who === 'both', JSON.stringify(workEv));
-  check('カレンダーに、ごはんと仕事の印が出る', (await page.locator('#month button.today em.evtk.meal').count()) === 1 && (await page.locator('#month button.today em.evtk.work').count()) === 1);
+  check('カレンダーに、ごはんと仕事の印が出る', (await page.locator('#month button.today em.evtk svg.meal').count()) === 1 && (await page.locator('#month button.today em.evtk svg.work').count()) === 1);
   check('仕事の日は、日の一覧にかばんの絵が出る', (await page.locator('#cal-events .tkmark.work').count()) === 1);
   await page.click('.tab[data-v="home"]');
   check('仕事の日は、ホームの月に一言が出る', await page.locator('#mn-say').isVisible());
   await page.click('.tab[data-v="cal"]');
   await page.locator('#cal-events .item', { hasText: 'いっしょの仕事' }).locator('button', { hasText: '詳細' }).click();
-  await page.locator('#sheet input[name="evtype"][value="meal"]').check({ force: true });
+  await page.locator('#sheet input[name="evicon"][value="meal"]').check({ force: true });
   await page.click('#sheet form button[type=submit]');
   await page.waitForFunction(() => document.querySelectorAll('#cal-events .ev-mark.meal').length === 2);
   check('詳細のシートで、種類を付け替えられる', (await decLast()).kind === 'meal');
   await page.click('.tab[data-v="home"]');
   check('仕事でなくなると、一言は消える', await page.locator('#mn-say').isHidden());
+  // 「そのほか」でアイコンを選ぶ(出張・電車)。詳細で、日付・時刻も直せる
+  await page.click('.tab[data-v="cal"]');
+  await page.locator('#month button.today').click();
+  await page.click('#evb-more');
+  await page.fill('#sheet input[aria-label="予定の名前"]', '出張(札幌)');
+  await page.locator('#sheet .kpick input[value="train"]').check({ force: true });
+  await page.click('#sheet form button[type=submit]');
+  await page.waitForSelector('#sheet', { state: 'hidden' });
+  const trainEv = await decLast();
+  check('「そのほか」で選んだアイコンが、種類として保存される(ふたりの予定)', trainEv.kind === 'train' && trainEv.who === 'both', JSON.stringify(trainEv));
+  check('出張は、日の一覧に電車の絵が出る', (await page.locator('#cal-events .tkmark.train').count()) === 1);
+  await page.click('.tab[data-v="home"]');
+  check('出張の日は、ホームの月に一言が出る(特別な絵にはならない)', await page.locator('#mn-say').isVisible());
+  await page.click('.tab[data-v="cal"]');
+  await page.locator('#cal-events .item', { hasText: '出張' }).locator('button', { hasText: '詳細' }).click();
+  await page.fill('#sheet input[aria-label="時刻"]', '07:45');
+  await page.click('#sheet form button[type=submit]');
+  await page.waitForFunction(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return (await C.decryptJson(key, 'events', e)).time === '07:45'; });
+  check('詳細のシートで、時刻も直せる(アイコンは変わらない)', (await decLast()).kind === 'train');
   await page.click('.tab[data-v="cal"]');
   // なぞって、連続する日を選ぶ
   const cells = page.locator('#month button[data-key]');
@@ -622,7 +641,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.mouse.up();
   check('なぞって選ぶと、期間が選ばれ、ボタンが「お泊まりデート」に変わる', (await page.textContent('#evb-date')).includes('お泊まりデート') && (await page.textContent('#evb-sub')).includes('2泊3日') && (await page.locator('#month button.inrange').count()) === 2);
   await page.click('#evb-date');
-  await page.waitForFunction((n) => window.__fake.ev.length === n + 4, before);
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 5, before);
   const dt2 = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
   check('連続で選ぶと、自動で「お泊まりデート」になる', dt2.title === 'お泊まりデート' && dt2.who === 'both' && !!dt2.end && dt2.end > dt2.date, JSON.stringify(dt2));
   // タップで、終わりの日を選ぶ

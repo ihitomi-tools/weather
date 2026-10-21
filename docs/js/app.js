@@ -3,7 +3,7 @@ import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather, isRainy } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
-import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType } from './card.js';
+import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
 import { unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-45';
+const VERSION = '2026.10.20-46';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -600,13 +600,34 @@ const byDate = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.tim
 const evColor = (kind) => (kind === 'both' ? 'both' : ((kind === 'me') === (myRole() === 'h') ? 'me' : 'you'));
 // 予定の種類の絵(線のアイコン)。デートは、ふたりの絵のまま
 const TYPE_ICON = {
+  date: '<path d="M12 20s-7-4.500-7-10a4 4 0 0 1 7-2.500A4 4 0 0 1 19 10c0 5.500-7 10-7 10z"/>',
   meal: '<path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M17 21V3c-2.500 1.500-3 4.500-3 8h3"/>',
-  work: '<rect x="3.500" y="8" width="17" height="12" rx="2.500"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3.500 13.500h17"/>',
+  work: '<rect x="3" y="8.500" width="18" height="10.500" rx="2.500"/><path d="M9 8.500V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.500M3 13h18M11 13v2h2v-2"/>',
+  train: '<rect x="6" y="3.500" width="12" height="13" rx="3"/><path d="M6 11h12M9 20l1.500-3.500M15 20l-1.500-3.500M9.500 14h.01M14.500 14h.01"/>',
+  car: '<path d="M4 16v-3.500l2-5h12l2 5V16zM4 16v2.500M20 16v2.500M4 12.500h16M7.500 14.500h.01M16.500 14.500h.01"/>',
+  trip: '<path d="M3 13l18-8-5 15-4-6zM12 14l4-5"/>',
+  clinic: '<path d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z"/>',
+  drink: '<path d="M7 4h10l-1 7a4 4 0 0 1-8 0zM12 15v5M9 20h6"/>',
+  shop: '<path d="M6 8h12l1 12H5zM9 8a3 3 0 0 1 6 0"/>',
+  study: '<path d="M5 5h6a2 2 0 0 1 1 1.500V19a2 2 0 0 0-1-1.500H5zM19 5h-6a2 2 0 0 0-1 1.500V19a2 2 0 0 1 1-1.500h6z"/>',
+  star: '<path d="M12 4l2.400 5 5.400.7-4 3.800 1 5.400-4.800-2.700-4.800 2.700 1-5.400-4-3.800 5.400-.7z"/>',
+  other: '<circle cx="12" cy="12" r="7"/>',
 };
-const typeIcon = (type, cls = 'tk') => svgOf(TYPE_ICON[type], `${cls} ${type}`);
+const TYPE_LABEL = { date: 'デート', meal: 'ごはん', work: 'いっしょの仕事', train: '出張(電車)', car: '出張(車)', trip: '旅行', clinic: '通院', drink: '飲み会', shop: '買い物', study: '勉強', star: '特別な日', other: 'なし' };
+const typeIcon = (type, cls = 'tk') => svgOf(TYPE_ICON[type] || TYPE_ICON.other, `${cls} ${type}`);
+// アイコンの選択(名前は出さず、絵だけ。読み上げ用の名前は付ける)
+function iconPicker(selected) {
+  const wrap = h('div', { class: 'kpick', role: 'radiogroup', 'aria-label': 'アイコン' });
+  [...EV_TYPES, 'other'].forEach((t) => {
+    const input = h('input', { type: 'radio', name: 'evicon', value: t, 'aria-label': TYPE_LABEL[t] });
+    input.checked = t === selected;
+    wrap.append(h('label', { title: TYPE_LABEL[t] }, input, h('span', {}, typeIcon(t, 'tk'))));
+  });
+  return { node: wrap, value: () => (wrap.querySelector('input:checked') || {}).value || 'other' };
+}
 function eventMark(ev) {
   const type = evType(ev);
-  if (TYPE_ICON[type]) return h('span', { class: `ev-mark tkmark ${type}` }, typeIcon(type));
+  if (type !== 'date' && type !== 'other') return h('span', { class: `ev-mark tkmark ${type}` }, typeIcon(type));
   const kind = kindOf(ev);
   return h('span', { class: 'ev-mark' }, svgEl(kind === 'both' ? Ch.pair('heart') : Ch.bust(kind === 'me' ? myRole() : (myRole() === 'h' ? 'y' : 'h'), 30)));
 }
@@ -1032,7 +1053,7 @@ function renderCalendar() {
         if (state.cal.range && key > sel) { state.cal.end = key; state.cal.range = false; state.cal.bar = true; renderCalendar(); return; } // 連続の、終わりの日を選ぶ
         state.cal.sel = key; state.cal.end = null; state.cal.range = false; state.cal.bar = true; renderCalendar();
       },
-    }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, ...['meal', 'work'].filter((t) => onTypes.has(t)).map((t) => h('em', { class: `evtk ${t}` }, typeIcon(t, 'tk'))), dots.length ? h('i', {}, dots) : null));
+    }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, ...EV_TYPES.filter((t) => t !== 'date' && onTypes.has(t)).slice(0, 2).map((t, i) => h('em', { class: `evtk ${i ? 'r' : 'l'}` }, typeIcon(t, 'tk'))), dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
@@ -1153,6 +1174,11 @@ function openEventNote(id) {
   const ev = state.events.find((x) => x.id === id);
   if (!ev) return;
   const title = h('input', { type: 'text', maxlength: '40', value: ev.title, required: true, 'aria-label': '予定の名前' });
+  const date = h('input', { type: 'date', required: true, value: ev.date, 'aria-label': '日付' });
+  const time = h('input', { type: 'time', value: ev.time || '', 'aria-label': '時刻' });
+  const endIn = h('input', { type: 'date', value: ev.end || '', 'aria-label': '終わりの日(連続するとき)' });
+  const curType = evType(ev);
+  const picker = iconPicker(curType);
   const note = h('textarea', { rows: '8', maxlength: String(NOTE_MAX), placeholder: '詳細(行った場所、食べたもの、思い出など)', 'aria-label': '詳細' });
   note.value = ev.note || '';
   const count = h('small', { class: 'lead' }, '');
@@ -1161,19 +1187,18 @@ function openEventNote(id) {
   upd();
   const err = h('p', { class: 'error', role: 'alert' });
   const save = h('button', { class: 'primary', type: 'submit' }, '保存');
-  // 種類(あとから付け替えられる)
-  const curType = evType(ev);
-  const typeSeg = h('div', { class: 'seg four', role: 'radiogroup', 'aria-label': '種類' }, [['date', 'デート'], ['meal', 'ごはん'], ['work', 'いっしょの仕事'], ['other', 'そのほか']].map(([v, t]) => h('label', {}, h('input', { type: 'radio', name: 'evtype', value: v, checked: v === curType }), h('span', {}, t))));
-  const form = h('form', { class: 'stack' }, title, typeSeg, note, count, err, save);
+  const form = h('form', { class: 'stack' }, title, h('div', { class: 'evrow' }, date, time),
+    h('div', { class: 'evrow end' }, h('label', {}, '連続するときの、終わりの日'), endIn), picker.node, note, count, err, save);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const t = title.value.trim();
-    if (!t) return;
+    if (!t || !date.value) return;
     save.disabled = true;
     try {
       const { id: _id, ...rest } = ev;
-      const payload = { ...rest, title: t };
-      const picked = $('input[name="evtype"]:checked', form).value;
+      const payload = { ...rest, title: t, date: date.value, time: time.value || '' };
+      if (endIn.value && endIn.value > date.value) payload.end = endIn.value; else delete payload.end;
+      const picked = picker.value();
       if (picked !== curType) { if (picked === 'other') delete payload.kind; else payload.kind = picked; }
       const n = note.value.trim();
       if (n) payload.note = n; else delete payload.note;
@@ -1184,26 +1209,27 @@ function openEventNote(id) {
   openSheet(h('h2', {}, `${mdOf(ev.date)}の予定`), form);
 }
 
-// 「そのほか」: 名前・日付・時刻・だれの予定か、を入れる
+// 「そのほか」: 名前・日付・時刻・アイコンを入れる(予定はぜんぶ、ふたりのもの)
 function openEventSheet() {
   const { sel, end } = state.cal;
   const title = h('input', { id: 'evs-title', placeholder: '予定の名前', maxlength: '40', required: true, 'aria-label': '予定の名前' });
   const date = h('input', { type: 'date', required: true, value: sel, 'aria-label': '日付' });
   const time = h('input', { type: 'time', 'aria-label': '時刻' });
   const endIn = h('input', { type: 'date', value: end || '', 'aria-label': '終わりの日(連続するとき)' });
-  const who = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'だれの予定' }, [['me', '自分'], ['you', '相手'], ['both', '両方']].map(([v, t]) => h('label', {}, h('input', { type: 'radio', name: 'who', value: v, checked: v === 'me' }), h('span', {}, t))));
+  const picker = iconPicker('other');
   const noteIn = h('textarea', { rows: '3', maxlength: String(NOTE_MAX), placeholder: '詳細(任意)', 'aria-label': '詳細' });
   const err = h('p', { class: 'error', role: 'alert' });
   const form = h('form', { class: 'stack' },
     title, h('div', { class: 'evrow' }, date, time),
     h('div', { class: 'evrow end' }, h('label', {}, '連続するときの、終わりの日'), endIn),
-    who, noteIn, err, h('button', { class: 'primary', type: 'submit' }, '予定を追加'));
+    picker.node, noteIn, err, h('button', { class: 'primary', type: 'submit' }, '予定を追加'));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const t = title.value.trim();
     if (!t || !date.value) return;
     try {
-      await addEvent({ title: t, date: date.value, end: endIn.value, who: $('input[name="who"]:checked', form).value, time: time.value, note: noteIn.value.trim() });
+      const kind = picker.value();
+      await addEvent({ title: t, date: date.value, end: endIn.value, who: 'both', time: time.value, note: noteIn.value.trim(), kind: kind === 'other' ? '' : kind });
       state.cal.bar = false; state.cal.end = null;
       closeSheet();
       renderCalendar();

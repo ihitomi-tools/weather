@@ -473,12 +473,22 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tkmark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); }
 .tkmark .tk { width: 20px; height: 20px; }
-.tk.meal { color: #c98a1d; } .tk.work { color: var(--mint-deep); }
+.tk.date { color: var(--pink-deep); } .tk.meal { color: #c98a1d; } .tk.work { color: var(--mint-deep); }
+.tk.train { color: #4a86c8; } .tk.car { color: #2a8f9c; } .tk.trip { color: #8a6bd1; } .tk.clinic { color: #d6554f; } .tk.drink { color: #b5476f; } .tk.shop { color: #e07b39; } .tk.study { color: #5a9f4a; } .tk.star { color: #d4a21c; } .tk.other { color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tk.train { color: #7fb0e8; } :root:not([data-theme="light"]) .tk.car { color: #5cc0cd; } :root:not([data-theme="light"]) .tk.trip { color: #b49cf0; } :root:not([data-theme="light"]) .tk.clinic { color: #f0847e; } :root:not([data-theme="light"]) .tk.drink { color: #e585a8; } :root:not([data-theme="light"]) .tk.shop { color: #f0a56d; } :root:not([data-theme="light"]) .tk.study { color: #8cc97c; } :root:not([data-theme="light"]) .tk.star { color: #efc656; } :root:not([data-theme="light"]) .tk.meal { color: #e6b25a; } }
+:root[data-theme="dark"] .tk.train { color: #7fb0e8; } :root[data-theme="dark"] .tk.car { color: #5cc0cd; } :root[data-theme="dark"] .tk.trip { color: #b49cf0; } :root[data-theme="dark"] .tk.clinic { color: #f0847e; } :root[data-theme="dark"] .tk.drink { color: #e585a8; } :root[data-theme="dark"] .tk.shop { color: #f0a56d; } :root[data-theme="dark"] .tk.study { color: #8cc97c; } :root[data-theme="dark"] .tk.star { color: #efc656; } :root[data-theme="dark"] .tk.meal { color: #e6b25a; }
+.kpick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.kpick label { display: block; }
+.kpick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.kpick span { display: grid; place-items: center; aspect-ratio: 1; border-radius: 14px; border: 2px solid var(--line); background: var(--surface); cursor: pointer; }
+.kpick .tk { width: 26px; height: 26px; }
+.kpick input:checked + span { border-color: var(--mint-deep); background: var(--screen); }
+.kpick input:focus-visible + span { outline: 2px solid var(--fg); outline-offset: 2px; }
 .evtk { display: block; line-height: 0; }
 .evtk .tk { width: 11px; height: 11px; }
 .mn-say { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 800; white-space: nowrap; pointer-events: none; z-index: 2; }
 .mn-card { position: relative; }
 .seg.four { grid-template-columns: repeat(2, 1fr); }
 .month button em.evtk { position: absolute; bottom: 3px; font-style: normal; }
-.month button em.evtk.meal { left: 4px; }
-.month button em.evtk.work { right: 4px; }
+.month button em.evtk.l { left: 4px; }
+.month button em.evtk.r { right: 4px; }

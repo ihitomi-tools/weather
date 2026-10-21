@@ -8,8 +8,11 @@ export const nextMilestone = (n) => Math.max(100, Math.ceil(Math.max(n, 0) / 100
 
 // 予定の種類: date(デート・お泊まり) / meal(ごはん) / work(いっしょの仕事) / other。
 // 種類を持たない昔の予定は、名前が「デート」「お泊まりデート」のものだけ、デートとして扱う。
-export const EV_TYPES = ['date', 'meal', 'work'];
+export const EV_TYPES = ['date', 'meal', 'work', 'train', 'car', 'trip', 'clinic', 'drink', 'shop', 'study', 'star'];
 export const evType = (e) => (EV_TYPES.includes(e.kind) ? e.kind : /^(お泊まり)?デート$/.test(e.title || '') ? 'date' : 'other');
+// ホームの月が「いつもの月」のままの種類(デートの日の特別な絵にしない)と、そのうち一言を出す種類
+export const CALM_KINDS = ['work', 'train', 'car', 'clinic', 'drink', 'study'];
+export const SAY_KINDS = ['work', 'train', 'car', 'clinic', 'study'];
 
 // 今日以降で、いちばん近い「両方」の予定。いっしょの仕事は、デート類ではないので入れない
 export function nextJoint(events, todayKey) {
