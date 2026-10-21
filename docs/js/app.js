@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-43';
+const VERSION = '2026.10.20-44';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -605,8 +605,11 @@ function eventMark(ev) {
 function eventItem(ev, withDelete) {
   const li = h('li', { class: 'item' },
     eventMark(ev),
-    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}(${nightsLabel(ev.date, evEnd(ev))})` : ''}${ev.time ? ` ${ev.time}` : ''}`)));
+    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}(${nightsLabel(ev.date, evEnd(ev))})` : ''}${ev.time ? ` ${ev.time}` : ''}`), ev.note ? h('span', { class: 'evnote' }, ev.note) : null));
   if (withDelete) {
+    const more = h('button', { class: 'x more', type: 'button' }, '詳細');
+    more.addEventListener('click', () => openEventNote(ev.id));
+    li.append(more);
     const x = h('button', { class: 'x', type: 'button' }, '削除');
     x.addEventListener('click', async () => {
       if (!x.classList.contains('sure')) { x.classList.add('sure'); x.textContent = '本当に削除'; return; }
@@ -1119,14 +1122,47 @@ function renderEvBar() {
   $('#evb-range').setAttribute('aria-pressed', String(!!range));
 }
 
-async function addEvent({ title, date, end, who, time }) {
+async function addEvent({ title, date, end, who, time, note }) {
   const payload = { title, date, time: time || '', who, by: myUid() };
+  if (note) payload.note = note;
   if (end && end > date) payload.end = end;
   state.cal.sel = date;
   const d = parseYmd(date);
   state.cal.y = d.getFullYear();
   state.cal.m = d.getMonth();
   await state.store.saveEvent(null, await C.encryptJson(state.key, 'events', payload));
+}
+
+// 予定の詳細(思い出や内容)。ふたりに見える。あとから書き足し・直しができる
+const NOTE_MAX = 1000;
+function openEventNote(id) {
+  const ev = state.events.find((x) => x.id === id);
+  if (!ev) return;
+  const title = h('input', { type: 'text', maxlength: '40', value: ev.title, required: true, 'aria-label': '予定の名前' });
+  const note = h('textarea', { rows: '8', maxlength: String(NOTE_MAX), placeholder: '詳細(行った場所、食べたもの、思い出など)', 'aria-label': '詳細' });
+  note.value = ev.note || '';
+  const count = h('small', { class: 'lead' }, '');
+  const upd = () => { count.textContent = `${note.value.length} / ${NOTE_MAX}`; };
+  note.addEventListener('input', upd);
+  upd();
+  const err = h('p', { class: 'error', role: 'alert' });
+  const save = h('button', { class: 'primary', type: 'submit' }, '保存');
+  const form = h('form', { class: 'stack' }, title, note, count, err, save);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const t = title.value.trim();
+    if (!t) return;
+    save.disabled = true;
+    try {
+      const { id: _id, ...rest } = ev;
+      const payload = { ...rest, title: t };
+      const n = note.value.trim();
+      if (n) payload.note = n; else delete payload.note;
+      await state.store.saveEvent(ev.id, await C.encryptJson(state.key, 'events', payload));
+      closeSheet();
+    } catch (x) { err.textContent = '保存できませんでした。通信を確認してください。'; save.disabled = false; }
+  });
+  openSheet(h('h2', {}, `${mdOf(ev.date)}の予定`), form);
 }
 
 // 「そのほか」: 名前・日付・時刻・だれの予定か、を入れる
@@ -1137,17 +1173,18 @@ function openEventSheet() {
   const time = h('input', { type: 'time', 'aria-label': '時刻' });
   const endIn = h('input', { type: 'date', value: end || '', 'aria-label': '終わりの日(連続するとき)' });
   const who = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'だれの予定' }, [['me', '自分'], ['you', '相手'], ['both', '両方']].map(([v, t]) => h('label', {}, h('input', { type: 'radio', name: 'who', value: v, checked: v === 'me' }), h('span', {}, t))));
+  const noteIn = h('textarea', { rows: '3', maxlength: String(NOTE_MAX), placeholder: '詳細(任意)', 'aria-label': '詳細' });
   const err = h('p', { class: 'error', role: 'alert' });
   const form = h('form', { class: 'stack' },
     title, h('div', { class: 'evrow' }, date, time),
     h('div', { class: 'evrow end' }, h('label', {}, '連続するときの、終わりの日'), endIn),
-    who, err, h('button', { class: 'primary', type: 'submit' }, '予定を追加'));
+    who, noteIn, err, h('button', { class: 'primary', type: 'submit' }, '予定を追加'));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const t = title.value.trim();
     if (!t || !date.value) return;
     try {
-      await addEvent({ title: t, date: date.value, end: endIn.value, who: $('input[name="who"]:checked', form).value, time: time.value });
+      await addEvent({ title: t, date: date.value, end: endIn.value, who: $('input[name="who"]:checked', form).value, time: time.value, note: noteIn.value.trim() });
       state.cal.bar = false; state.cal.end = null;
       closeSheet();
       renderCalendar();

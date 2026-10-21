@@ -134,6 +134,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dot.me { background: var(--pink-deep); } .dot.you { background: var(--mint-deep); } .dot.both { background: linear-gradient(90deg, var(--pink-deep) 50%, var(--mint-deep) 50%); }
 .item .t { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .item .t small { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+.item .evnote { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; color: var(--fg); white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .item .x { border: 0; background: none; color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px; }
 .item .x.sure { color: var(--pink-deep); }
 

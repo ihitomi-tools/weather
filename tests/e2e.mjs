@@ -31,7 +31,7 @@ export const watchMessages = watch('msg');
 export const sendMessage = async (payload, exp) => { data.msg.push({ id: 'm' + n++, from: 'u1', ts: Date.now(), expireAt: exp ? Date.now() + exp : null, ...payload }); notify(); };
 export const removeMessage = async (id) => { data.msg = data.msg.filter((m) => m.id !== id); notify(); };
 export const watchEvents = watch('ev');
-export const saveEvent = async (id, payload) => { data.ev.push({ id: 'e' + n++, ...payload }); notify(); };
+export const saveEvent = async (id, payload) => { data.ev = data.ev.filter((e) => !id || e.id !== id); data.ev.push({ id: id || 'e' + n++, ...payload }); notify(); };
 export const removeEvent = async (id) => { data.ev = data.ev.filter((e) => e.id !== id); notify(); };
 export const watchDays = watch('dy');
 export const saveDays = async (list) => { list.forEach(({ id, payload }) => { data.dy = data.dy.filter((x) => x.id !== id); data.dy.push({ id, ...payload, owner: user.uid }); }); notify(); };
@@ -393,8 +393,8 @@ await addEv({ title: '映画', time: '18:30', who: 'both' });
 await page.waitForSelector('#cal-events .item');
 check('予定が追加される', (await page.textContent('#cal-events .item')).includes('映画'));
 check('予定は暗号化されて保存', !JSON.stringify(await page.evaluate(() => window.__fake.ev[0])).includes('映画'));
-await page.click('#cal-events .x');
-await page.click('#cal-events .x');
+await page.click('#cal-events .x:not(.more)');
+await page.click('#cal-events .x:not(.more)');
 await page.waitForFunction(() => document.querySelectorAll('#cal-events .item').length === 0);
 check('予定を削除できる(2回タップ)', true);
 
@@ -554,8 +554,8 @@ await page.waitForFunction(() => /次のデート/.test(document.querySelector('
 check('カード3: 今日の「両方」の予定があれば、それが出る', (await page.textContent('#days')).includes('歯医者') && (await page.textContent('#days')).includes('今日'));
 await page.click('.tab[data-v="cal"]');
 await page.locator('#month button.today').click();
-await page.locator('#cal-events .x').first().click();
-await page.locator('#cal-events .x').first().click();
+await page.locator('#cal-events .x:not(.more)').first().click();
+await page.locator('#cal-events .x:not(.more)').first().click();
 await page.click('.tab[data-v="home"]');
 await page.waitForFunction(() => /「両方」を選んだ予定/.test(document.querySelector('#days').textContent));
 check('カード3: 「両方」の予定がなければ案内', true);
@@ -609,6 +609,14 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   check('終わりの日をタップすると、期間になる', (await page.locator('#month button.inrange').count()) >= 1 && (await page.textContent('#evb-date')).includes('お泊まりデート'));
   await page.click('#evb-close');
   check('×でバーが閉じる', await page.locator('#ev-bar').isHidden());
+  // 予定の詳細(思い出など)を、あとから書ける
+  await page.locator('#cal-events .item', { hasText: 'デート' }).first().locator('button', { hasText: '詳細' }).click();
+  await page.fill('#sheet textarea[aria-label="詳細"]', '山中湖でごはん。\n夕焼けがきれいだった');
+  await page.click('#sheet form button[type=submit]');
+  await page.waitForSelector('#cal-events .evnote');
+  check('詳細を書くと、予定の下に出る(改行つき)', (await page.textContent('#cal-events .evnote')).includes('夕焼け'));
+  const evAfter = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const raw = window.__fake.ev; const all = []; for (const r of raw) all.push(await C.decryptJson(key, 'events', r)); return { n: raw.length, hasPlain: JSON.stringify(raw).includes('山中湖'), d: all.find((x) => x.note) }; });
+  check('詳細は暗号化され、予定は増えず、元の項目も残る', !evAfter.hasPlain && evAfter.d.title.includes('デート') && !!evAfter.d.who && !!evAfter.d.by);
   await page.click('.tab[data-v="home"]');
 }
 // スライド(右へ)で前の面に戻る
