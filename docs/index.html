@@ -136,6 +136,7 @@
     <div class="mn" id="moon">
       <button class="mn-card" id="mn-card" type="button" aria-label="ふたりの月">
         <div id="mn-scene"></div>
+        <div class="mn-say" id="mn-say" hidden>今日は、いっしょだね</div>
         <span class="mn-t"><small>ふたりの月</small><b><span id="mn-pts">0</span><i>/100</i></b><span class="mn-bar"><i id="mn-bar-i"></i></span><small id="mn-phase"></small></span>
       </button>
       <div class="mn-panel" id="mn-panel" hidden></div>
@@ -226,6 +227,10 @@
     <div class="evbar-t"><b id="evb-label"></b><small id="evb-sub"></small><button class="evbar-x" id="evb-close" type="button" aria-label="とじる">×</button></div>
     <div class="evbar-b">
       <button class="go" id="evb-date" type="button">♥ デート</button>
+      <button class="kind" id="evb-meal" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M17 21V3c-2.500 1.500-3 4.500-3 8h3"/></svg>ごはん</button>
+      <button class="kind" id="evb-work" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.500" y="8" width="17" height="12" rx="2.500"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3.500 13.500h17"/></svg>いっしょの仕事</button>
+    </div>
+    <div class="evbar-b">
       <button class="ghost sm" id="evb-range" type="button" aria-pressed="false">連続にする</button>
       <button class="ghost sm" id="evb-more" type="button">そのほか</button>
     </div>

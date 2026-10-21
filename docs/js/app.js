@@ -3,14 +3,14 @@ import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather, isRainy } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
-import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from './card.js';
+import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType } from './card.js';
 import { unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
 import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
-import { analyzeMoon, rolesOf, seasonOf, specialOf, WINDOW_MS as MOON_WIN } from './moonlogic.js';
+import { analyzeMoon, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { findSimilar } from './similar.js';
@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-44';
+const VERSION = '2026.10.20-45';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -598,7 +598,15 @@ const byDate = (a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.tim
 
 // 予定の持ち主の色: ピンク=ひとみの役(飛ぶ人)、ミント=もうひとりの役
 const evColor = (kind) => (kind === 'both' ? 'both' : ((kind === 'me') === (myRole() === 'h') ? 'me' : 'you'));
+// 予定の種類の絵(線のアイコン)。デートは、ふたりの絵のまま
+const TYPE_ICON = {
+  meal: '<path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M17 21V3c-2.500 1.500-3 4.500-3 8h3"/>',
+  work: '<rect x="3.500" y="8" width="17" height="12" rx="2.500"/><path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3.500 13.500h17"/>',
+};
+const typeIcon = (type, cls = 'tk') => svgOf(TYPE_ICON[type], `${cls} ${type}`);
 function eventMark(ev) {
+  const type = evType(ev);
+  if (TYPE_ICON[type]) return h('span', { class: `ev-mark tkmark ${type}` }, typeIcon(type));
   const kind = kindOf(ev);
   return h('span', { class: 'ev-mark' }, svgEl(kind === 'both' ? Ch.pair('heart') : Ch.bust(kind === 'me' ? myRole() : (myRole() === 'h' ? 'y' : 'h'), 30)));
 }
@@ -1007,6 +1015,7 @@ function renderCalendar() {
     const key = `${y}-${pad(m + 1)}-${pad(d)}`;
     const kinds = new Set(state.events.filter((e) => evOn(e, key)).flatMap((e) => (kindOf(e) === 'both' ? ['me', 'you'] : [evColor(kindOf(e))])));
     const dots = [...kinds].map((k) => h('b', { class: k }));
+    const onTypes = new Set(state.events.filter((e) => evOn(e, key)).map(evType));
     const recs = people.map((u) => ({ u, rec: recsOf(u).get(key) }));
     const isPeriod = recs.some((x) => x.rec && x.rec.p);
     const inRange = !!state.cal.end && key > sel && key <= state.cal.end;
@@ -1023,7 +1032,7 @@ function renderCalendar() {
         if (state.cal.range && key > sel) { state.cal.end = key; state.cal.range = false; state.cal.bar = true; renderCalendar(); return; } // 連続の、終わりの日を選ぶ
         state.cal.sel = key; state.cal.end = null; state.cal.range = false; state.cal.bar = true; renderCalendar();
       },
-    }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, dots.length ? h('i', {}, dots) : null));
+    }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, ...['meal', 'work'].filter((t) => onTypes.has(t)).map((t) => h('em', { class: `evtk ${t}` }, typeIcon(t, 'tk'))), dots.length ? h('i', {}, dots) : null));
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
@@ -1080,16 +1089,20 @@ function buildCalendar() {
   $('#evb-close').addEventListener('click', () => { state.cal.bar = false; state.cal.end = null; state.cal.range = false; renderCalendar(); });
   $('#evb-range').addEventListener('click', () => { state.cal.range = !state.cal.range; renderCalendar(); });
   $('#evb-more').addEventListener('click', openEventSheet);
-  $('#evb-date').addEventListener('click', async () => {
-    const btn = $('#evb-date');
+  // ワンタップの予定。デート・ごはん・いっしょの仕事(ふたりの予定として入る)
+  const quick = (id, title, kind) => $(id).addEventListener('click', async () => {
+    const btn = $(id);
     btn.disabled = true;
     try {
       const { sel, end } = state.cal;
-      await addEvent({ title: end ? 'お泊まりデート' : 'デート', date: sel, end, who: 'both', time: '' });
+      await addEvent({ title: typeof title === 'function' ? title(end) : title, kind, date: sel, end, who: 'both', time: '' });
       state.cal.bar = false; state.cal.end = null; state.cal.range = false;
       renderCalendar();
     } finally { btn.disabled = false; }
   });
+  quick('#evb-date', (end) => (end ? 'お泊まりデート' : 'デート'), 'date');
+  quick('#evb-meal', 'ごはん', 'meal');
+  quick('#evb-work', 'いっしょの仕事', 'work');
 }
 
 const calDrag = { suppress: false };
@@ -1122,8 +1135,9 @@ function renderEvBar() {
   $('#evb-range').setAttribute('aria-pressed', String(!!range));
 }
 
-async function addEvent({ title, date, end, who, time, note }) {
+async function addEvent({ title, date, end, who, time, note, kind }) {
   const payload = { title, date, time: time || '', who, by: myUid() };
+  if (kind) payload.kind = kind;
   if (note) payload.note = note;
   if (end && end > date) payload.end = end;
   state.cal.sel = date;
@@ -1147,7 +1161,10 @@ function openEventNote(id) {
   upd();
   const err = h('p', { class: 'error', role: 'alert' });
   const save = h('button', { class: 'primary', type: 'submit' }, '保存');
-  const form = h('form', { class: 'stack' }, title, note, count, err, save);
+  // 種類(あとから付け替えられる)
+  const curType = evType(ev);
+  const typeSeg = h('div', { class: 'seg four', role: 'radiogroup', 'aria-label': '種類' }, [['date', 'デート'], ['meal', 'ごはん'], ['work', 'いっしょの仕事'], ['other', 'そのほか']].map(([v, t]) => h('label', {}, h('input', { type: 'radio', name: 'evtype', value: v, checked: v === curType }), h('span', {}, t))));
+  const form = h('form', { class: 'stack' }, title, typeSeg, note, count, err, save);
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const t = title.value.trim();
@@ -1156,6 +1173,8 @@ function openEventNote(id) {
     try {
       const { id: _id, ...rest } = ev;
       const payload = { ...rest, title: t };
+      const picked = $('input[name="evtype"]:checked', form).value;
+      if (picked !== curType) { if (picked === 'other') delete payload.kind; else payload.kind = picked; }
       const n = note.value.trim();
       if (n) payload.note = n; else delete payload.note;
       await state.store.saveEvent(ev.id, await C.encryptJson(state.key, 'events', payload));
@@ -2274,6 +2293,8 @@ function renderMoon() {
   const today = new Date();
   const special = specialOf({ todayKey: ymd(today), today, birthdays: [myBd(), partnerBd()], anns: state.ann, events: state.events });
   const season = seasonOf(today);
+  const say = $('#mn-say');
+  if (say) say.hidden = !workOn({ todayKey: ymd(today), events: state.events });
   const cheerOn = now < state.moonCheerUntil;
   const popOn = now < state.moonPop.until;
   const tired = !!(t.h != null && !t.resolved && t.y == null && now - t.h > MOON_WIN);

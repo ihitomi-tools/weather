@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey4, analyzeMoon, isMilestone, specialOf, rolesOf, seasonOf, WINDOW_MS } from '../docs/js/moonlogic.js';
+import { dayKey4, analyzeMoon, isMilestone, specialOf, workOn, rolesOf, seasonOf, WINDOW_MS } from '../docs/js/moonlogic.js';
 
 const at = (y, m, d, h, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
 
@@ -67,4 +67,15 @@ test('季節', () => {
   assert.equal(seasonOf(new Date(2026, 6, 1)), 'summer');
   assert.equal(seasonOf(new Date(2026, 9, 1)), 'autumn');
   assert.equal(seasonOf(new Date(2026, 0, 1)), 'winter');
+});
+
+test('いっしょの仕事の日は、デートの日にならない。ごはんはデートの日と同じ', () => {
+  const base = { todayKey: '2026-03-10', today: new Date(2026, 2, 10), birthdays: [], anns: [] };
+  const w = { date: '2026-03-10', who: 'both', kind: 'work', title: 'いっしょの仕事' };
+  const m = { date: '2026-03-10', who: 'both', kind: 'meal', title: 'ごはん' };
+  assert.equal(specialOf({ ...base, events: [w] }), 'none');
+  assert.equal(specialOf({ ...base, events: [m] }), 'date');
+  assert.equal(workOn({ todayKey: '2026-03-10', events: [w] }), true);
+  assert.equal(workOn({ todayKey: '2026-03-10', events: [m] }), false);
+  assert.equal(workOn({ todayKey: '2026-03-11', events: [w] }), false);
 });

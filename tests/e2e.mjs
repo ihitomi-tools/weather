@@ -587,6 +587,31 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.waitForFunction((n) => window.__fake.ev.length === n + 1, before);
   const dt = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
   check('ワンタップで「デート」が、両方の予定として入る', dt.title === 'デート' && dt.who === 'both' && !dt.end, JSON.stringify(dt));
+  // ごはん・いっしょの仕事も、ワンタップ(種類つき)
+  const decLast = () => page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
+  await page.locator('#month button.today').click();
+  await page.click('#evb-meal');
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 2, before);
+  const mealEv = await decLast();
+  check('「ごはん」が、種類つきで両方の予定として入る', mealEv.title === 'ごはん' && mealEv.kind === 'meal' && mealEv.who === 'both', JSON.stringify(mealEv));
+  await page.locator('#month button.today').click();
+  await page.click('#evb-work');
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 3, before);
+  const workEv = await decLast();
+  check('「いっしょの仕事」が、種類つきで入る', workEv.title === 'いっしょの仕事' && workEv.kind === 'work' && workEv.who === 'both', JSON.stringify(workEv));
+  check('カレンダーに、ごはんと仕事の印が出る', (await page.locator('#month button.today em.evtk.meal').count()) === 1 && (await page.locator('#month button.today em.evtk.work').count()) === 1);
+  check('仕事の日は、日の一覧にかばんの絵が出る', (await page.locator('#cal-events .tkmark.work').count()) === 1);
+  await page.click('.tab[data-v="home"]');
+  check('仕事の日は、ホームの月に一言が出る', await page.locator('#mn-say').isVisible());
+  await page.click('.tab[data-v="cal"]');
+  await page.locator('#cal-events .item', { hasText: 'いっしょの仕事' }).locator('button', { hasText: '詳細' }).click();
+  await page.locator('#sheet input[name="evtype"][value="meal"]').check({ force: true });
+  await page.click('#sheet form button[type=submit]');
+  await page.waitForFunction(() => document.querySelectorAll('#cal-events .ev-mark.meal').length === 2);
+  check('詳細のシートで、種類を付け替えられる', (await decLast()).kind === 'meal');
+  await page.click('.tab[data-v="home"]');
+  check('仕事でなくなると、一言は消える', await page.locator('#mn-say').isHidden());
+  await page.click('.tab[data-v="cal"]');
   // なぞって、連続する日を選ぶ
   const cells = page.locator('#month button[data-key]');
   const a = await cells.nth(10).boundingBox();
@@ -597,7 +622,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.mouse.up();
   check('なぞって選ぶと、期間が選ばれ、ボタンが「お泊まりデート」に変わる', (await page.textContent('#evb-date')).includes('お泊まりデート') && (await page.textContent('#evb-sub')).includes('2泊3日') && (await page.locator('#month button.inrange').count()) === 2);
   await page.click('#evb-date');
-  await page.waitForFunction((n) => window.__fake.ev.length === n + 2, before);
+  await page.waitForFunction((n) => window.__fake.ev.length === n + 4, before);
   const dt2 = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
   check('連続で選ぶと、自動で「お泊まりデート」になる', dt2.title === 'お泊まりデート' && dt2.who === 'both' && !!dt2.end && dt2.end > dt2.date, JSON.stringify(dt2));
   // タップで、終わりの日を選ぶ

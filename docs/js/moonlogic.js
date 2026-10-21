@@ -63,7 +63,7 @@ export function isMilestone(dateKey, todayKey) {
 export function specialOf({ todayKey, today, birthdays, anns, events }) {
   if (birthdays.some((b) => b && isBirthdayOn(b.m, b.d, today))) return 'bday';
   if (anns.some((a) => a && a.d && isMilestone(a.d, todayKey))) return 'milestone';
-  if (events.some((e) => e.who === 'both' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date))) return 'date';
+  if (events.some((e) => e.who === 'both' && e.kind !== 'work' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date))) return 'date';
   return 'none';
 }
 
@@ -80,3 +80,6 @@ export function rolesOf(myUid, otherUid, myRole, otherRole) {
   if (otherUid) out[otherUid] = other;
   return out;
 }
+
+// 今日が「いっしょの仕事」の日か(ホームの月に、一言を出す)
+export const workOn = ({ todayKey, events }) => events.some((e) => e.kind === 'work' && e.who === 'both' && e.date <= todayKey && todayKey <= (e.end && e.end > e.date ? e.end : e.date));

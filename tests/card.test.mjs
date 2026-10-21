@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload } from '../docs/js/card.js';
+import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType } from '../docs/js/card.js';
 
 test('日数と次の節目', () => {
   assert.equal(daysSince('2026-01-01', '2026-01-01'), 0);
@@ -42,4 +42,17 @@ test('保存する形には、古い版のためのsinceも入る', () => {
   const ann = [{ l: 'A', d: '2025-01-01' }, { l: '', d: '' }];
   assert.equal(buildSharedPayload({ ann, nl: '' }).since, '2025-01-01');
   assert.equal('since' in buildSharedPayload({ ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '' }), false);
+});
+
+test('予定の種類: 種類があればそれ、なければ名前が「デート」のものだけデート', () => {
+  assert.equal(evType({ kind: 'meal', title: 'x' }), 'meal');
+  assert.equal(evType({ kind: 'work', title: 'x' }), 'work');
+  assert.equal(evType({ title: 'デート' }), 'date');
+  assert.equal(evType({ title: 'お泊まりデート' }), 'date');
+  assert.equal(evType({ title: '歯医者' }), 'other');
+  assert.equal(evType({ kind: 'zzz', title: '歯医者' }), 'other');
+});
+test('いっしょの仕事は、次のデートの予定に入らない(ごはんは入る)', () => {
+  const ev = [{ date: '2026-02-01', who: 'both', kind: 'work', title: 'いっしょの仕事' }, { date: '2026-02-05', who: 'both', kind: 'meal', title: 'ごはん' }];
+  assert.equal(nextJoint(ev, '2026-01-31').title, 'ごはん');
 });

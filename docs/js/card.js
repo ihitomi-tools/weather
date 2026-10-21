@@ -6,10 +6,15 @@ export const daysSince = (dateKey, todayKey) => dayNum(todayKey) - dayNum(dateKe
 // 100日ごとの節目。ちょうど100日の日は、その日を「次の節目」にする。
 export const nextMilestone = (n) => Math.max(100, Math.ceil(Math.max(n, 0) / 100) * 100);
 
-// 今日以降で、いちばん近い「両方」の予定
+// 予定の種類: date(デート・お泊まり) / meal(ごはん) / work(いっしょの仕事) / other。
+// 種類を持たない昔の予定は、名前が「デート」「お泊まりデート」のものだけ、デートとして扱う。
+export const EV_TYPES = ['date', 'meal', 'work'];
+export const evType = (e) => (EV_TYPES.includes(e.kind) ? e.kind : /^(お泊まり)?デート$/.test(e.title || '') ? 'date' : 'other');
+
+// 今日以降で、いちばん近い「両方」の予定。いっしょの仕事は、デート類ではないので入れない
 export function nextJoint(events, todayKey) {
   return events
-    .filter((e) => e.who === 'both' && (e.end && e.end > e.date ? e.end : e.date) >= todayKey) // 連続する予定は、終わりの日まで
+    .filter((e) => e.who === 'both' && e.kind !== 'work' && (e.end && e.end > e.date ? e.end : e.date) >= todayKey) // 連続する予定は、終わりの日まで
     .sort((a, b) => ((a.date < todayKey ? todayKey : a.date) + (a.time || '')).localeCompare((b.date < todayKey ? todayKey : b.date) + (b.time || '')))[0] || null;
 }
 

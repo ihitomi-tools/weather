@@ -466,3 +466,19 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 @keyframes rpop { 0% { transform: scale(.6) rotate(-6deg); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .react .rc svg { animation: none; } }
 .used-toggle { list-style: none; padding-top: 4px; }
+
+/* ---- 予定の種類(ごはん・いっしょの仕事) ---- */
+.evbar-b .kind { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; border: 2px solid var(--line); border-radius: 99px; padding: 10px 8px; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.evbar-b .kind svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tk { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tkmark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); }
+.tkmark .tk { width: 20px; height: 20px; }
+.tk.meal { color: #c98a1d; } .tk.work { color: var(--mint-deep); }
+.evtk { display: block; line-height: 0; }
+.evtk .tk { width: 11px; height: 11px; }
+.mn-say { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 3px 10px; font-size: 11px; font-weight: 800; white-space: nowrap; pointer-events: none; z-index: 2; }
+.mn-card { position: relative; }
+.seg.four { grid-template-columns: repeat(2, 1fr); }
+.month button em.evtk { position: absolute; bottom: 3px; font-style: normal; }
+.month button em.evtk.meal { left: 4px; }
+.month button em.evtk.work { right: 4px; }
