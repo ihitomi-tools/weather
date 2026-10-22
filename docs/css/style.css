@@ -492,3 +492,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .month button em.evtk { position: absolute; bottom: 3px; font-style: normal; }
 .month button em.evtk.l { left: 4px; }
 .month button em.evtk.r { right: 4px; }
+/* 届いたよしよしの行(.dd-pat)でも、絵は送る側と同じ大きさにする(.dd-pat svg の文字用の小さい指定に負けないように) */
+.dd-pat .dd-patpic svg { width: 56px; height: 56px; fill: initial; }
+.dd-pat .dd-patpic.lap svg { width: 76px; height: 41px; }
+.dd-patpic:not(.lap) svg { width: 56px; height: 56px; } /* ふたり立ちの絵は縦長なので、横を詰めて文字の場所を空ける */
