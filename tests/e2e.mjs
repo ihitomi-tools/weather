@@ -179,6 +179,25 @@ await page.click('#chat-form .send');
 await page.waitForFunction(() => [...document.querySelectorAll('.row.mine .bub:not(.stamp)')].some((e) => e.textContent === 'おいしかった😋'));
 check('文字が混じるメッセージは、ふつうの吹き出し', true);
 
+// 写真から作ったスタンプ(絵)が貼られたら、比率を保って縮めて、暗号化して送る
+const msgBefore = await page.evaluate(() => window.__fake.msg.length);
+await page.evaluate(async () => {
+  const cv = document.createElement('canvas'); cv.width = 600; cv.height = 300; // 横長の絵(比率2:1)。背景は透明
+  const g = cv.getContext('2d'); g.fillStyle = '#e0558f'; g.beginPath(); g.arc(150, 150, 120, 0, 7); g.fill();
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+  const dt = new DataTransfer(); dt.items.add(new File([blob], 'sticker.png', { type: 'image/png' }));
+  document.querySelector('#msg').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+});
+await page.waitForFunction((n) => window.__fake.msg.length === n + 1, msgBefore);
+await page.waitForSelector('.row.mine .bub.imgmsg img');
+const stk = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const m = window.__fake.msg[window.__fake.msg.length - 1]; const p = await C.decryptJson(key, 'messages', m); return { t: p.t, w: p.w, h: p.h, ok: /^data:image\/(png|webp);base64,/.test(p.img), len: p.img.length, raw: JSON.stringify(m).includes('data:image') }; });
+check('スタンプの絵が、暗号化されて送られる(保存されるのは暗号文だけ)', stk.t === 'img' && stk.ok && !stk.raw, JSON.stringify(stk));
+check('絵は、縦横の比率を保って縮められる(長い辺が240px以内)', stk.w <= 240 && stk.h <= 240 && Math.abs(stk.w / stk.h - 2) < 0.05, JSON.stringify(stk));
+check('スタンプの絵は、吹き出しなしで、比率を保って表示される', await page.evaluate(() => { const i = document.querySelector('.row.mine .bub.imgmsg img'); const r = i.getBoundingClientRect(); return r.width > 0 && Math.abs(r.width / r.height - 2) < 0.1; }));
+await page.evaluate(() => { document.querySelector('#msg').dispatchEvent(new ClipboardEvent('paste', { clipboardData: (() => { const dt = new DataTransfer(); dt.setData('text/plain', 'はりつけたテキスト'); return dt; })(), bubbles: true, cancelable: true })); });
+check('文字を貼ると、文字として入る(書式は入らない)', (await page.textContent('#msg')).includes('はりつけたテキスト') && (await page.locator('#msg *').count()) === 0);
+await page.evaluate(() => { document.querySelector('#msg').innerHTML = ''; });
+
 
 // おはなし: お題
 const enc = (kind, obj) => page.evaluate(async ([k, o]) => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); return C.encryptJson(key, k, o); }, [kind, obj]);

@@ -8,7 +8,7 @@ export function buildExport(s, now = Date.now()) {
   const out = [`ふたりの記録の書き出し(${stamp(now)})`, '※ 暗号化されていません。保管と共有には気をつけてください。', ''];
 
   out.push('■ メッセージ');
-  s.messages.forEach((m) => out.push(`${stamp(m.ts)} ${nameOf(m.from)}: ${m.stamp || m.body || '(読めません)'}`));
+  s.messages.forEach((m) => out.push(`${stamp(m.ts)} ${nameOf(m.from)}: ${m.stamp || m.body || (m.img ? '(スタンプの絵)' : '(読めません)')}`));
   out.push('', '■ 予定');
   [...s.events].sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).forEach((e) => out.push(`${e.date}${e.end && e.end > e.date ? `〜${e.end}` : ''} ${e.time || ''} ${e.title}${e.note ? `\n  ${String(e.note).replace(/\n/g, '\n  ')}` : ''}`.replace('  ', ' ')));
 

@@ -164,9 +164,10 @@
       <div class="who"><span class="av you" id="chat-av">?</span><b id="chat-title">相手</b></div>
       <div class="chat" id="chat"></div>
       <div class="stamps" id="stamps" hidden></div>
+      <p class="error" id="chat-err" role="alert" aria-live="polite"></p>
       <form class="composer" id="chat-form">
         <button class="plus" id="stamp-btn" type="button" aria-label="スタンプ" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c1 1.5 2.200 2 3.500 2s2.500-.5 3.500-2M9 9.500h.01M15 9.500h.01"/></svg></button>
-        <input id="msg" placeholder="メッセージを入力" autocomplete="off" aria-label="メッセージ">
+        <div id="msg" class="msg-in" contenteditable="true" role="textbox" aria-label="メッセージ" aria-multiline="true" data-placeholder="メッセージを入力" enterkeyhint="send" autocapitalize="off" spellcheck="false"></div>
         <button class="send" type="submit" aria-label="送信">➤</button>
       </form>
     </div>

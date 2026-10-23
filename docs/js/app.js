@@ -35,7 +35,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
 };
-const VERSION = '2026.10.20-62';
+const VERSION = '2026.10.20-63';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -554,7 +554,8 @@ function startWatching() {
       if (!cache.has(ck)) cache.set(ck, await decrypt('messages', m));
       const p = cache.get(ck);
       const isStamp = p && p.t === 'stamp';
-      out.push({ ...m, body: p && !isStamp ? p.body : null, stamp: isStamp && STAMPS.includes(p.s) ? p.s : null });
+      const isImg = p && p.t === 'img' && typeof p.img === 'string' && /^data:image\/(png|webp|jpeg);base64,/.test(p.img); // 写真から作ったスタンプなどの絵
+      out.push({ ...m, body: p && !isStamp && !isImg ? p.body : null, stamp: isStamp && STAMPS.includes(p.s) ? p.s : null, img: isImg ? p.img : null });
     }
     if (my !== seq.msg) return;
     state.messages = out;
@@ -817,7 +818,9 @@ function renderChat() {
     }
     const mine = m.from === myUid();
     const big = m.stamp || (m.body != null && isEmojiOnly(m.body) ? m.body.trim() : null);
-    const bub = big
+    const bub = m.img
+      ? h('div', { class: 'bub imgmsg' }, h('img', { src: m.img, alt: 'スタンプ', draggable: 'false' }))
+      : big
       ? h('div', { class: 'bub stamp' }, big)
       : h('div', { class: `bub${m.body == null ? ' bad' : ''}` }, m.body == null ? '(読めないメッセージ)' : m.body);
     if (mine) holdToDelete(bub, m.id);
@@ -1309,14 +1312,58 @@ async function sendPayload(payload) {
   await state.store.sendMessage(await C.encryptJson(state.key, 'messages', payload), expire);
 }
 
+// 写真から作ったスタンプ(iPhoneのキーボードから貼れる絵)を、比率を保って縮めて、送れる形にする
+const IMG_MAX = 240; // 長い辺の大きさ(px)
+const IMG_LIMIT = 360 * 1024; // 送る絵のデータの上限(文字数)
+async function prepareImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    let scale = Math.min(1, IMG_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+    for (let k = 0; k < 3; k++) {
+      const w = Math.max(1, Math.round(img.naturalWidth * scale));
+      const hgt = Math.max(1, Math.round(img.naturalHeight * scale));
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = hgt;
+      cv.getContext('2d').drawImage(img, 0, 0, w, hgt);
+      let data = cv.toDataURL('image/webp', 0.85);
+      if (!data.startsWith('data:image/webp')) data = cv.toDataURL('image/png'); // webpを作れない端末は、pngで(背景の透明は、どちらも残る)
+      if (data.length <= IMG_LIMIT) return { img: data, w, h: hgt };
+      scale *= 0.75; // 大きすぎたら、もう少し小さくして、やり直す
+    }
+    return null;
+  } finally { URL.revokeObjectURL(url); }
+}
+
 function buildChat() {
-  $('#chat-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const input = $('#msg');
-    const body = input.value.trim();
+  const msg = $('#msg');
+  const getText = () => msg.textContent.replace(/\u00a0/g, ' ').trim();
+  const clearBox = () => { msg.innerHTML = ''; };
+  const send = async () => {
+    const body = getText();
     if (!body) return;
-    input.value = '';
+    clearBox();
     await sendPayload({ body });
+  };
+  $('#chat-form').addEventListener('submit', (e) => { e.preventDefault(); send(); });
+  // 入力欄(contenteditable)は、文字だけを入れる。絵(スタンプ)が貼られたら、送る。それ以外の書式は、受け取らない
+  msg.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); send(); } });
+  msg.addEventListener('input', () => { if (!msg.textContent) clearBox(); else if (msg.querySelector('img,div,p,span,font,b,i')) { const t = msg.textContent; msg.textContent = t; const r = document.createRange(); r.selectNodeContents(msg); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } });
+  msg.addEventListener('paste', async (e) => {
+    const cd = e.clipboardData;
+    const file = cd && cd.files && [...cd.files].find((f) => f.type.startsWith('image/'));
+    e.preventDefault();
+    if (file) {
+      try {
+        const p = await prepareImage(file);
+        if (!p) { $('#chat-err').textContent = '大きすぎて、送れませんでした'; return; }
+        $('#chat-err').textContent = '';
+        await sendPayload({ t: 'img', img: p.img, w: p.w, h: p.h });
+      } catch (x) { $('#chat-err').textContent = '送れませんでした。もう一度ためしてください。'; }
+      return;
+    }
+    const text = cd ? cd.getData('text/plain') : '';
+    if (text) document.execCommand('insertText', false, text);
   });
 
   const tray = $('#stamps');
