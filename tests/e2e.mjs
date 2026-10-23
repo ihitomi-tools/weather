@@ -373,6 +373,10 @@ await page.evaluate(() => { const r = Math.random; Math.random = () => 0.01; win
 await page.waitForSelector('#mn-talk:not([hidden])');
 const sayText = await page.textContent('#mn-talk');
 check('ひとり言が、月の場面に出る', sayText.length > 0);
+await page.evaluate(() => window.__moonVariantNow());
+check('ふたりの動き(場面)が変わると、前のひとり言は消える', await page.locator('#mn-talk').isHidden());
+await page.evaluate(() => { const r = Math.random; Math.random = () => 0.01; window.__sayNow(); Math.random = r; });
+await page.waitForSelector('#mn-talk:not([hidden])');
 await page.waitForTimeout(4500);
 check('数秒たっても、ひとり言は消えない', await page.locator('#mn-talk').isVisible() && (await page.textContent('#mn-talk')) === sayText);
 await page.click('#mn-talk');

@@ -35,7 +35,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
 };
-const VERSION = '2026.10.20-57';
+const VERSION = '2026.10.20-58';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1012,7 +1012,7 @@ function rollSay({ A, t, today, force, wait }) {
   if (!force && isMorning(today.getHours()) && LS.get(K.sayMorning) !== ymd(today)) {
     LS.set(K.sayMorning, ymd(today));
     const g = pickGreeting({ last: LS.get(K.sayLast) || '' });
-    state.say = { ...g, shown: g.text };
+    state.say = { ...g, shown: g.text, variant: state.moonVariant };
     LS.set(K.sayLast, g.text);
   }
   if (!t.resolved) return; // ブランコが成立するまでは、まだ話さない(成立したら、そのときに決める)
@@ -1022,12 +1022,14 @@ function rollSay({ A, t, today, force, wait }) {
   }
   state.sayDone = true;
   const pick = pickLine(sayContext({ A, t, today }), { last: LS.get(K.sayLast) || '' });
-  if (pick) { state.say = { ...pick, shown: sayText(pick) }; LS.set(K.sayLast, pick.text); } else if (state.say && state.say.group !== 'morning') state.say = null;
+  if (pick) { state.say = { ...pick, shown: sayText(pick), variant: state.moonVariant }; LS.set(K.sayLast, pick.text); } else if (state.say && state.say.group !== 'morning') state.say = null;
 }
 function renderSay({ t, today }) {
   const b = $('#mn-talk');
   if (!b) return;
   const quiet = workOn({ todayKey: ymd(today), events: state.events }); // 「今日は、いっしょだね」の日は、そちらを優先
+  // ふたりの動き(場面)が変わったら、前の場面のセリフは消す
+  if (state.say && state.say.variant !== state.moonVariant) { state.say = null; b.dataset.text = ''; }
   const s = state.say;
   b.hidden = !s || quiet || (!t.resolved && s.group !== 'morning'); // あいさつだけは、成立の前でも出る
   if (b.hidden) return;
@@ -1038,6 +1040,7 @@ function renderSay({ t, today }) {
     b.onclick = () => { state.say = null; b.hidden = true; b.dataset.text = ''; };
   }
 }
+window.__moonVariantNow = () => { state.moonVariant = state.moonVariant === 'hug' ? 'kiss' : 'hug'; renderMoon(); }; // 確認用: 場面を切りかえる
 window.__sayNow = () => { const A = moonAnalysis().A; rollSay({ A, t: A.today, today: new Date(), force: true }); renderSay({ t: A.today, today: new Date() }); };
 
 // 月に触れる合図: 自分がまだ触れていない間は、バナーと、月のカードの枠の光を出す(触れたら消える)
