@@ -5,7 +5,7 @@ import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
 import { unseenPats } from './share.js';
-import { answerKey, nextAction, cardStatus, availableStock, pickStock, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
+import { answerKey, nextAction, cardStatus, availableStock, pickStock, WHISPER, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
@@ -35,7 +35,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
 };
-const VERSION = '2026.10.20-61';
+const VERSION = '2026.10.20-62';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -69,7 +69,7 @@ const STAMPS = [
   '🐱', '🐶', '🐰', '🐻', '🚃', '🏠', '🛏️', '📞',
 ];
 // お題のカテゴリ(足す人が選ぶ。コードに書いてあるのは名前だけで、言葉の判定はしない)
-const CATS = [['fav', '好きな○○'], ['mem', '思い出'], ['dream', '将来・夢'], ['daily', '日常'], ['us', 'ふたりのこと'], ['if', 'もしも'], ['work', '仕事・学び']];
+const CATS = [['fav', '好きな○○'], ['mem', '思い出'], ['dream', '将来・夢'], ['daily', '日常'], ['us', 'ふたりのこと'], ['if', 'もしも'], ['work', '仕事・学び'], ['whisper', 'ひそひそ話']];
 const catLabel = (id) => { const c = CATS.find((x) => x[0] === id); return c ? c[1] : ''; };
 const catSelect = (label = 'カテゴリ') => h('select', { 'aria-label': label }, h('option', { value: '' }, 'カテゴリなし'), ...CATS.map(([id, nm]) => h('option', { value: id }, nm)));
 const EXPIRE_MS = { '24h': 24 * 3600e3, '7d': 7 * 24 * 3600e3, off: 0 };
@@ -1797,13 +1797,16 @@ async function createCard(n, text, stockId, by, cat) {
 
 async function makeNextCard(n) {
   const prev = state.qcards.find((c) => c.n === n - 1);
-  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by); // ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
+  // 明日がデートの日(=今日がデートの前日)なら、「ひそひそ話」を優先して出す。ほかの日は、ひそひそ話は出さない
+  const tomorrow = keyOf(dayNum(ymd(new Date())) + 1);
+  const whisperOk = state.events.some((e) => evType(e) === 'date' && e.date === tomorrow);
+  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by, whisperOk); // ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
   if (!pick) { state.needInput = n; renderTalk(); return; }
   await createCard(n, pick.text, pick.id, pick.from, pick.cat);
 }
 
 async function maybeAdvance() {
-  if (advancing || !state.store || !state.key || !state.loaded.stock || !state.loaded.qcards || !state.loaded.answers) return;
+  if (advancing || !state.store || !state.key || !state.loaded.stock || !state.loaded.qcards || !state.loaded.answers || !state.loaded.ev) return;
   const act = nextAction(state.qcards, state.answers, ymd(new Date()));
   if (act.type !== 'create' || state.needInput === act.n) return;
   advancing = true;
@@ -2037,6 +2040,9 @@ function openStockSheet() {
       const isUsed = used.has(s.id);
       const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
       if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
+      if (s.cat === WHISPER && !isUsed) { // ひそひそ話は、出るまで中身を出さない(足した本人にも)
+        return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), 'ひそひそ話', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
+      }
       return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
     };
     const rows = left.map(rowOf);
@@ -2063,11 +2069,11 @@ function openStockSheet() {
   const known = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
     return [
-      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id) })),
+      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id), secret: s.cat === WHISPER && !used.has(s.id) })),
       ...state.qcards.filter((c) => !c.stockId).map((c) => ({ text: c.text, by: c.by, used: true })),
     ];
   };
-  const simList = (items) => h('ul', { class: 'sim-list' }, items.map((m) => h('li', {}, `「${m.text}」`, h('small', {}, m.batch ? ' (いま入れた中の同じもの)' : ` ${nameOfUid(m.by)}が追加${m.used ? '・使用済み' : ''}`))));
+  const simList = (items) => h('ul', { class: 'sim-list' }, items.map((m) => h('li', {}, m.secret ? 'ひそひそ話に、ほとんど同じお題があります' : `「${m.text}」`, m.secret ? null : h('small', {}, m.batch ? ' (いま入れた中の同じもの)' : ` ${nameOfUid(m.by)}が追加${m.used ? '・使用済み' : ''}`))));
   const oneHint = h('div', { class: 'sim', hidden: true });
   const bulkHint = h('div', { class: 'sim', hidden: true });
   one.addEventListener('input', () => {

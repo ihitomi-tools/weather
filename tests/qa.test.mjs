@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nextAction, cardStatus, availableStock, pickStock, isComplete, describeAnswer, fmtDuration, answerKey, localKey } from '../docs/js/qa.js';
+import { nextAction, cardStatus, availableStock, pickStock, WHISPER, isComplete, describeAnswer, fmtDuration, answerKey, localKey } from '../docs/js/qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, birthdayDate } from '../docs/js/dates.js';
 
 const at = (key, hh = 12) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d, hh).getTime(); };
@@ -133,3 +133,17 @@ import { guessPhase, partnerGuessView, isRate } from '../docs/js/qa.js';
   });
   test('予想: 判定は3つだけ', () => { assert.ok(isRate('hit') && isRate('near') && isRate('miss')); assert.ok(!isRate('x') && !isRate(undefined)); });
 }
+
+test('ひそひそ話: デートの前日だけ出て(その日は必ず)、ほかの日は出ない', () => {
+  const avail = [{ id: 'a', from: 'u1', cat: 'daily' }, { id: 'b', from: 'u2', cat: WHISPER }, { id: 'c', from: 'u1', cat: 'fav' }];
+  for (let n = 1; n <= 30; n++) {
+    assert.equal(pickStock(avail, n, null, null, true).id, 'b'); // デートの前日は、100%
+    assert.notEqual(pickStock(avail, n, null, null, false).id, 'b'); // ふだんの日は、出ない
+    assert.notEqual(pickStock(avail, n).id, 'b');
+  }
+});
+test('ひそひそ話: 前日でも、ストックがなければ、ふつうのお題から選ぶ。ひそひそ話しか残っていない日は、選ばない', () => {
+  const normal = [{ id: 'a', from: 'u1', cat: 'daily' }];
+  assert.equal(pickStock(normal, 3, null, null, true).id, 'a');
+  assert.equal(pickStock([{ id: 'b', from: 'u2', cat: WHISPER }], 3, null, null, false), null);
+});
