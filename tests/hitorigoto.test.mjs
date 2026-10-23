@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LINES, groupsFor, candidates, pickLine, P_USUAL, P_TIRED } from '../docs/js/hitorigoto.js';
+import { LINES, NAME_LINES, groupsFor, candidates, pickLine, pickGreeting, isMorning, P_USUAL, P_TIRED, P_NAME } from '../docs/js/hitorigoto.js';
 
 const base = { resolved: true, hour: 14, rain: false, pts: 10, lateToday: false, soon: false, tiredRoles: [] };
 
 test('ふだんの昼は、「ふだん」の言葉だけ', () => {
   assert.deepEqual(groupsFor(base), ['usual']);
 });
-test('朝・夜・雨・満月が近い・おまたせ・デートが近い で、グループが増える', () => {
-  assert.ok(groupsFor({ ...base, hour: 8 }).includes('morning'));
+test('夜・雨・満月が近い・おまたせ・デートが近い で、グループが増える', () => {
+  assert.ok(!groupsFor({ ...base, hour: 8 }).includes('morning')); // 朝のあいさつは、別に出す(1日1回、必ず)
   assert.ok(groupsFor({ ...base, hour: 22 }).includes('night'));
   assert.ok(groupsFor({ ...base, hour: 1 }).includes('night'));
   assert.ok(groupsFor({ ...base, rain: true }).includes('rain'));
@@ -51,4 +51,22 @@ test('月のブランコが成立するまで(ふたりが触れるまで)は、
   assert.equal(pickLine({ ...base, resolved: false }, { rand: () => 0 }), null);
   assert.equal(pickLine({ ...base, resolved: false, tiredRoles: ['h'] }, { rand: () => 0 }), null);
   assert.ok(pickLine(base, { rand: () => 0 }));
+});
+
+test('午前中(5時〜12時前)に開いたら、あいさつ。朝の言葉だけから選ぶ', () => {
+  assert.ok(isMorning(5) && isMorning(11) && !isMorning(4) && !isMorning(12));
+  const texts = LINES.morning.map(([, t]) => t);
+  for (let i = 0; i < 10; i++) assert.ok(texts.includes(pickGreeting({ rand: () => i / 10 }).text));
+  assert.notEqual(pickGreeting({ rand: () => 0, last: texts[0] }).text, texts[0]);
+});
+test('ときどき、相手の名前を呼ぶ(低い確率・しんどい日は呼ばない)', () => {
+  let n = 0;
+  const r1 = () => { n += 1; return n === 1 ? 0 : (n === 2 ? 0.01 : 0); }; // 出る → 名前を呼ぶ
+  const call = pickLine(base, { rand: r1 });
+  assert.equal(call.group, 'name');
+  assert.ok(NAME_LINES.some(([role, text]) => role === call.role && text === call.text) && call.text.includes('{name}'));
+  const noCall = pickLine(base, { rand: (() => { let m = 0; return () => { m += 1; return m === 1 ? 0 : (m === 2 ? P_NAME : 0); }; })() });
+  assert.notEqual(noCall.group, 'name'); // 12%以上なら、ふつうの言葉
+  const tiredPick = pickLine({ ...base, tiredRoles: ['h'] }, { rand: () => 0 });
+  assert.equal(tiredPick.group, 'tired');
 });

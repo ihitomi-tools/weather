@@ -13,7 +13,7 @@ import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
 import { analyzeMoon, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
-import { pickLine } from './hitorigoto.js';
+import { pickLine, pickGreeting, isMorning } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -33,9 +33,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
 };
-const VERSION = '2026.10.20-54';
+const VERSION = '2026.10.20-55';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1003,8 +1003,18 @@ function sayContext({ A, t, today }) {
   const soon = !!j && dayNum(j.date < key ? key : j.date) - dayNum(key) <= 3;
   return { resolved: !!t.resolved, hour: today.getHours(), rain: rainNow(), pts: A.pts, lateToday: !!(t.resolved && t.kind === 'late'), soon, tiredRoles };
 }
+// {name} を、呼ばれる側(話すキャラの、もう一方)の名前に置きかえる
+const nameOfRole = (r) => (roleOf(myUid()) === r ? myName() : partnerName());
+const sayText = (pick) => pick.text.replace('{name}', nameOfRole(pick.role === 'h' ? 'y' : 'h'));
 function rollSay({ A, t, today, force, wait }) {
   if (!force && (state.sayDone || !state.loaded.moon || !state.loaded.dy)) return;
+  // 午前中に開いたら、あいさつを、その日の1回だけ必ず出す(ブランコの成立は待たない)
+  if (!force && isMorning(today.getHours()) && LS.get(K.sayMorning) !== ymd(today)) {
+    LS.set(K.sayMorning, ymd(today));
+    const g = pickGreeting({ last: LS.get(K.sayLast) || '' });
+    state.say = { ...g, shown: g.text };
+    LS.set(K.sayLast, g.text);
+  }
   if (!t.resolved) return; // ブランコが成立するまでは、まだ話さない(成立したら、そのときに決める)
   if (wait) { // 成立してふたりがつながって揺れている間は、終わるまで待つ
     if (!state.sayTimer) state.sayTimer = setTimeout(() => { state.sayTimer = 0; renderMoon(); }, wait);
@@ -1012,20 +1022,19 @@ function rollSay({ A, t, today, force, wait }) {
   }
   state.sayDone = true;
   const pick = pickLine(sayContext({ A, t, today }), { last: LS.get(K.sayLast) || '' });
-  state.say = pick;
-  if (pick) LS.set(K.sayLast, pick.text);
+  if (pick) { state.say = { ...pick, shown: sayText(pick) }; LS.set(K.sayLast, pick.text); } else if (state.say && state.say.group !== 'morning') state.say = null;
 }
 function renderSay({ t, today }) {
   const b = $('#mn-talk');
   if (!b) return;
   const quiet = workOn({ todayKey: ymd(today), events: state.events }); // 「今日は、いっしょだね」の日は、そちらを優先
   const s = state.say;
-  b.hidden = !s || quiet || !t.resolved;
+  b.hidden = !s || quiet || (!t.resolved && s.group !== 'morning'); // あいさつだけは、成立の前でも出る
   if (b.hidden) return;
-  if (b.dataset.text !== s.text) {
-    b.dataset.text = s.text;
+  if (b.dataset.text !== s.shown) {
+    b.dataset.text = s.shown;
     b.className = `mn-talk ${s.role}`;
-    b.textContent = s.text;
+    b.textContent = s.shown;
     b.onclick = () => { state.say = null; b.hidden = true; b.dataset.text = ''; };
   }
 }

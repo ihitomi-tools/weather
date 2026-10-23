@@ -3,15 +3,27 @@
 
 // グループごとの言葉。tired は、しんどい日(やさしい言葉だけ)
 export const LINES = {
-  morning: [['h', 'おはよ。今日もゆるっといこ'], ['y', 'おはよう。水、飲んだ？']],
-  night: [['h', 'おつかれさま。もう休んでいいよ'], ['y', '今日もがんばったね']],
-  usual: [['h', 'ここ、落ち着くね'], ['h', '今日のいいこと、ひとつ探そう'], ['y', 'ぼーっとするの、いいね'], ['y', 'おなかすいたな'], ['h', 'ふふ']],
+  morning: [['h', 'おはよー　いい一日になるといいね'], ['y', 'おはよー　調子はどう？']],
+  night: [['h', '今日も１日おつかれさま♥'], ['y', '今日もがんばったね']],
+  usual: [['h', 'ここ、落ち着くね'], ['h', 'うふふ'], ['y', 'ぼーっとするの、いいね'], ['y', '深呼吸をわすれずにね']],
   rain: [['h', '傘、持った？'], ['y', '雨の音、ちょっと好き'], ['h', '濡れてない？']],
   fullish: [['h', 'もうすこしで満月だね'], ['y', 'ぴったり、狙っちゃう？']],
   late: [['y', 'ちょっと待たせたね'], ['h', '来てくれた']],
-  soon: [['h', '会えるの、楽しみ'], ['y', '何着ようかな']],
-  tired: [['h', '無理しなくていいよ'], ['y', '今日はゆっくりしよう'], ['h', 'ここまで来てるだけで、えらいよ'], ['y', 'そばにいるよ'], ['h', '何もしなくていい日も、あっていいよ'], ['y', 'あったかいもの、飲もう']],
+  soon: [['h', 'デート楽しみだなぁ♥'], ['y', '気分盛り上がってきたね']],
+  tired: [['h', 'がんばりすぎは禁物だよ'], ['y', '無理しないようにね'], ['h', 'ぼちぼちやっていこうね'], ['y', 'そばにいるよ'], ['h', 'そばで見守ってるよ'], ['y', '甘やかされにおいで']],
 };
+// ときどき(低い確率で)、相手の名前を呼ぶ。{name} は、呼ばれる側の名前に、画面側で置きかえる
+export const NAME_LINES = [['h', '{name}♥'], ['y', '{name}♥']];
+export const P_NAME = 0.12;
+
+// 午前中(5時〜12時前)に開いたときは、あいさつを1日1回、必ず出す(月のブランコの成立は待たない)
+export const isMorning = (hour) => hour >= 5 && hour < 12;
+export function pickGreeting({ rand = Math.random, last = '' } = {}) {
+  let list = LINES.morning.map(([role, text]) => ({ role, text, group: 'morning' }));
+  const other = list.filter((c) => c.text !== last);
+  if (other.length) list = other;
+  return list[Math.min(list.length - 1, Math.floor(rand() * list.length))];
+}
 
 export const P_USUAL = 0.5;
 export const P_TIRED = 0.8;
@@ -20,7 +32,6 @@ export const P_TIRED = 0.8;
 export function groupsFor({ hour, rain, pts, lateToday, soon, tiredRoles }) {
   if (tiredRoles && tiredRoles.length) return ['tired'];
   const g = ['usual'];
-  if (hour >= 5 && hour < 11) g.push('morning');
   if (hour >= 21 || hour < 3) g.push('night');
   if (rain) g.push('rain');
   if (pts >= 80 && pts < 100) g.push('fullish');
@@ -51,6 +62,10 @@ export function pickLine(ctx, { rand = Math.random, last = '' } = {}) {
   if (!ctx.resolved) return null; // 月のブランコが成立した(ふたりが触れた)あとだけ。ブランコに乗っている間は、話さない
   const tired = !!(ctx.tiredRoles && ctx.tiredRoles.length);
   if (rand() >= (tired ? P_TIRED : P_USUAL)) return null;
+  if (!tired && rand() < P_NAME) { // ときどき、名前を呼ぶ
+    const [role, text] = NAME_LINES[Math.min(NAME_LINES.length - 1, Math.floor(rand() * NAME_LINES.length))];
+    return { role, text, group: 'name' };
+  }
   let list = candidates(ctx);
   const other = list.filter((c) => c.text !== last);
   if (other.length) list = other; // 直前と同じ言葉は、続けて出さない(ほかに無いときだけ許す)

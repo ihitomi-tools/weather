@@ -351,6 +351,7 @@ await page.waitForFunction(() => window.__fake.mn.length === 1);
 check('月を押すと、触れた記録が暗号文で保存され、状況パネルが開く', !JSON.stringify(await page.evaluate(() => window.__fake.mn)).includes('"at"') && (await page.textContent('#mn-panel')).includes('まだ'));
 check('触れたあとは、合図の輪が消える', (await page.locator('#mn-scene .hintc').count()) === 0);
 check('触れたあとは、バナーも枠の光も消える', (await page.locator('#moon-banner').isHidden()) && (await page.locator('#mn-card.cue').count()) === 0);
+if (await page.locator('#mn-talk').isVisible()) await page.click('#mn-talk'); // 朝に開いたときのあいさつは、成立の前でも出る(ここでは消しておく)
 await page.evaluate(() => { const r = Math.random; Math.random = () => 0.01; window.__sayNow(); Math.random = r; });
 check('ブランコが成立するまで(相手がまだ触れていない間)は、ひとり言は出ない', await page.locator('#mn-talk').isHidden());
 await page.click('#mn-card');

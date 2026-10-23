@@ -57,6 +57,11 @@ await closeAsk();
 await fh.locator('#mn-card').waitFor();
 await page.waitForTimeout(800);
 check('リセットで0に戻る', (await fh.locator('#mn-pts').textContent()) === '0');
+// 朝(あすの朝)に開くと、ブランコの成立を待たずに、あいさつが1日1回出る
+await page.click('[data-adv="next"]');
+await page.waitForTimeout(1200);
+const greet = await fh.locator('#mn-talk').isVisible() ? await fh.locator('#mn-talk').textContent() : '';
+check('朝に開くと、あいさつが出る(成立していなくても)', /おはよー/.test(greet), greet);
 await fy.locator('.tab[data-v="chat"]').click();
 await fy.locator('#talk-seg [data-t="chat"]').click();
 await fy.locator('#msg').fill('こんにちは');
