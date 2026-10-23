@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { LINES, groupsFor, candidates, pickLine, P_USUAL, P_TIRED } from '../docs/js/hitorigoto.js';
 
-const base = { hour: 14, rain: false, pts: 10, lateToday: false, soon: false, tiredRoles: [] };
+const base = { resolved: true, hour: 14, rain: false, pts: 10, lateToday: false, soon: false, tiredRoles: [] };
 
 test('ふだんの昼は、「ふだん」の言葉だけ', () => {
   assert.deepEqual(groupsFor(base), ['usual']);
@@ -45,4 +45,10 @@ test('直前と同じ言葉は、続けて出さない', () => {
 });
 test('言葉の数: どのグループにも、ふたりの口調の言葉がある(特別な場面を除く)', () => {
   ['usual', 'tired', 'morning', 'night', 'rain'].forEach((g) => { assert.ok(LINES[g].some(([r]) => r === 'h') && LINES[g].some(([r]) => r === 'y'), g); });
+});
+
+test('月のブランコが成立するまで(ふたりが触れるまで)は、話さない', () => {
+  assert.equal(pickLine({ ...base, resolved: false }, { rand: () => 0 }), null);
+  assert.equal(pickLine({ ...base, resolved: false, tiredRoles: ['h'] }, { rand: () => 0 }), null);
+  assert.ok(pickLine(base, { rand: () => 0 }));
 });

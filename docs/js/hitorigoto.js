@@ -45,8 +45,10 @@ export function candidates(ctx) {
   return out;
 }
 
+// 出すのは、月のブランコが成立した日の、成立のあとだけ(ctx.resolved)。
 // 出すかどうかを決めて、出すなら1つ選ぶ。rand は 0 以上 1 未満(テストで差し替える)。last は、直前に出した言葉。
 export function pickLine(ctx, { rand = Math.random, last = '' } = {}) {
+  if (!ctx.resolved) return null; // 月のブランコが成立した(ふたりが触れた)あとだけ。ブランコに乗っている間は、話さない
   const tired = !!(ctx.tiredRoles && ctx.tiredRoles.length);
   if (rand() >= (tired ? P_TIRED : P_USUAL)) return null;
   let list = candidates(ctx);

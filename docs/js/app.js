@@ -35,7 +35,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast',
 };
-const VERSION = '2026.10.20-53';
+const VERSION = '2026.10.20-54';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -93,7 +93,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), say: null, sayDone: false, hiddenAt: 0, boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), say: null, sayDone: false, sayTimer: 0, hiddenAt: 0, boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -1001,10 +1001,15 @@ function sayContext({ A, t, today }) {
   const tiredRoles = peopleOf().filter((u) => { const r = recsOf(u).get(key); return r && r.l === 1; }).map((u) => roleOf(u));
   const j = nextJoint(state.events, key);
   const soon = !!j && dayNum(j.date < key ? key : j.date) - dayNum(key) <= 3;
-  return { hour: today.getHours(), rain: rainNow(), pts: A.pts, lateToday: !!(t.resolved && t.kind === 'late'), soon, tiredRoles };
+  return { resolved: !!t.resolved, hour: today.getHours(), rain: rainNow(), pts: A.pts, lateToday: !!(t.resolved && t.kind === 'late'), soon, tiredRoles };
 }
-function rollSay({ A, t, today, force }) {
+function rollSay({ A, t, today, force, wait }) {
   if (!force && (state.sayDone || !state.loaded.moon || !state.loaded.dy)) return;
+  if (!t.resolved) return; // ブランコが成立するまでは、まだ話さない(成立したら、そのときに決める)
+  if (wait) { // 成立してふたりがつながって揺れている間は、終わるまで待つ
+    if (!state.sayTimer) state.sayTimer = setTimeout(() => { state.sayTimer = 0; renderMoon(); }, wait);
+    return;
+  }
   state.sayDone = true;
   const pick = pickLine(sayContext({ A, t, today }), { last: LS.get(K.sayLast) || '' });
   state.say = pick;
@@ -1015,7 +1020,7 @@ function renderSay({ t, today }) {
   if (!b) return;
   const quiet = workOn({ todayKey: ymd(today), events: state.events }); // 「今日は、いっしょだね」の日は、そちらを優先
   const s = state.say;
-  b.hidden = !s || quiet;
+  b.hidden = !s || quiet || !t.resolved;
   if (b.hidden) return;
   if (b.dataset.text !== s.text) {
     b.dataset.text = s.text;
@@ -2360,6 +2365,7 @@ function renderMoon() {
   const t = A.today;
   if (state.moonDay !== t.key) {
     state.moonDay = t.key;
+    state.say = null; state.sayDone = false; // 新しい日は、また、成立のあとに決める
     state.moonPanel = false;
     state.moonVisit = LS.get(K.moonSeen) === t.key ? 1 : 0;
     if (state.moonVisit) pickMoonVariant();
@@ -2375,7 +2381,8 @@ function renderMoon() {
   const ready = !!state.loaded.moon;
   const hint = ready && !t.resolved && t[roles[myUid()]] == null;
   renderMoonBanner({ hint, t, roles, now });
-  rollSay({ A, t, today, force: false });
+  const sayWait = Math.max(state.moonCheerUntil, state.moonPop.until) - now; // ふたりがつながって揺れている間は、まだ話さない
+  rollSay({ A, t, today, force: false, wait: sayWait > 0 ? sayWait + 300 : 0 });
   renderSay({ t, today });
   const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired, hint]);
   if (key !== moonSig) {
