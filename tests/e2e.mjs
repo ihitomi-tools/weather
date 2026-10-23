@@ -744,6 +744,7 @@ await page.locator('#settings li', { hasText: 'バージョン' }).locator('butt
 await reloaded;
 check('「最新版にする」で再読み込みされ、天気の画面になる', await page.locator('#cover').isVisible());
 
+check('iPhoneで勝手に拡大されない備え(拡大の上限・ダブルタップ・つまみ)', (await page.evaluate(() => document.querySelector('meta[name=viewport]').content)).includes('maximum-scale=1') && (await page.evaluate(() => getComputedStyle(document.body).touchAction)) === 'manipulation' && (await page.evaluate(async () => (await (await fetch('/css/style.css')).text()).includes('-webkit-touch-callout'))));
 check('ブラウザのエラーなし', errors.length === 0, errors.join(' | '));
 await page.screenshot({ path: '/tmp/claude-0/-home-user-chat/47a10d62-f426-5480-9ae3-ef67e0150520/scratchpad/shot-app.png' });
 await browser.close();

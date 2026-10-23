@@ -517,3 +517,11 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .mn-talk.y::after { right: 20px; }
 @keyframes mn-talk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .mn-talk { animation: none; } }
+
+/* ---- iPhoneで、画面が勝手に拡大されないように ---- */
+/* 入力欄にふれたとき、文字が16pxより小さいと、iPhoneは画面を拡大してしまう。iPhoneでだけ、16px以上にそろえる */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select, .set select, .set input[type="date"], .set input[type="text"], .sheet-box textarea { font-size: 16px; }
+}
+/* ダブルタップでの拡大を止める(ふつうのスクロールやタップは、そのまま) */
+html, body, button, a, label, input, select, textarea { touch-action: manipulation; }
