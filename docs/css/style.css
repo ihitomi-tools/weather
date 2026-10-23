@@ -507,12 +507,12 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 }
 @media (prefers-reduced-motion: reduce) { .mn .mn-card.cue { animation: none; box-shadow: 0 0 0 4px rgba(255, 127, 176, .5), 0 0 20px 6px rgba(255, 127, 176, .5); } }
 
-/* ---- ひとり言(月の場面に出る吹き出し。タップで消える) ---- */
+/* ---- ひとり言(月の場面に出る吹き出し。タップで消える。縁は、話すキャラの色) ---- */
 .mn { position: relative; }
-.mn-talk { position: absolute; top: 20px; z-index: 3; max-width: 62%; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; font-weight: 800; line-height: 1.5; padding: 8px 12px; text-align: left; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .15); animation: mn-talk-in .4s ease-out both; }
-.mn-talk.h { left: 30px; }
-.mn-talk.y { right: 30px; }
-.mn-talk::after { content: ""; position: absolute; bottom: -7px; width: 10px; height: 10px; background: var(--surface); border-right: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); transform: rotate(45deg); }
+.mn-talk { position: absolute; top: 34px; z-index: 3; max-width: 62%; border: 2.5px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); font: inherit; font-size: 13px; font-weight: 800; line-height: 1.5; padding: 8px 12px; text-align: left; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .15); animation: mn-talk-in .4s ease-out both; --edge: var(--line); border-color: var(--edge); }
+.mn-talk.h { --edge: var(--pink-deep); left: calc(14px + (100% - 28px) * 0.29 - 28px); }
+.mn-talk.y { --edge: var(--mint-deep); right: calc(14px + (100% - 28px) * 0.30 - 28px); }
+.mn-talk::after { content: ""; position: absolute; bottom: -8px; width: 10px; height: 10px; background: var(--surface); border-right: 2.5px solid var(--edge); border-bottom: 2.5px solid var(--edge); transform: rotate(45deg); }
 .mn-talk.h::after { left: 20px; }
 .mn-talk.y::after { right: 20px; }
 @keyframes mn-talk-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
