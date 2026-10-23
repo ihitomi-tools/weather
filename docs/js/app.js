@@ -13,6 +13,7 @@ import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
 import { analyzeMoon, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
+import { pickLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -32,9 +33,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast',
 };
-const VERSION = '2026.10.20-52';
+const VERSION = '2026.10.20-53';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -92,7 +93,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), say: null, sayDone: false, hiddenAt: 0, boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -994,6 +995,37 @@ function patOverlayMaybe() {
 }
 
 // 他の人から届いた「よしよし」を、ホームに知らせる
+// ひとり言: 開いたとき(30分以上あけて戻ってきたときも)、場面に合う言葉を、確率で1つ出す。出たら、タップするまで消えない
+function sayContext({ A, t, today }) {
+  const key = ymd(today);
+  const tiredRoles = peopleOf().filter((u) => { const r = recsOf(u).get(key); return r && r.l === 1; }).map((u) => roleOf(u));
+  const j = nextJoint(state.events, key);
+  const soon = !!j && dayNum(j.date < key ? key : j.date) - dayNum(key) <= 3;
+  return { hour: today.getHours(), rain: rainNow(), pts: A.pts, lateToday: !!(t.resolved && t.kind === 'late'), soon, tiredRoles };
+}
+function rollSay({ A, t, today, force }) {
+  if (!force && (state.sayDone || !state.loaded.moon || !state.loaded.dy)) return;
+  state.sayDone = true;
+  const pick = pickLine(sayContext({ A, t, today }), { last: LS.get(K.sayLast) || '' });
+  state.say = pick;
+  if (pick) LS.set(K.sayLast, pick.text);
+}
+function renderSay({ t, today }) {
+  const b = $('#mn-talk');
+  if (!b) return;
+  const quiet = workOn({ todayKey: ymd(today), events: state.events }); // 「今日は、いっしょだね」の日は、そちらを優先
+  const s = state.say;
+  b.hidden = !s || quiet;
+  if (b.hidden) return;
+  if (b.dataset.text !== s.text) {
+    b.dataset.text = s.text;
+    b.className = `mn-talk ${s.role}`;
+    b.textContent = s.text;
+    b.onclick = () => { state.say = null; b.hidden = true; b.dataset.text = ''; };
+  }
+}
+window.__sayNow = () => { const A = moonAnalysis().A; rollSay({ A, t: A.today, today: new Date(), force: true }); renderSay({ t: A.today, today: new Date() }); };
+
 // 月に触れる合図: 自分がまだ触れていない間は、バナーと、月のカードの枠の光を出す(触れたら消える)
 function renderMoonBanner({ hint, t, roles, now }) {
   const b = $('#moon-banner');
@@ -1518,7 +1550,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'css/moon.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'css/moon.css',
 ];
 
 async function refreshApp(btn) {
@@ -2343,6 +2375,8 @@ function renderMoon() {
   const ready = !!state.loaded.moon;
   const hint = ready && !t.resolved && t[roles[myUid()]] == null;
   renderMoonBanner({ hint, t, roles, now });
+  rollSay({ A, t, today, force: false });
+  renderSay({ t, today });
   const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired, hint]);
   if (key !== moonSig) {
     moonSig = key;
@@ -2437,7 +2471,7 @@ function init() {
 
   // アプリを離れたら最初の画面に戻す
   const away = () => { if (LS.get(K.auto) !== '0' && $('#cover').hidden) lock(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) away(); else { markRead(); renderBadges(); }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { state.hiddenAt = Date.now(); away(); } else { markRead(); renderBadges(); if (state.hiddenAt && Date.now() - state.hiddenAt > 30 * 60 * 1000) state.sayDone = false; }
     moonPause();
   });
   window.addEventListener('pagehide', away);

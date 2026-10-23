@@ -364,6 +364,16 @@ check('しばらくすると、ゆらゆら揺れるだけになる', (await pag
 await page.click('.tab[data-v="cal"]');
 await page.click('.tab[data-v="home"]');
 check('ホームに戻ってくると、くっついた姿になる', (await page.locator('#mn-scene .together, #mn-scene .pend.rest .perf.h').count()) >= 1 && (await page.locator('#mn-scene .pend.rest .pairh').count()) === 0);
+// ひとり言: 出ると、タップするまで消えない。タップしても、月には触れたことにならない
+const mnBefore = await page.evaluate(() => window.__fake.mn.length);
+await page.evaluate(() => { const r = Math.random; Math.random = () => 0.01; window.__sayNow(); Math.random = r; });
+await page.waitForSelector('#mn-talk:not([hidden])');
+const sayText = await page.textContent('#mn-talk');
+check('ひとり言が、月の場面に出る', sayText.length > 0);
+await page.waitForTimeout(4500);
+check('数秒たっても、ひとり言は消えない', await page.locator('#mn-talk').isVisible() && (await page.textContent('#mn-talk')) === sayText);
+await page.click('#mn-talk');
+check('タップすると、ひとり言が消える(月には触れたことにならない)', (await page.locator('#mn-talk').isHidden()) && (await page.evaluate(() => window.__fake.mn.length)) === mnBefore);
 await page.click('#mn-panel button');
 await page.waitForSelector('#sheet-body .mlog li');
 check('「記録をみる」で、触れた記録が見られる', (await page.textContent('#sheet-body')).includes('ぴったり'));
