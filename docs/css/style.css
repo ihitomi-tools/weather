@@ -547,3 +547,7 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 #v-chat .ccard b { font-size: 18px; }
 #v-chat .ccard .a { font-size: 14px; }
 #v-chat .sitem { font-size: 17px; }
+
+/* ピンク・ミントの答えの中の補足(時刻・考えた時間)は、答えの文字と同じ色で、少しだけ薄く。暗い画面で見えなくならないように */
+.ans .meta, .ans small { color: inherit; }
+.ans .meta { opacity: .8; }
