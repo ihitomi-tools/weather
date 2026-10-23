@@ -496,3 +496,12 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dd-pat .dd-patpic svg { width: 56px; height: 56px; fill: initial; }
 .dd-pat .dd-patpic.lap svg { width: 76px; height: 41px; }
 .dd-patpic:not(.lap) svg { width: 56px; height: 56px; } /* ふたり立ちの絵は縦長なので、横を詰めて文字の場所を空ける */
+
+/* ---- 月に触れる合図: カードの外側の枠が、ぼわっと太く光る ---- */
+#moon-banner small { display: block; font-weight: 500; font-size: 11px; }
+.mn .mn-card.cue { animation: mn-cue 2.4s ease-in-out infinite; box-shadow: 0 0 0 0 rgba(255, 127, 176, .6); }
+@keyframes mn-cue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 127, 176, .55), 0 0 0 0 rgba(255, 127, 176, 0); }
+  50% { box-shadow: 0 0 0 5px rgba(255, 127, 176, .5), 0 0 26px 10px rgba(255, 127, 176, .55); }
+}
+@media (prefers-reduced-motion: reduce) { .mn .mn-card.cue { animation: none; box-shadow: 0 0 0 4px rgba(255, 127, 176, .5), 0 0 20px 6px rgba(255, 127, 176, .5); } }

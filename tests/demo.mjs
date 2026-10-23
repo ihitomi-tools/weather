@@ -38,6 +38,7 @@ check('名前が彼女・彼氏', (await fh.locator('#home-title').textContent()
 await fh.locator('#mn-card').click();
 await page.waitForTimeout(600);
 check('彼女が触れると、彼氏の画面の記録にも出る', /まだ/.test(await fy.locator('#mn-pts').evaluate(() => document.body.innerText)) || true);
+check('彼女が触れると、彼女のバナーは消え、彼氏には「触れたよ」と「ぴったり」の案内が出る', (await fh.locator('#moon-banner').isHidden()) && (await fy.locator('#moon-banner').textContent()).includes('彼女が月に触れたよ') && (await fy.locator('#moon-banner').textContent()).includes('ぴったり'));
 await page.click('[data-adv="10"]');
 await fy.locator('#mn-card').click();
 await page.waitForTimeout(800);

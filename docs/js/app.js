@@ -34,7 +34,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk',
 };
-const VERSION = '2026.10.20-49';
+const VERSION = '2026.10.20-50';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -994,6 +994,22 @@ function patOverlayMaybe() {
 }
 
 // 他の人から届いた「よしよし」を、ホームに知らせる
+// 月に触れる合図: 自分がまだ触れていない間は、バナーと、月のカードの枠の光を出す(触れたら消える)
+function renderMoonBanner({ hint, t, roles, now }) {
+  const b = $('#moon-banner');
+  const card = $('#mn-card');
+  if (card) card.classList.toggle('cue', !!hint);
+  if (!b) return;
+  b.hidden = !hint;
+  if (!hint) return;
+  const other = t[roles[myUid()] === 'h' ? 'y' : 'h'];
+  const near = other != null && now - other <= MOON_WIN; // 相手が触れてから10分以内なら、いま触れると「ぴったり」
+  const text = other != null ? `${partnerName()}が月に触れたよ` : '今日の月に、触れてみよう';
+  const kids = [heartIcon(), near ? h('span', {}, text, h('small', {}, 'いま触れると、「ぴったり」になるかも')) : text];
+  b.replaceChildren(...kids);
+  b.onclick = () => { const m = $('#moon'); if (m && m.scrollIntoView) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+}
+
 // ホームの合図: 予想できるとき・答え合わせができるとき
 function renderGuessBanner() {
   const b = $('#guess-banner');
@@ -2326,6 +2342,7 @@ function renderMoon() {
   const tired = !!(t.h != null && !t.resolved && t.y == null && now - t.h > MOON_WIN);
   const ready = !!state.loaded.moon;
   const hint = ready && !t.resolved && t[roles[myUid()]] == null;
+  renderMoonBanner({ hint, t, roles, now });
   const key = JSON.stringify([ready, t.key, t.h, t.y, t.resolved, t.kind, A.pts, state.moonVisit, state.moonVariant, special, season, cheerOn, popOn, tired, hint]);
   if (key !== moonSig) {
     moonSig = key;

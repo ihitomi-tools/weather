@@ -344,11 +344,13 @@ const ringBox = await page.evaluate(() => { const r = document.querySelector('#m
 check('合図の輪は、月の中心から広がる', ringBox && Math.abs(ringBox[0]) < 1 && Math.abs(ringBox[1]) < 1, JSON.stringify(ringBox));
 check('ホームの一番上に、月の舞台が出る', await page.locator('#moon').isVisible() && (await page.locator('#v-home > *').evaluateAll((els) => els.map((e) => e.id || e.className)))[ 4 ] !== undefined);
 check('触れる前は、合図の輪が出て、ボタンはない', (await page.locator('#mn-scene .hintc').count()) === 1 && (await page.locator('#moon button:has-text("月に触れる")').count()) === 0);
+check('触れる前は、バナーと枠の光が出る', (await page.locator('#moon-banner').isVisible()) && (await page.textContent('#moon-banner')).includes('月に、触れてみよう') && (await page.locator('#mn-card.cue').count()) === 1);
 await page.click('#mn-card');
 await page.waitForSelector('#mn-panel:not([hidden])');
 await page.waitForFunction(() => window.__fake.mn.length === 1);
 check('月を押すと、触れた記録が暗号文で保存され、状況パネルが開く', !JSON.stringify(await page.evaluate(() => window.__fake.mn)).includes('"at"') && (await page.textContent('#mn-panel')).includes('まだ'));
 check('触れたあとは、合図の輪が消える', (await page.locator('#mn-scene .hintc').count()) === 0);
+check('触れたあとは、バナーも枠の光も消える', (await page.locator('#moon-banner').isHidden()) && (await page.locator('#mn-card.cue').count()) === 0);
 await page.click('#mn-card');
 check('もう一度押すと、パネルが閉じる(2回目は記録されない)', !(await page.locator('#mn-panel').isVisible()) && (await page.evaluate(() => window.__fake.mn.length)) === 1);
 await page.click('#mn-card');
