@@ -33,8 +33,11 @@ export function predict(days, todayKey) {
   const gaps = starts.slice(1).map((s, i) => s - starts[i]).slice(-6).filter((g) => g >= 15 && g <= 60);
   if (!gaps.length) return none;
   const cycle = Math.round(mean(gaps));
-  const len = Math.min(10, Math.max(1, Math.round(mean(runs.slice(-6).map((r) => r.len)))));
   const today = dayNum(todayKey);
+  // いま続いている最中(最後の記録が、昨日か今日まで)の分は、まだ何日続くか分からないので、期間の平均から外す
+  const last = runs[runs.length - 1];
+  const finished = dayNum(last.end) >= today - 1 ? runs.slice(0, -1) : runs;
+  const len = Math.min(10, Math.max(1, Math.round(mean((finished.length ? finished : runs).slice(-6).map((r) => r.len)))));
   const recorded = new Set([...days]);
   let s = starts[starts.length - 1] + cycle;
   while (s + len <= today) s += cycle; // 過ぎてしまった予想は出さない
