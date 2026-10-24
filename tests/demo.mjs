@@ -62,6 +62,7 @@ await page.click('[data-adv="next"]');
 await page.waitForTimeout(1200);
 const greet = await fh.locator('#mn-talk').isVisible() ? await fh.locator('#mn-talk').textContent() : '';
 check('朝に開くと、あいさつが出る(成立していなくても)', /おはよー/.test(greet), greet);
+for (const f of [fh, fy]) { if (await f.locator('#sheet:not([hidden]) #sheet-close').count()) await f.locator('#sheet-close').click(); } // 日がかわると、今日の調子を聞かれる
 await fy.locator('.tab[data-v="chat"]').click();
 await fy.locator('#talk-seg [data-t="chat"]').click();
 await fy.locator('#msg').fill('こんにちは');
