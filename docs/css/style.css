@@ -562,3 +562,6 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 #chat-err { margin: 0; padding: 4px 16px; font-size: 14px; }
 .row .bub.imgmsg { background: none; padding: 0 2px; border-radius: 0; line-height: 0; }
 .row .bub.imgmsg img { display: block; max-width: 160px; max-height: 160px; width: auto; height: auto; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+
+.lockrow.mine { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.lockrow.mine.open { box-shadow: inset 0 0 0 2px var(--pink-deep); }

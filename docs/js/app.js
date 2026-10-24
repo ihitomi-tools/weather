@@ -35,7 +35,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
 };
-const VERSION = '2026.10.20-64';
+const VERSION = '2026.10.20-65';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2070,6 +2070,9 @@ function openStockSheet() {
   const list = h('ul', { class: 'stack', style: 'list-style:none;padding:0;margin:0' });
   let catFilter = 'all';
   let showUsed = false;
+  let shownId = null; // 長押しで、いま中身を見せている、ひそひそ話のid
+  let shownAt = 0;
+  let hideTimer = 0;
   const filterRow = h('div', { class: 'chips' });
   const fill = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
@@ -2088,7 +2091,26 @@ function openStockSheet() {
       const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
       if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
       if (s.cat === WHISPER && !isUsed) { // ひそひそ話は、出るまで、相手には中身を出さない(足した本人には、見える)
-        if (s.from === myUid()) return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), s.text, h('small', { class: 'catname' }, ' 相手には、デートの前日まで内緒')), del);
+        if (s.from === myUid()) { // 自分が足したものは、長押しすると、10秒だけ中身が見える(のぞき見されても見えないように)
+          const open = shownId === s.id;
+          const row = h('li', { class: `sitem lockrow mine${open ? ' open' : ''}`, 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), open ? s.text : 'ひそひそ話', h('small', { class: 'catname' }, open ? ' 相手には、デートの前日まで内緒(タップで隠す)' : ' 長押しで見る')), del);
+          let hold = null;
+          const stopHold = () => { clearTimeout(hold); hold = null; };
+          row.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('button') || shownId === s.id) return;
+            stopHold();
+            hold = setTimeout(() => {
+              shownId = s.id; shownAt = Date.now();
+              clearTimeout(hideTimer);
+              hideTimer = setTimeout(() => { shownId = null; if (list.isConnected) fill(); }, 10000);
+              fill();
+            }, 500);
+          });
+          ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => row.addEventListener(ev, stopHold));
+          row.addEventListener('contextmenu', (e) => e.preventDefault());
+          row.addEventListener('click', (e) => { if (e.target.closest('button') || shownId !== s.id || Date.now() - shownAt < 700) return; shownId = null; clearTimeout(hideTimer); fill(); });
+          return row;
+        }
         return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), 'ひそひそ話', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
       }
       return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
@@ -2117,7 +2139,7 @@ function openStockSheet() {
   const known = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
     return [
-      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id), secret: s.cat === WHISPER && !used.has(s.id) && s.from !== myUid() })), // 相手が足したひそひそ話だけ、中身を伏せる
+      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id), secret: s.cat === WHISPER && !used.has(s.id) })), // ひそひそ話は、使うまで、知らせにも中身を出さない
       ...state.qcards.filter((c) => !c.stockId).map((c) => ({ text: c.text, by: c.by, used: true })),
     ];
   };
