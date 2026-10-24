@@ -11,10 +11,13 @@
 @keyframes mn-swish { from { transform: rotate(-14deg); } to { transform: rotate(12deg); } }
 .mn .pairh { transform-origin: 0 0; animation: mn-lag 1.9s ease-in-out infinite alternate; }
 @keyframes mn-lag { from { transform: rotate(5deg); } to { transform: rotate(-6deg); } }
-.mn .scene .rigmetal { fill: var(--s-line); }
-.mn .scene .rope { stroke: var(--s-line); stroke-width: 1.5; fill: none; }
-.mn .scene .rig { stroke: var(--s-line); stroke-width: 3; stroke-linecap: round; }
-.mn .scene .bar-l { fill: var(--s-line); }
+/* 空中ブランコは、どの季節・時間でも、銀色。ほんのり光をまとう */
+.mn .scene { --s-silver: #f2f4fb; }
+.mn .scene .rigmetal { fill: var(--s-silver); }
+.mn .scene .rope { stroke: var(--s-silver); stroke-width: 1.7; fill: none; }
+.mn .scene .rig { stroke: var(--s-silver); stroke-width: 3; stroke-linecap: round; }
+.mn .scene .bar-l { fill: var(--s-silver); }
+.mn .scene .rigmetal, .mn .scene .rope, .mn .scene .rig, .mn .scene .bar-l { filter: drop-shadow(0 0 1.6px rgba(255, 255, 255, .9)); }
 .mn .scene .bang { font-size: 14px; font-weight: 800; fill: currentColor; font-family: var(--font); animation: mn-blink .5s steps(2) infinite; }
 .mn .pend { transform-origin: 0 0; }
 .mn .pend.idle.h { animation: mn-sway 2.8s ease-in-out infinite alternate; }
