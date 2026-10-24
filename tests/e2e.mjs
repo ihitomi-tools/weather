@@ -287,16 +287,23 @@ check('使用済みは、ふだんはたたまれていて、「使用済みを�
 await page.locator('#sheet-body .used-toggle button').click();
 check('押すと、使用済みが一覧の下に出る', (await page.locator('#sheet-body .sitem').count()) === 5 && (await page.locator('#sheet-body .sitem').last().textContent()).includes('使用済み'));
 await page.locator('#sheet-body .used-toggle button').click();
-// ひそひそ話: 足したあとは、中身を出さず、鍵だけ。似たお題の知らせも、中身を出さない
+// ひそひそ話: 自分が足したものは、自分には中身が見える。相手が足したものは、鍵だけ。似たお題の知らせも、相手のものは中身を出さない
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', 'whisper');
 await page.fill('#sheet-body input[type=text]', 'ないしょのひみつを教えてほしい夜');
 await page.locator('#sheet-body button', { hasText: /^追加$/ }).click();
 await page.waitForFunction(() => document.querySelector('#sheet-body .lockrow'));
-check('ひそひそ話は、足したあと、中身を出さず、鍵とメッセージだけ出る', (await page.textContent('#sheet-body .lockrow')).includes('デートの前日に鍵が開きます') && !(await page.textContent('#sheet-body')).includes('ないしょのひみつ'));
+check('自分が足したひそひそ話は、中身が見える(相手には内緒、の印つき)', (await page.textContent('#sheet-body .lockrow')).includes('ないしょのひみつ') && (await page.textContent('#sheet-body .lockrow')).includes('相手には、デートの前日まで内緒'));
+const theirWhisper = await enc('stock', { text: 'ふたりだけの思い出の夜を教えて', cat: 'whisper', at: Date.now() });
+await page.evaluate((doc) => { window.__fake.sk.push({ id: 'sw2', ...doc, from: 'u2' }); window.__fake.notify(); }, theirWhisper);
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .lockrow').length === 2);
+check('相手が足したひそひそ話は、鍵だけで、中身は出ない', (await page.textContent('#sheet-body')).includes('デートの前日に鍵が開きます') && !(await page.textContent('#sheet-body')).includes('ふたりだけの思い出の夜'));
+await page.fill('#sheet-body input[type=text]', 'ふたりだけの思い出の夜を教えて');
+check('似たお題の知らせ: 相手のひそひそ話は、中身を出さない', (await page.textContent('#sheet-body .sim')).includes('ひそひそ話に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('思い出の夜'));
 await page.fill('#sheet-body input[type=text]', 'ないしょのひみつを教えてほしい夜');
-check('似たお題の知らせにも、ひそひそ話の中身は出ない', (await page.textContent('#sheet-body .sim')).includes('ひそひそ話に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('ないしょのひみつ'));
+check('似たお題の知らせ: 自分のひそひそ話は、中身が出る', (await page.textContent('#sheet-body .sim')).includes('ないしょのひみつ'));
 await page.fill('#sheet-body input[type=text]', '');
 await page.locator('#sheet-body .lockrow button', { hasText: '削除' }).click();
+await page.evaluate(() => { window.__fake.sk = window.__fake.sk.filter((x) => x.id !== 'sw2'); window.__fake.notify(); });
 await page.waitForFunction(() => !document.querySelector('#sheet-body .lockrow'));
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', '');
 await page.click('#sheet-close');
