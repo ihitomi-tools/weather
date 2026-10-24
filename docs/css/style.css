@@ -551,6 +551,11 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 /* ピンク・ミントの答えの中の補足(時刻・考えた時間)は、答えの文字と同じ色で、少しだけ薄く。暗い画面で見えなくならないように */
 .ans .meta, .ans small { color: inherit; }
 .ans .meta { opacity: .8; }
+/* お題の答えの小さい文字(名前・時刻・考えた時間・予想の見出し)を、くっきり。透けをなくし、少し太く・大きく */
+#v-chat .ans small { font-size: 16px; opacity: 1; }
+#v-chat .ans .meta { font-size: 15px; font-weight: 700; opacity: 1; }
+#v-chat .gtext { font-size: 17px; line-height: 1.7; }
+#v-chat .gtext small { font-size: 16px; color: var(--fg); }
 .lockrow .lock { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; margin-right: 6px; vertical-align: -3px; }
 
 /* ---- おしゃべりの入力欄(文字と、スタンプの絵が貼れる欄) ---- */
