@@ -25,6 +25,10 @@ page.on('pageerror', (e) => { errs.push(e.message); console.log('PAGEERR', e.mes
 await ctx.route('https://api.open-meteo.com/**', (r) => r.fulfill({ json: {} }));
 await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
 await page.goto(`${base}/demo.html`);
+check('はじめは、彼女の画面だけを大きく見せる', await page.locator('#fh').isVisible() && !(await page.locator('#fy').isVisible()));
+await page.click('[data-view="y"]');
+check('彼氏に切りかえると、彼氏だけが見える', await page.locator('#fy').isVisible() && !(await page.locator('#fh').isVisible()));
+await page.click('[data-view="both"]'); // 以下は、2画面を並べて確かめる
 const fh = page.frameLocator('#f-h'), fy = page.frameLocator('#f-y');
 const closeAsk = async () => { for (const f of [fh, fy]) { await f.locator('#sheet-close').click({ timeout: 15000 }); } await page.waitForTimeout(300); };
 await fh.locator('#sheet-body h2', { hasText: '今日の調子' }).waitFor({ timeout: 15000 });

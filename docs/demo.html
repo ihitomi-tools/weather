@@ -16,9 +16,12 @@
   .dm-bar small { color: var(--muted); font-size: 11px; font-weight: 700; }
   .dm-grp { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .dm-bar button { border: 0; border-radius: 999px; padding: 8px 13px; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+  .dm-bar button[aria-pressed="true"] { background: var(--fg); color: var(--screen); box-shadow: none; }
+  .dm-bar.shut .dm-more, .dm-bar.shut .dm-note { display: none; }
   .dm-bar button.reset { background: var(--fg); color: var(--screen); box-shadow: none; }
   .dm-clk { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .dm-stage { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; gap: 18px; padding: 10px; }
+  .dm-ph[hidden] { display: none; }
   .dm-ph { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .dm-ph h2 { margin: 0; font-size: 13px; font-weight: 800; }
   .dm-ph h2 i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
@@ -28,10 +31,11 @@
 </head>
 <body>
 <div class="dm-bar">
-  <div class="dm-grp"><b>デモ</b><small>ここでの記録は、この画面の中だけ。リセットか開き直しで、すべて消えます</small></div>
-  <div class="dm-grp"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
-  <div class="dm-grp"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
-  <div class="dm-grp"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button></div>
+  <div class="dm-grp"><b>デモ</b><button id="dm-toggle" type="button" aria-expanded="true">操作を閉じる</button><small class="dm-note">ここでの記録は、この画面の中だけ。リセットか開き直しで、すべて消えます</small></div>
+  <div class="dm-grp dm-more"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
+  <div class="dm-grp"><small>見る画面</small><button data-view="h" aria-pressed="true">彼女</button><button data-view="y" aria-pressed="false">彼氏</button><button data-view="both" aria-pressed="false">ふたり</button></div>
+  <div class="dm-grp dm-more"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
+  <div class="dm-grp dm-more"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button></div>
 </div>
 <div class="dm-stage" id="stage">
   <div class="dm-ph"><h2><i style="background:var(--pink-deep)"></i>彼女</h2><div class="dm-frame" id="fh"><iframe title="彼女" id="f-h"></iframe></div></div>
@@ -101,17 +105,31 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// 画面の大きさに合わせて、2台ぶんを縮めて並べる
+// 見る画面: 彼女・彼氏のどちらか1台を大きく(ふだん)、または、2台を並べる。どちらも裏で動いている
+let view = ['h', 'y', 'both'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'h';
+function applyView() {
+  $('#fh').parentElement.hidden = view === 'y';
+  $('#fy').parentElement.hidden = view === 'h';
+  document.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+  fit();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (!b) return; view = b.dataset.view; history.replaceState(null, '', `#${view}`); applyView(); });
+// 画面の大きさに合わせて、縮めて置く
 function fit() {
-  const st = $('#stage'); const W = st.clientWidth - 28 - 18, H = st.clientHeight - 20 - 24;
-  const s = Math.max(0.3, Math.min(1, W / 2 / 390, H / 844));
+  const st = $('#stage'); const n = view === 'both' ? 2 : 1;
+  const W = st.clientWidth - 28 - 18 * (n - 1), H = st.clientHeight - 20 - 24;
+  const s = Math.max(0.3, Math.min(n === 1 ? 1.4 : 1, W / n / 390, H / 844));
   ['h', 'y'].forEach((r) => {
     const f = $(`#f-${r}`); f.style.transform = `scale(${s})`;
     const fr = f.parentElement; fr.style.width = `${390 * s}px`; fr.style.height = `${844 * s}px`;
   });
 }
 window.addEventListener('resize', fit);
-fit();
+const bar = document.querySelector('.dm-bar');
+function shut(v) { bar.classList.toggle('shut', v); $('#dm-toggle').textContent = v ? '操作を開く' : '操作を閉じる'; $('#dm-toggle').setAttribute('aria-expanded', String(!v)); fit(); }
+$('#dm-toggle').addEventListener('click', () => shut(!bar.classList.contains('shut')));
+if (window.innerWidth < 700) shut(true); // 小さい画面では、画面を広く使うため、操作をたたんでおく
+applyView();
 setInterval(clock, 15000);
 reset(0);
 </script>
