@@ -502,6 +502,21 @@ check('気分のない日では、大きな表示は出ない', !(await page.loc
 await page.locator('#month button', { hasText: /^5$/ }).click();
 await page.click('#day-record');
 check('開き直すと、前の記録が入っている', await page.locator('#sheet textarea').inputValue() === 'テストメモ' && await page.locator('#sheet .sw').isChecked());
+{ // 足したタグは、長押しで候補から消せる(過去の記録は、そのまま)
+  const chip = page.locator('#sheet .tags button', { hasText: 'ねむねむ' });
+  check('足したタグが、「よく使うタグ」に出る', (await chip.count()) === 1);
+  await chip.click(); // 選びを外す(この日の記録からは外れるが、保存はしない)
+  page.once('dialog', (d) => d.accept());
+  await chip.dispatchEvent('pointerdown');
+  await page.waitForTimeout(750); // 指を離す前に、候補が消える
+  await page.waitForFunction(() => ![...document.querySelectorAll('#sheet .tags button')].some((b) => b.textContent === 'ねむねむ'));
+  check('長押しで、候補から消える', (await page.locator('#sheet .tags button', { hasText: 'ねむねむ' }).count()) === 0);
+}
+await page.click('#sheet-close');
+await page.locator('#month button', { hasText: /^5$/ }).click();
+check('候補から消しても、過去の記録は残る', (await page.textContent('#day-detail')).includes('ねむねむ'));
+await page.click('#day-record');
+check('開き直しても、候補に戻らない(その日の記録にあるタグは、選ばれた状態で出る)', (await page.locator('#sheet .tags button[aria-pressed="true"]', { hasText: 'ねむねむ' }).count()) === 1);
 await page.click('#sheet-close');
 // 記録の時刻と、あとから足した症状
 {

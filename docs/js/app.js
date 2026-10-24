@@ -34,9 +34,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.24-67';
+const VERSION = '2026.10.24-68';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1455,9 +1455,29 @@ function openDaySheet(date) {
   const MAX_TAGS = 12;
   const freq = new Map();
   [...myRecs().values()].forEach((r) => (r.t || []).forEach((t) => { if (!PRESET_TAGS.has(t)) freq.set(t, (freq.get(t) || 0) + 1); }));
-  const chip = (t) => {
+  const hiddenTags = () => { try { return new Set(JSON.parse(LS.get(K.tagHide) || '[]')); } catch (e) { return new Set(); } };
+  const chip = (t, removable = false) => {
     const b = h('button', { type: 'button', 'aria-pressed': String(draft.t.includes(t)) }, t);
+    let hold = null;
+    let held = false;
+    if (removable) { // 長押しで、「よく使うタグ」の候補から外す(過去の記録は、そのまま)
+      const stop = () => { clearTimeout(hold); hold = null; };
+      b.addEventListener('pointerdown', () => {
+        held = false; stop();
+        hold = setTimeout(() => {
+          held = true;
+          if (confirm(`「${t}」を、候補から消しますか？\n過去の記録は、そのまま残ります。`)) {
+            const set = hiddenTags(); set.add(t);
+            LS.set(K.tagHide, JSON.stringify([...set]));
+            renderTags();
+          }
+        }, 600);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, stop));
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
     b.addEventListener('click', () => {
+      if (held) { held = false; return; }
       const k = draft.t.indexOf(t);
       if (k >= 0) draft.t.splice(k, 1);
       else if (draft.t.length < MAX_TAGS) draft.t.push(t);
@@ -1465,7 +1485,7 @@ function openDaySheet(date) {
     });
     return b;
   };
-  const group = (title, list) => h('div', {}, h('p', { class: 'lab' }, title), h('div', { class: 'tags' }, list.map(chip)));
+  const group = (title, list, removable = false) => h('div', {}, h('p', { class: 'lab' }, title, removable ? h('small', { class: 'tag-hint' }, '  長押しで、候補から消せます') : null), h('div', { class: 'tags' }, list.map((t) => chip(t, removable))));
   const customInput = h('input', { type: 'text', maxlength: '10', placeholder: '自分のタグを足す(10文字まで)', 'aria-label': '自分のタグを足す' });
   const customAdd = h('button', { class: 'ghost sm', type: 'button' }, '足す');
   const addCustom = () => {
@@ -1473,17 +1493,20 @@ function openDaySheet(date) {
     if (!t) return;
     customInput.value = '';
     if (!draft.t.includes(t) && draft.t.length < MAX_TAGS) draft.t.push(t);
+    const hs = hiddenTags();
+    if (hs.delete(t)) LS.set(K.tagHide, JSON.stringify([...hs])); // 消した言葉を、また足したら、候補に戻る
     renderTags();
   };
   customAdd.addEventListener('click', addCustom);
   customInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
   function renderTags() {
-    const usedCustom = [...new Set([...[...freq.entries()].sort((x, y) => y[1] - x[1]).map((x) => x[0]).slice(0, 12), ...draft.t.filter((t) => !PRESET_TAGS.has(t))])];
+    const hid = hiddenTags();
+    const usedCustom = [...new Set([...[...freq.entries()].filter((x) => !hid.has(x[0])).sort((x, y) => y[1] - x[1]).map((x) => x[0]).slice(0, 12), ...draft.t.filter((t) => !PRESET_TAGS.has(t))])];
     const showPeriod = isHer() && (draft.p || draft.t.some((t) => PERIOD_TAGS.includes(t)));
     tags.replaceChildren(...[
       ...TAG_GROUPS.map(([title, list]) => group(title, list)),
       showPeriod ? group('生理まわり', PERIOD_TAGS) : null,
-      usedCustom.length ? group('よく使うタグ', usedCustom) : null,
+      usedCustom.length ? group('よく使うタグ', usedCustom, true) : null,
       h('div', { class: 'tagadd' }, customInput, customAdd),
     ].filter(Boolean));
   }

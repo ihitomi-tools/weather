@@ -65,3 +65,4 @@
 .oto-pop .star { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff; animation: shimmer 2.6s ease-in-out infinite; }
 @keyframes popin { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .oto-pop .oto-one { animation: none; } }
+.tag-hint { font-weight: 500; color: var(--muted); font-size: 12px; }
