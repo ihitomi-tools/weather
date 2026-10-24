@@ -71,6 +71,17 @@ await fh.locator('.tab[data-v="chat"]').click();
 await fh.locator('#talk-seg [data-t="chat"]').click();
 await fh.locator('.row.theirs').first().waitFor();
 check('彼氏の発言は、彼氏の画面でも彼女の画面でも、ミントの役(c-y)', (await fy.locator('.row.mine.c-y').count()) === 1 && (await fh.locator('.row.theirs.c-y').count()) === 1);
+// 満月3つ: お祝い → 棚 → 水槽の数字
+await page.click('[data-pts="300"]');
+await fh.locator('#oto-pop:not([hidden])').waitFor({ timeout: 20000 });
+check('満月があると、お祝いが出る', (await fh.locator('#oto-pop').textContent()).includes('3個目の月'));
+await fh.locator('#oto-pop .go').click();
+await fh.locator('.oto-tk').first().waitFor();
+if (await fh.locator('#sheet:not([hidden]) #sheet-close').count()) await fh.locator('#sheet-close').click(); // お祝いの下で開いていた「今日の調子」
+check('棚に、満月3つ分の水槽が並ぶ', (await fh.locator('.oto-tk').count()) === 3);
+await fh.locator('.oto-tk').nth(1).click({ force: true }); // 水が動いているので、止まるのは待たない
+const st = await fh.locator('#sheet-body').textContent();
+check('水槽の数字: 期間・ぴったり・待たせた回数', st.includes('2個目の満月') && st.includes('期間') && /待たせた回数\s*彼女 \d+回 ・ 彼氏 \d+回/.test(st), st);
 await page.screenshot({ path: process.env.SHOT || '/tmp/demo-real.png' });
 check('エラーなし', errs.length === 0, errs.join('|'));
 await browser.close(); server.close();

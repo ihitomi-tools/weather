@@ -31,7 +31,7 @@
   <div class="dm-grp"><b>デモ</b><small>ここでの記録は、この画面の中だけ。リセットか開き直しで、すべて消えます</small></div>
   <div class="dm-grp"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
   <div class="dm-grp"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
-  <div class="dm-grp"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button></div>
+  <div class="dm-grp"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button></div>
 </div>
 <div class="dm-stage" id="stage">
   <div class="dm-ph"><h2><i style="background:var(--pink-deep)"></i>彼女</h2><div class="dm-frame" id="fh"><iframe title="彼女" id="f-h"></iframe></div></div>
@@ -50,14 +50,19 @@ const EMPTY = () => ({ messages: [], events: [], days: [], pats: [], stock: [], 
 
 async function seedMoon(key, pts) {
   const rows = [];
-  let k = 1, left = pts;
+  let k = 1, left = pts, i = 0;
   const add = async (kind) => {
     const d = new Date(Date.now() - k * DAY); d.setHours(21, 0, 0, 0); k += 1;
-    const h = d.getTime(), y = h + (kind === 'sync' ? 3 : 40) * MIN;
+    const gap = (kind === 'sync' ? 3 : 40) * MIN;
+    const swap = kind === 'late' && k % 2 === 0; // おまたせは、ふたりが交互に
+    const h = d.getTime() + (swap ? gap : 0), y = d.getTime() + (swap ? 0 : gap);
     rows.push({ id: `seed-h-${k}`, ...(await C.encryptJson(key, 'moon', { at: h })), from: 'demo-h' });
     rows.push({ id: `seed-y-${k}`, ...(await C.encryptJson(key, 'moon', { at: y })), from: 'demo-y' });
   };
-  while (left >= 5) { await add('sync'); left -= 5; }
+  while (left >= 5) {
+    if (pts >= 100 && i % 5 === 4) { await add('late'); left -= 1; } else { await add('sync'); left -= 5; } // 満月の数字が、おもしろくなるように、ときどき「おまたせ」を混ぜる
+    i += 1;
+  }
   while (left >= 1) { await add('late'); left -= 1; }
   return rows;
 }
