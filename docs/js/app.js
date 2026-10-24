@@ -10,9 +10,10 @@ import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } fr
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
 import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
-import { analyzeMoon, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
+import { analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
+import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { pickLine, pickGreeting, isMorning } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
@@ -33,9 +34,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen',
 };
-const VERSION = '2026.10.20-66';
+const VERSION = '2026.10.24-67';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -201,6 +202,7 @@ function startRecording(view) {
 
 function lock() {
   closePatOverlay();
+  state.otoPop = false; $('#oto-pop').hidden = true; // お祝いは、閉じずに離れたら、次に開いたときにまた出る
   state.sheetClose = null;
   settingsMore = false;
   state.moodChecked = false;
@@ -566,9 +568,9 @@ function startWatching() {
 
 /* ================= 画面 ================= */
 let settingsMore = false; // 注意が必要な設定は、ふだんは隠しておく
-function setView(v) {
+function setView(v, keep = false) {
   const prev = state.view;
-  if (v === 'set' && prev !== 'set') settingsMore = false;
+  if (v === 'set' && !keep) { settingsMore = false; state.more = 'menu'; } // その他のタブは、押すたびに最初の一覧に戻る
   if (v === 'cal' && prev !== 'cal') { state.cal.bar = false; state.cal.end = null; state.cal.range = false; }
   state.view = v;
   $$('#app .view').forEach((el) => el.classList.toggle('on', el.id === `v-${v}`));
@@ -586,7 +588,7 @@ function renderAll() {
   renderChat();
   renderTalk();
   renderCalendar();
-  renderSettings();
+  renderMore();
   if (state.pastRender && !$('#sheet').hidden) state.pastRender();
   if (state.sheetRender && !$('#sheet').hidden) state.sheetRender();
   renderBadges();
@@ -1614,7 +1616,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'css/moon.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'css/moon.css', 'css/shelf.css',
 ];
 
 async function refreshApp(btn) {
@@ -1634,6 +1636,110 @@ function applyTheme(v) {
 
 function row(title, note, control) {
   return h('li', {}, h('div', { class: 't' }, title, note ? h('small', {}, note) : null), control);
+}
+
+/* ================= その他(最新版にする・おたのしみ・設定) ================= */
+const mdKey = (k) => `${Number(k.slice(5, 7))}/${Number(k.slice(8))}`;
+let otoSig = '';
+function renderMore() {
+  const sub = state.more || 'menu';
+  const { A } = moonAnalysis();
+  const nFull = A.fulls.length;
+  const menu = $('#more-menu');
+  const oto = $('#more-oto');
+  const set = $('#settings');
+  $('#more-h').textContent = sub === 'oto' ? 'おたのしみ' : sub === 'settings' ? '設定' : 'その他';
+  oto.hidden = sub !== 'oto';
+  set.hidden = sub !== 'settings';
+  if (sub !== 'oto') otoSig = '';
+  if (sub !== 'menu') {
+    if (menu.dataset.sub !== 'back') {
+      menu.dataset.sub = 'back';
+      const back = h('button', { class: 'ghost', type: 'button', style: 'margin:0 18px 12px' }, '‹ その他');
+      back.addEventListener('click', () => { state.more = 'menu'; renderMore(); });
+      menu.replaceChildren(back);
+    }
+  } else if (menu.dataset.sub !== 'menu' || menu.dataset.n !== String(nFull)) {
+    menu.dataset.sub = 'menu';
+    menu.dataset.n = String(nFull);
+    const upd = h('button', { class: 'more-upd', type: 'button' }, h('span', {}, '最新版にする', h('small', {}, `いまの版: ${VERSION}`)), '›');
+    upd.addEventListener('click', () => refreshApp(upd));
+    const oto0 = nFull
+      ? h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, `満月の棚(${nFull}個)`))
+      : h('div', { class: 'more-oto lock' }, h('b', {}, lockIcon(), 'おたのしみ'), h('small', {}, 'ふたりの月が満月になったら、あらたな機能が解放されます'));
+    if (nFull) oto0.addEventListener('click', () => { state.more = 'oto'; renderMore(); });
+    const setBtn = h('button', { class: 'more-quiet', type: 'button' }, h('span', {}, '設定'), h('span', { 'aria-hidden': 'true' }, '›'));
+    setBtn.addEventListener('click', () => { state.more = 'settings'; settingsMore = false; renderMore(); renderSettings(true); });
+    const ul = h('div', { class: 'more-menu' }, upd, oto0, setBtn);
+    menu.replaceChildren(ul);
+  }
+  if (sub === 'settings') renderSettings();
+  if (sub === 'oto') renderOto(A);
+}
+
+function renderOto(A) {
+  const sig = JSON.stringify(A.fulls.map((f) => [f.n, f.at]));
+  if (sig === otoSig) return;
+  otoSig = sig;
+  const start = Math.floor((Math.max(A.fulls.length, 1) - 1) / SHELF_MAX) * SHELF_MAX;
+  const wrap = h('div', { class: 'oto-wrap' });
+  wrap.innerHTML = shelfSvg(A.fulls.slice(start, start + SHELF_MAX), start);
+  const open = (el) => { const n = Number(el.dataset.n); if (n) openTank(n); };
+  wrap.addEventListener('click', (e) => { const g = e.target.closest('.oto-tk'); if (g) open(g); });
+  wrap.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('.oto-tk'); if (g) { e.preventDefault(); open(g); } });
+  $('#more-oto').replaceChildren(
+    h('div', { class: 'oto-top' }, h('h2', {}, '満月の棚'), h('small', {}, `${A.fulls.length} 個`)),
+    wrap,
+    h('p', { class: 'oto-credit' }, '月の写真: NASA'),
+  );
+}
+
+function openTank(n) {
+  const { A, roles } = moonAnalysis();
+  const f = A.fulls.find((x) => x.n === n);
+  const st = fullStats(A, n);
+  if (!f) return;
+  const P = persOf(n);
+  const art = h('div', {});
+  art.innerHTML = tankSvg(n, { label: '', num: false });
+  const dl = h('dl', { class: 'oto-stats' });
+  const add = (k, v) => dl.append(h('dt', {}, k), h('dd', {}, v));
+  add('満月の日', mdText(f.at));
+  if (st) {
+    add('期間', `${mdKey(st.from)} 〜 ${mdKey(st.to)}(${st.span}日間)`);
+    add('ぴったり', `${st.sync}回`);
+    add('おまたせ', `${st.late}回`);
+    add('待たせた回数', `${roleName('h', roles)} ${st.lateBy.h}回 ・ ${roleName('y', roles)} ${st.lateBy.y}回`);
+  }
+  openSheet(h('h2', {}, `${n}個目の満月`), art, h('p', { class: 'oto-pers' }, h('b', {}, P.name), h('small', {}, P.d)), dl);
+}
+
+// 満月になったあと、初めて開いたときのお祝い
+function maybeCelebrate(A) {
+  if (!state.loaded.moon || state.otoPop || $('#app').hidden) return;
+  const seen = Number(LS.get(K.fullSeen) || 0);
+  if (A.fulls.length <= seen) return;
+  const wait = state.moonCheerUntil - Date.now();
+  if (wait > 0) { setTimeout(renderMoon, wait + 400); return; }
+  const f = A.fulls[A.fulls.length - 1];
+  const P = persOf(f.n);
+  const pop = $('#oto-pop');
+  const close = () => {
+    LS.set(K.fullSeen, String(A.fulls.length));
+    state.otoPop = false;
+    pop.hidden = true;
+    pop.replaceChildren();
+  };
+  const art = h('div', {});
+  art.innerHTML = tankSvg(f.n, { label: '', num: false });
+  const go = h('button', { class: 'go', type: 'button' }, '棚を見る');
+  go.addEventListener('click', () => { close(); state.more = 'oto'; setView('set', true); });
+  const later = h('button', { class: 'later', type: 'button' }, 'あとで');
+  later.addEventListener('click', close);
+  const stars = Array.from({ length: 14 }, (_, i) => h('i', { class: 'star', style: `left:${(i * 37 + 11) % 96}%;top:${(i * 53 + 7) % 90}%;animation-delay:-${(i % 5) * 0.5}s` }));
+  pop.replaceChildren(...stars, art, h('h2', {}, '満月になったよ'), h('p', {}, `${f.n}個目の月が、棚にならびました`, h('br'), `${P.name}月です`), h('div', { class: 'btns' }, go, later));
+  state.otoPop = true;
+  pop.hidden = false;
 }
 
 function renderSettings(force = false) {
@@ -1701,9 +1807,6 @@ function renderSettings(force = false) {
   theme.value = LS.get(K.theme) || 'auto';
   theme.addEventListener('change', () => { LS.set(K.theme, theme.value); applyTheme(theme.value); });
 
-  const refreshBtn = h('button', { class: 'act', type: 'button' }, '最新版にする');
-  refreshBtn.addEventListener('click', () => refreshApp(refreshBtn));
-
   const reseq = h('button', { class: 'act', type: 'button' }, '変更');
   reseq.addEventListener('click', () => startRecording('set'));
 
@@ -1744,7 +1847,6 @@ function renderSettings(force = false) {
     row('画面の色', '自動は、端末の設定に合わせます', theme),
     row('離れたら最初の画面に戻る', '開き直すと最初の画面から始まります', auto),
     row('起動パターン', '最初の画面で、都市を決めた順に6つタップします', reseq),
-    row('バージョン', VERSION, refreshBtn),
     row('そのほかの設定', '名前・誕生日・カード・役・既読・データ・鍵・ログアウトなど。ふだんは触らない項目です', moreBtn),
     ...(settingsMore ? [
       row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
@@ -2486,6 +2588,7 @@ function renderMoon() {
   $('#mn-phase').textContent = phaseName(A.pts);
   if (ready && t.resolved && !cheerOn && state.moonVisit === 0) LS.set(K.moonSeen, t.key);
   renderMoonPanel(A, roles);
+  maybeCelebrate(A);
   moonPause();
   if (popOn) setTimeout(() => { moonSig = ''; renderMoon(); }, Math.max(0, state.moonPop.until - now) + 50);
 }
@@ -2552,6 +2655,7 @@ function buildMoon() {
 
 /* ================= 起動 ================= */
 function init() {
+  document.body.insertAdjacentHTML('afterbegin', SHELF_DEFS);
   applyTheme(LS.get(K.theme));
   buildCover();
   buildGate();

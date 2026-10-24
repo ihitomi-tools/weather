@@ -77,6 +77,7 @@ const wx = {
   daily: { time: Array.from({ length: 7 }, (_, i) => { const d = new Date(Date.now() + i * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), weather_code: [3, 61, 0, 1, 2, 95, 71], temperature_2m_max: [21, 18, 20, 23, 24, 22, 19], temperature_2m_min: [14, 13, 13, 15, 16, 15, 13] },
 };
 
+const openSet = async () => { await page.click('.tab[data-v="set"]'); await page.click('.more-quiet'); };
 const more = async () => { const b = page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button'); if ((await b.textContent()) === 'ひらく') await b.click(); };
 const addEv = async ({ title, date, end = '', who = 'me', time = '' }) => {
   await page.click('.tab[data-v="cal"]');
@@ -363,7 +364,7 @@ await page.click('#sheet-body button[type=submit]');
 await page.waitForFunction(() => document.querySelector('#bd-banner').hidden);
 check('メッセージを入れるとポップが消える', true);
 check('誕生日ボックスは、相手あてで作られる', (await page.evaluate(() => window.__fake.bx.length)) === 2);
-await page.click('.tab[data-v="set"]');
+await openSet();
 const nowD = new Date();
 await more();
 await page.selectOption('select[aria-label="誕生日の月"]', String(nowD.getMonth() + 1));
@@ -373,7 +374,7 @@ await page.waitForFunction(() => !document.querySelector('#bd-today').hidden);
 check('誕生日当日は、お祝いが出る', (await page.textContent('#bd-today')).includes('お誕生日おめでとう'));
 await page.click('.tab[data-v="cal"]');
 check('カレンダーのその日にケーキの印が付く', (await page.locator('#month button em.cake').count()) >= 1);
-await page.click('.tab[data-v="set"]');
+await openSet();
 await more();
 await page.selectOption('select[aria-label="誕生日の月"]', String((nowD.getMonth() + 1) % 12 + 1));
 
@@ -606,7 +607,7 @@ check('ホームに予定が出る', (await page.textContent('#home-events')).in
 // ホームのカード: 名前と日付を設定して、タップ・スライドで3つの面を切り替える
 const aw = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 check('設定前のカード1は、案内と初期の名前', (await page.textContent('#days')).includes('記念日1') && (await page.textContent('#days')).includes('設定の「ホームのカード」'));
-await page.click('.tab[data-v="set"]');
+await openSet();
 await more();
 await page.locator('#settings li', { hasText: 'ホームのカード' }).locator('button').click();
 await page.locator('#sheet input[type=text]').nth(0).fill('出会った日');
@@ -755,9 +756,9 @@ check('左へスライドで、次のカードに進む', true);
 check('点で、いまの面が分かる', (await page.locator('#days .dots i.on').count()) === 1);
 
 // バックアップコード・確認番号
-await page.click('.tab[data-v="set"]');
+await openSet();
 check('危ない項目は、ふだん隠れている(バージョン更新・ログアウトなど)', (await page.locator('#settings li', { hasText: /機種変更|バックアップコードがないと/ }).count()) === 0);
-check('ふだんは、画面の色・起動パターン・バージョンだけ見える。名前などは隠れている', (await page.locator('#settings li', { hasText: /画面の色|起動パターン|バージョン/ }).count()) === 3 && (await page.locator('#settings li', { hasText: /あなたの名前|既読を相手に伝える|キーを消す/ }).count()) === 0);
+check('ふだんは、画面の色・起動パターンだけ見える。名前などは隠れている', (await page.locator('#settings li', { hasText: /画面の色|起動パターン/ }).count()) === 2 && (await page.locator('#settings li', { hasText: /あなたの名前|既読を相手に伝える|キーを消す/ }).count()) === 0);
 await more();
 await page.locator('#settings li', { hasText: '機種変更' }).locator('button').click();
 check('設定から同じバックアップコードを再表示できる', (await page.textContent('#sheet .code')) === code);
@@ -767,7 +768,7 @@ check('確認番号が出る', /\d{3} \d{3}/.test(await page.textContent('#sheet
 await page.click('#sheet-close');
 
 // 画面の色(自動・ライト・ダーク)
-await page.click('.tab[data-v="set"]');
+await openSet();
 await page.selectOption('#settings select[aria-label="画面の色"]', 'dark');
 check('設定でダークを選ぶと、ダークになる', (await page.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
 await page.selectOption('#settings select[aria-label="画面の色"]', 'auto');
@@ -781,7 +782,7 @@ await page.evaluate(() => { Object.defineProperty(document, 'hidden', { value: f
 // パターンの変更
 await tap(['札幌', '福岡', '東京', '那覇', '大阪', '仙台']);
 await page.waitForSelector('#app:not([hidden])');
-await page.click('.tab[data-v="set"]');
+await openSet();
 await page.locator('#settings li', { hasText: '起動パターン' }).locator('button').click();
 check('登録中の表示が出る', await page.locator('#rec').isVisible());
 await tap(['金沢', '金沢', '那覇', '札幌', '仙台', '東京']);
@@ -793,10 +794,40 @@ await tap(['金沢', '金沢', '那覇', '札幌', '仙台', '東京']);
 await page.waitForSelector('#app:not([hidden])');
 check('新しいパターンで開く', true);
 
+// おたのしみ(満月の棚)
+await page.click('.tab[data-v="set"]');
+check('その他: 最新版・おたのしみ・設定が並ぶ', (await page.locator('.more-upd').count()) === 1 && (await page.locator('.more-quiet').count()) === 1);
+check('満月になる前は、おたのしみに鍵と案内が出る', (await page.textContent('.more-oto.lock')).includes('ふたりの月が満月になったら、あらたな機能が解放されます') && (await page.locator('button.more-oto').count()) === 0);
+await page.evaluate(() => { localStorage.removeItem('app.fullSeen'); });
+const D0 = Date.now();
+for (let i = 1; i <= 22; i += 1) {
+  const t = new Date(D0 - (30 - i) * 864e5); t.setHours(21, 0, 0, 0);
+  const a = await enc('moon', { at: t.getTime() });
+  const b = await enc('moon', { at: t.getTime() + 120000 });
+  await page.evaluate(([x, y, i2]) => { window.__fake.mn.push({ id: `q${i2}a`, from: 'u1', ...x }); window.__fake.mn.push({ id: `q${i2}b`, from: 'u2', ...y }); }, [a, b, i]);
+}
+await page.evaluate(() => window.__fake.notify());
+await page.waitForSelector('#oto-pop:not([hidden])');
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/pop.png` });
+check('満月になると、お祝いが出る', (await page.textContent('#oto-pop')).includes('満月になったよ') && (await page.locator('#oto-pop svg.oto-one').count()) === 1);
+await page.click('#oto-pop .go');
+await page.waitForSelector('.oto-shelf');
+await page.waitForTimeout(600);
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/shelf.png` });
+check('棚を見るで、棚(5段×4個)が開く', (await page.locator('.oto-tk').count()) >= 1 && (await page.locator('.oto-shelf').evaluate((el) => el.querySelectorAll('rect[fill="url(#wood)"]').length)) === 5);
+check('お祝いは、見たら出なくなる', (await page.evaluate(() => localStorage.getItem('app.fullSeen'))) !== null && (await page.locator('#oto-pop').isHidden()));
+await page.locator('.oto-tk').first().click();
+check('水槽をタップすると、期間・ぴったり・待たせた回数が出る', (await page.textContent('#sheet-body')).includes('期間') && (await page.textContent('#sheet-body')).includes('待たせた回数') && (await page.textContent('#sheet-body')).includes('1個目の満月'));
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/detail.png` });
+await page.click('#sheet-close');
+await page.click('.tab[data-v="set"]');
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/menu.png` });
+check('満月のあとは、おたのしみが開ける', (await page.locator('button.more-oto').count()) === 1);
+
 // 「最新版にする」で、ファイルを取り直して再読み込みする
 await page.click('.tab[data-v="set"]');
 const reloaded = page.waitForNavigation();
-await page.locator('#settings li', { hasText: 'バージョン' }).locator('button').click();
+await page.click('.more-upd');
 await reloaded;
 check('「最新版にする」で再読み込みされ、天気の画面になる', await page.locator('#cover').isVisible());
 

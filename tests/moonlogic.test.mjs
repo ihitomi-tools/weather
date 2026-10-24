@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dayKey4, analyzeMoon, isMilestone, specialOf, workOn, rolesOf, seasonOf, WINDOW_MS } from '../docs/js/moonlogic.js';
+import { dayKey4, analyzeMoon, isMilestone, fullStats, specialOf, workOn, rolesOf, seasonOf, WINDOW_MS } from '../docs/js/moonlogic.js';
 
 const at = (y, m, d, h, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
 
@@ -37,6 +37,20 @@ test('100ポイントで満月になり、回数と日時が残る。そのあ�
   const a = analyzeMoon(sig, at(2026, 1, 30, 12));
   assert.equal(a.total, 105); assert.equal(a.pts, 5); assert.equal(a.fulls.length, 1); assert.equal(a.fulls[0].n, 1);
   assert.equal(new Date(a.fulls[0].at).getDate(), 20);
+});
+
+test('満月ごとの数字: 期間・ぴったり・待たせた回数', () => {
+  const sig = [];
+  for (let i = 0; i < 19; i += 1) { sig.push({ role: 'h', at: at(2026, 1, 1 + i, 21, 0) }, { role: 'y', at: at(2026, 1, 1 + i, 21, 2) }); } // 95点
+  sig.push({ role: 'y', at: at(2026, 1, 20, 9, 0) }, { role: 'h', at: at(2026, 1, 20, 21, 0) }); // 遅れ(hが遅い) 96点
+  sig.push({ role: 'h', at: at(2026, 1, 21, 9, 0) }, { role: 'y', at: at(2026, 1, 21, 21, 0) }); // 遅れ(yが遅い) 97点
+  sig.push({ role: 'h', at: at(2026, 1, 22, 21, 0) }, { role: 'y', at: at(2026, 1, 22, 21, 1) }); // ぴったり 102点 → 満月
+  const a = analyzeMoon(sig, at(2026, 1, 30, 12));
+  const f = fullStats(a, 1);
+  assert.equal(f.from, '2026-01-01'); assert.equal(f.to, '2026-01-22'); assert.equal(f.span, 22);
+  assert.equal(f.count, 22); assert.equal(f.sync, 20); assert.equal(f.late, 2);
+  assert.deepEqual(f.lateBy, { h: 1, y: 1 });
+  assert.equal(fullStats(a, 2), null);
 });
 
 test('記念日: 100日ごと・1年ごと', () => {

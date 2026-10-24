@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/moon.css">
+<link rel="stylesheet" href="css/shelf.css">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -221,9 +222,11 @@
     <ul class="list" id="cal-events"></ul>
   </section>
 
-  <section class="view" id="v-set" aria-label="設定">
-    <div class="head"><h1>設定</h1><button class="hide" data-hide type="button">もどる</button></div>
-    <ul class="set" id="settings"></ul>
+  <section class="view" id="v-set" aria-label="その他">
+    <div class="head"><h1 id="more-h">その他</h1><button class="hide" data-hide type="button">もどる</button></div>
+    <div id="more-menu"></div>
+    <div id="more-oto" hidden></div>
+    <ul class="set" id="settings" hidden></ul>
   </section>
 
   <div class="evbar" id="ev-bar" hidden>
@@ -242,10 +245,11 @@
     <button class="tab" role="tab" data-v="home" type="button"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/></svg>ホーム</button>
     <button class="tab" role="tab" data-v="chat" type="button"><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/></svg>おはなし</button>
     <button class="tab" role="tab" data-v="cal" type="button"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>予定</button>
-    <button class="tab" role="tab" data-v="set" type="button"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>設定</button>
+    <button class="tab" role="tab" data-v="set" type="button"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg>その他</button>
   </nav>
 </main>
 
+<div class="oto-pop" id="oto-pop" hidden></div>
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-box" role="dialog" aria-modal="true">
     <div id="sheet-body"></div>

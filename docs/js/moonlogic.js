@@ -51,6 +51,27 @@ export function analyzeMoon(signals, nowMs, winMs = WINDOW_MS) {
   };
 }
 
+// 満月ごとの数字(棚の水槽をタップしたとき)。n番目の満月までの、記録した日を集める
+// lateBy: 遅れて触れた(=相手を待たせた)回数。h=飛ぶ人 / y=受け止める人
+export function fullStats(A, n) {
+  const f = A.fulls.find((x) => x.n === n);
+  if (!f) return null;
+  const mine = [];
+  let before = 0;
+  A.days.forEach((d) => {
+    const cyc = Math.floor(before / FULL_AT) + 1;
+    if (cyc === n) mine.push(d);
+    before += d.pts;
+  });
+  if (!mine.length) return null;
+  const sync = mine.filter((d) => d.kind === 'sync').length;
+  const lateBy = { h: 0, y: 0 };
+  mine.forEach((d) => { if (d.kind === 'late') lateBy[d.first === 'h' ? 'y' : 'h'] += 1; });
+  const from = mine[0].key;
+  const to = mine[mine.length - 1].key;
+  return { n, at: f.at, from, to, span: daysSince(from, to) + 1, count: mine.length, sync, late: mine.length - sync, lateBy };
+}
+
 // 100日ごと、または1年ごとの記念日か
 export function isMilestone(dateKey, todayKey) {
   if (!dateKey) return false;
