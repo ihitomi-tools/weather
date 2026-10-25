@@ -37,7 +37,7 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onPage, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
@@ -48,6 +48,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
   function show() {
     stage.replaceChildren(pageEl(cur, 'cur'));
+    if (onPage) requestAnimationFrame(() => onPage(stage.querySelector('.dpage.cur'), stage, keys[cur]));
     pn.textContent = `${cur + 1} / ${keys.length}`;
     prev.disabled = cur === 0;
     next.disabled = cur === keys.length - 1;
@@ -70,13 +71,9 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
   let g = null;
   let moved = false;
-  let raf = 0;
-  const topPage = () => stage.querySelector('.dpage.cur');
   stage.addEventListener('pointerdown', (e) => {
-    cancelAnimationFrame(raf);
-    const pg = topPage();
     try { stage.setPointerCapture(e.pointerId); } catch (err) { /* 古いブラウザ */ }
-    g = { x: e.clientX, y: e.clientY, axis: '', sc: pg ? pg.scrollTop : 0, last: e.clientY, lt: e.timeStamp, v: 0 };
+    g = { x: e.clientX, y: e.clientY, axis: '' };
     moved = false;
   });
   stage.addEventListener('pointermove', (e) => {
@@ -87,13 +84,6 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       g.axis = Math.abs(dx) >= Math.abs(dy) * 0.6 ? 'x' : 'y'; // 横を、しっかり優先する
       moved = true;
-    }
-    if (g.axis === 'y') {
-      const pg = topPage();
-      if (pg) pg.scrollTop = g.sc - dy;
-      const dt = e.timeStamp - g.lt;
-      if (dt > 0) g.v = (g.last - e.clientY) / dt; // 上へ動くほど、プラス(px/ms)
-      g.last = e.clientY; g.lt = e.timeStamp;
     }
   });
   const endGesture = (e) => {
@@ -106,10 +96,6 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
       if (Math.abs(dx) > 32) go(dx < 0 ? cur + 1 : cur - 1);
       return;
     }
-    const pg = topPage();
-    let v = gg.v * 16; // 1コマ(16ms)あたりのpx。指を離したあと、少しすべる
-    const step = () => { if (!pg || Math.abs(v) < 0.5) return; pg.scrollTop += v; v *= 0.94; raf = requestAnimationFrame(step); };
-    raf = requestAnimationFrame(step);
   };
   stage.addEventListener('touchmove', (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false }); // ページの中のスクロールは、上の処理でしている。ブラウザのスクロールは動かさない
   stage.addEventListener('pointerup', endGesture);
@@ -130,7 +116,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
       tmp.append(...renderPage(keys[cur]));
       const ae = document.activeElement;
       if (ae && top.contains(ae) && ae.matches('textarea, input')) return; // 書いている途中は、描き直さない
-      if (tmp.innerHTML !== top.innerHTML) top.replaceChildren(...tmp.childNodes);
+      if (tmp.innerHTML !== top.innerHTML) { top.replaceChildren(...tmp.childNodes); if (onPage) requestAnimationFrame(() => onPage(top, stage, keys[cur])); }
     },
   };
 }

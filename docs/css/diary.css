@@ -6,7 +6,7 @@
 .dbook { position: relative; background: var(--dy-cover); border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
 .dbook::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0)); border-radius: 10px 0 0 10px; pointer-events: none; }
 .dstage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
-.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; --fg: #3a3228; --muted: #6b5f4e; --line: #e0d2b0; --pink: #f8c4d3; --pink-deep: #c9587e; --mint: #a8e6d0; --mint-deep: #2d8f77; --on-pink: #4a2a35; --on-mint: #1f4338; transform-origin: left center; touch-action: none; overscroll-behavior: contain; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
+.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 18px 12px 22px; overflow: hidden; display: flex; flex-direction: column; background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; --fg: #3a3228; --muted: #6b5f4e; --line: #e0d2b0; --pink: #f8c4d3; --pink-deep: #c9587e; --mint: #a8e6d0; --mint-deep: #2d8f77; --on-pink: #4a2a35; --on-mint: #1f4338; transform-origin: left center; touch-action: none; overscroll-behavior: contain; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
 .dpage::before { display: none; }
 .dpage.under { z-index: 1; }
 .dpage.cur { z-index: 2; }
@@ -35,7 +35,7 @@
 .dev i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint-deep); flex: none; }
 .dwrite { display: inline-block; border: 1.5px dashed var(--muted); color: var(--muted); background: transparent; font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 5px 16px; margin: 4px 0; cursor: pointer; }
 .dwrite.fix { border-style: solid; border-color: var(--line); padding: 2px 10px; font-size: 13px; margin: 0; }
-.dribbon { position: absolute; top: -6px; right: 40px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
+.dribbon { position: absolute; top: -6px; right: 118px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
 .dnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 .dnav button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; border-radius: 99px; padding: 10px 18px; cursor: pointer; }
 .dnav button:disabled { opacity: .4; }
@@ -168,3 +168,20 @@
 .dnote .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .dnote.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
 .dnote.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
+
+/* 1日=1ページ。日付(左)と電池(右上)。電池をタップで、調子とタグ。ページは、スクロールしない */
+.dhead { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.dhead .ddate { margin-bottom: 4px; min-width: 0; }
+.dbats { display: flex; gap: 4px; margin-top: 6px; flex: none; }
+.dbat { border: 0; background: none; padding: 5px 3px; line-height: 0; border-radius: 8px; cursor: pointer; }
+.dbat svg { width: 38px; height: 18px; }
+.dbat.me { color: var(--pink-deep); } .dbat.you { color: var(--mint-deep); }
+.dbat.on { background: rgba(60, 40, 10, .08); }
+.dpop { position: absolute; right: -4px; top: 38px; z-index: 9; width: min(240px, 80vw); background: #fffdf5; border: 1.5px solid #e0d2b0; border-radius: 14px; padding: 10px 12px 12px; box-shadow: 0 8px 20px rgba(60, 40, 10, .28); line-height: 1.4; }
+.dpop .lv { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.dpop .dtags { margin: 0; }
+.dpop .fix { margin-top: 10px; display: inline-block; border: 1.5px solid var(--line); border-radius: 99px; padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 800; color: var(--muted); background: none; cursor: pointer; }
+.dodai { margin-top: auto; padding-top: 8px; }
+.dpage.clipped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(transparent, var(--dy-paper) 75%); pointer-events: none; border-radius: 0 0 14px 6px; }
+.dmore { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 6; border: 1.5px solid #e0d2b0; background: #fffdf5; color: #6b5f4e; font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 6px 16px; box-shadow: 0 2px 8px rgba(60, 40, 10, .2); cursor: pointer; }
+.dpage.insheet { position: relative; inset: auto; min-height: 120px; overflow: visible; padding-bottom: 20px; border-radius: 14px; }
