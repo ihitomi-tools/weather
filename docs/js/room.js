@@ -1,7 +1,7 @@
 // おたのしみの部屋(ファンタジー)。背景は固定で、ふたりの様子だけが変わる。
 // 夜(21時以降)は、寄り添うパターン / それまでは、別々のことをしているパターン。画面には触れない(SVGの文字列を作るだけ)。
 
-export const SCENES = { day: ['d1', 'd2', 'd3'], night: ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'] };
+export const SCENES = { day: ['d1', 'd2', 'd3'], night: ['n1', 'n2', 'n3', 'n4'] };
 export const isNight = (hour) => hour >= 21 || hour < 5;
 
 // いまの時間の様子から、1つ選ぶ。直前と同じものは、続けて出さない
@@ -42,17 +42,15 @@ function base(o = {}){const pts = Math.max(0, Math.min(100, Number(o.pts) || 0))
 <g><path d="M122 235h8l-2 36h-4zM186 235h8l-2 36h-4z" fill="#5e4c92"/><rect x="118" y="229" width="76" height="10" fill="#5e4c92"/><rect x="146" y="231" width="20" height="6" rx="1" fill="#4e3e82" stroke="#8a76b8" stroke-opacity=".6" stroke-width=".6"/><circle cx="156" cy="234" r="1.600" fill="#b8a6e0"/><rect x="112" y="222" width="88" height="7" rx="2" fill="#7a64a8"/><rect x="112" y="222" width="88" height="1.500" rx=".7" fill="#a592d0" opacity=".7"/>${diary(132,186)}<g transform="translate(0 -4)"><ellipse cx="186" cy="198" rx="26" ry="22" fill="url(#fl)"/><path d="M180 226v-22l-8-9" stroke="#caa" stroke-width="3" fill="none"/><path d="M164 186l17-5 3 11z" fill="#d9a85a"/></g></g>
 <g transform="translate(206 250)"><path d="M0 12q-4-14 6-16 10 2 6 16z" fill="#ff9cc4"/><rect x="4" y="10" width="4" height="10" fill="#e8d8f8"/></g><g transform="translate(228 256) scale(.8)"><path d="M0 12q-4-14 6-16 10 2 6 16z" fill="#9fd0ff"/><rect x="4" y="10" width="4" height="10" fill="#e8d8f8"/></g><rect width="360" height="340" fill="url(#rmv)"/>`;}
 // ベッド・ソファ
-const bedBase=(w=136)=>`<rect x="-4" y="-34" width="${w+8}" height="14" rx="6" fill="#7a5aa8"/><rect x="-4" y="40" width="10" height="26" fill="#7a5aa8"/><rect x="${w-6}" y="40" width="10" height="26" fill="#7a5aa8"/><rect x="0" y="-8" width="${w}" height="52" rx="10" fill="#efe6ff"/>`;
 const sofaBack=(x,y)=>`<rect x="${x}" y="${y}" width="144" height="44" rx="16" fill="#7a5aa8"/>`;
 const sofaFront=(x,y)=>`<rect x="${x+8}" y="${y+26}" width="128" height="42" rx="14" fill="#5a3d8a"/><rect x="${x}" y="${y+8}" width="22" height="60" rx="10" fill="#5a3d8a"/><rect x="${x+122}" y="${y+8}" width="22" height="60" rx="10" fill="#5a3d8a"/>`;
+const pic=(k,x,y,w,h)=>`<ellipse cx="${x+w/2}" cy="${y+h-3}" rx="${w*.46}" ry="5" fill="#0a0620" opacity=".4"/><image href="img/room/${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 const S={
- // 夜
- n1:()=>`<g transform="translate(214 282)">${bedBase()}<ellipse cx="28" cy="-8" rx="22" ry="11" fill="#fff2fb"/><ellipse cx="96" cy="-8" rx="22" ry="11" fill="#fff2fb"/>${face(30,-12,'h',-6)}${face(94,-12,'y',6)}<path d="M-2 -2H138V40q-2 8-10 8H8q-10 0-10-8z" fill="#5b6ad8"/><path d="M-2 -2H138" stroke="#8f9bf0" stroke-width="9" stroke-linecap="round"/>${heart(68,-30,1.2)}</g>`,
- n2:()=>`<g transform="translate(214 282)">${bedBase()}<rect x="30" y="-60" width="34" height="48" rx="12" fill="${PK}"/><rect x="72" y="-58" width="36" height="52" rx="12" fill="${MN}"/>${face(47,-70,'h',8)}${face(90,-72,'y',-4,'open')}<rect x="-2" y="-8" width="140" height="10" rx="5" fill="#5b6ad8"/>${heart(62,-98,1.1)}</g>`,
- n3:()=>`${sofaBack(206,290)}<rect x="244" y="248" width="34" height="48" rx="12" fill="${PK}"/><rect x="284" y="246" width="36" height="50" rx="12" fill="${MN}"/>${face(261,238,'h',10)}${face(302,236,'y',-8)}${sofaFront(206,290)}${heart(282,206,1.2)}`,
- n4:()=>`<g><rect x="244" y="246" width="30" height="56" rx="12" fill="${PK}"/><rect x="274" y="244" width="32" height="58" rx="12" fill="${MN}"/><rect x="246" y="298" width="10" height="34" rx="4" fill="${PK}"/><rect x="260" y="298" width="10" height="34" rx="4" fill="${PK}"/><rect x="278" y="300" width="10" height="32" rx="4" fill="${MN}"/><rect x="292" y="300" width="10" height="32" rx="4" fill="${MN}"/>${face(259,234,'h',10,'up')}${face(290,232,'y',-10,'up')}<path d="M272 262q4 6 8 0" stroke="${PK}" stroke-width="5" fill="none" stroke-linecap="round"/></g><path d="M196 70 L290 160" stroke="#fff" stroke-width="2" opacity=".7"/><circle cx="196" cy="70" r="3" fill="#fff"/>${heart(275,206,1.2)}`,
- n5:()=>`${sofaBack(206,290)}<rect x="270" y="250" width="40" height="48" rx="12" fill="${MN}"/>${face(292,238,'y',-4)}<g transform="translate(228 276)"><rect x="0" y="0" width="64" height="20" rx="10" fill="${PK}"/>${face(-6,6,'h',-80)}</g>${sofaFront(206,290)}${heart(268,214,1.1)}`,
- n6:()=>`<g transform="translate(214 282)">${bedBase()}<rect x="30" y="-60" width="34" height="48" rx="12" fill="${PK}"/><rect x="72" y="-58" width="36" height="52" rx="12" fill="${MN}"/>${face(47,-70,'h',8)}${face(90,-72,'y',-4)}<path d="M22 -52q28 -14 56 -2 28 -12 44 8v44H22z" fill="#9f8cf0" opacity=".95"/><path d="M22 -52q28 -14 56 -2 28 -12 44 8" stroke="#c0b0ff" stroke-width="4" fill="none"/><rect x="-2" y="-8" width="140" height="10" rx="5" fill="#5b6ad8"/>${heart(66,-98,1.1)}</g>`,
+ // 夜(絵のファイルを置く。位置は、足元が床になるように)
+ n1:()=>pic('n1',204,210,150,126),
+ n2:()=>pic('n2',212,213,140,123),
+ n3:()=>pic('n3',204,244,150,92),
+ n4:()=>pic('n4',212,221,140,115),
  // 昼
  d1:()=>`<g transform="translate(150 196)"><rect x="-12" y="-8" width="26" height="30" rx="10" fill="${PK}"/>${face(1,-24,'h',-10,'open')}<path d="M10 4l12 14" stroke="${PK}" stroke-width="5" stroke-linecap="round"/></g>${sofaBack(206,290)}<rect x="270" y="252" width="40" height="46" rx="12" fill="${MN}"/>${face(290,240,'y',4,'open')}<rect x="276" y="270" width="30" height="20" rx="3" fill="#fff7e6" stroke="#caa"/><path d="M291 270v20" stroke="#caa"/>${sofaFront(206,290)}`,
  d2:()=>`<g transform="translate(56 232)"><rect x="-12" y="-6" width="26" height="40" rx="10" fill="${PK}"/>${face(1,-20,'h',12,'up')}<rect x="-8" y="34" width="9" height="32" rx="4" fill="${PK}"/><rect x="3" y="34" width="9" height="32" rx="4" fill="${PK}"/></g>${sofaBack(206,290)}<rect x="262" y="256" width="40" height="44" rx="12" fill="${MN}"/>${face(282,244,'y',16)}${sofaFront(206,290)}<text x="316" y="236" font-size="14" fill="#fff" opacity=".8" class="rmtw">z</text><text x="326" y="224" font-size="11" fill="#fff" opacity=".8" class="rmtw">z</text>`,
