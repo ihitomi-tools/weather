@@ -1,8 +1,8 @@
 // 画面のファイルだけを保存する。通信(天気・Firebase)には触れない。
-const CACHE = 'shell-v64';
+const CACHE = 'shell-v65';
 const FILES = [
-  './', 'index.html', 'css/style.css', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/config.js', 'js/store.js',
+  './', 'index.html', 'css/style.css', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css', 'manifest.webmanifest',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/config.js', 'js/store.js',
   'img/moon1.webp', 'img/moon2.webp', 'img/moon3.webp', 'img/moon4.webp', 'img/moon5.webp', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png', 'robots.txt',
 ];
 
