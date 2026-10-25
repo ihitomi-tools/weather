@@ -4,8 +4,8 @@ const pad = (n) => String(n).padStart(2, '0');
 const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 
-// cards: [{ date }] / recKeys: 調子・メモが入っている日のキー / events: [{ date, end? }] / todayKey: 今日まで(未来は出さない)
-export function diaryKeys({ cards = [], recKeys = [], events = [], todayKey }) {
+// cards: [{ date }] / recKeys: 調子・メモが入っている日のキー / events: [{ date, end? }] / todayKey: 今日まで(未来は出さない) / from: この日より前は出さない(日記帳の始まり)
+export function diaryKeys({ cards = [], recKeys = [], events = [], todayKey, from = '' }) {
   const set = new Set();
   cards.forEach((c) => c.date && set.add(c.date));
   recKeys.forEach((k) => set.add(k));
@@ -15,7 +15,7 @@ export function diaryKeys({ cards = [], recKeys = [], events = [], todayKey }) {
     const d = parse(e.date);
     for (let i = 0; i < 40 && keyOf(d) <= end; i += 1) { set.add(keyOf(d)); d.setDate(d.getDate() + 1); } // 連続する予定は、日ごとに(長くても40日まで)
   });
-  return [...set].filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= todayKey).sort();
+  return [...set].filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= todayKey && (!from || k >= from)).sort();
 }
 
 // 1日=2ページ(できごと → お題)。お題が出た日だけ、2枚目がある。ページの名前は「日付#e」「日付#c」
@@ -37,22 +37,21 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onCover, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
   const pageEl = (i, cls) => { const el = h('div', { class: `dpage ${cls}` }); el.append(...renderPage(keys[i])); return el; };
-  const pn = h('span', { class: 'dpn' });
+  const pn = h('button', { class: 'dpn', type: 'button', 'aria-label': '表紙にもどって、月をえらぶ' }, h('b', {}), h('small', {}, '表紙で月をえらぶ'));
+  const pnum = pn.firstChild;
   const prev = h('button', { type: 'button' }, '‹ 前の日');
   const next = h('button', { type: 'button' }, '次の日 ›');
-  const tabs = h('div', { class: 'dtabs' });
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
   function show() {
     stage.replaceChildren(pageEl(cur, 'cur'));
-    pn.textContent = `${cur + 1} / ${keys.length}`;
+    pnum.textContent = `${cur + 1} / ${keys.length}`;
     prev.disabled = cur === 0;
     next.disabled = cur === keys.length - 1;
-    [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.m === keys[cur].slice(0, 7)));
     if (onTurn) onTurn(keys[cur]);
   }
   function go(to) {
@@ -68,6 +67,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   prev.addEventListener('click', () => go(cur - 1));
   next.addEventListener('click', () => go(cur + 1));
   ribbon.addEventListener('click', () => go(home));
+  pn.addEventListener('click', () => { if (onCover) onCover(); });
   // 指の動き: 斜めでも、横が少しでも強ければ「めくる」。たて向きは、自分でページをスクロールする
   // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
   let g = null;
@@ -115,17 +115,13 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   stage.addEventListener('pointerup', endGesture);
   stage.addEventListener('pointercancel', () => { g = null; });
   stage.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // 動かしたあとの、おまけのタップは無視
-  monthTabs(keys).forEach(({ ym, index }) => {
-    const b = h('button', { type: 'button', 'data-m': ym }, `${Number(ym.slice(5))}月`);
-    b.addEventListener('click', () => go(index));
-    tabs.append(b);
-  });
-  const book = h('div', { class: 'dbook' }, ribbon, tabs, stage);
+  const book = h('div', { class: 'dbook' }, ribbon, stage);
   const root = h('div', { class: 'dwrap' }, book, h('div', { class: 'dnav' }, prev, pn, next));
   show();
   return {
     root,
     key: () => keys[cur],
+    jump(i) { if (i >= 0 && i < keys.length) { cur = i; show(); } }, // 表紙の月から、めくらずに、その月の最初のページへ
     // いまのページの中身が変わったとき(調子を書いた・予定が増えたなど)に、めくらず、その場で描き直す
     refreshPage() {
       const top = stage.querySelector('.dpage.cur');

@@ -15,7 +15,7 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, diaryPages, dayOfPage, createBook } from './diary.js';
+import { diaryKeys, diaryPages, dayOfPage, monthTabs, createBook } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-82';
+const VERSION = '2026.10.25-84';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1768,6 +1768,7 @@ function renderMore() {
   const set = $('#settings');
   $('#more-h').textContent = sub === 'oto' ? 'おたのしみ' : sub === 'settings' ? '設定' : 'その他';
   oto.hidden = sub !== 'oto';
+  $('#v-set').classList.toggle('dfull', sub === 'oto' && state.oto === 'diary'); // 日記帳は、画面いっぱいに
   set.hidden = sub !== 'settings';
   if (sub !== 'oto') otoSig = '';
   if (sub !== 'menu') {
@@ -1851,7 +1852,8 @@ let diaryBook = null;
 let diarySig = '';
 function diaryKeyList() {
   const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
-  return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()) });
+  const from = state.qcards.map((c) => c.date).filter(Boolean).sort()[0] || ''; // 日記帳は、いちばん最初のお題の日から
+  return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()), from });
 }
 const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // おやすみ前は、日記には書かない(見返す場所は、別に考える)
 function diaryHead(day, small) {
@@ -1932,7 +1934,7 @@ function diaryPageNodes(key) {
   return String(key).endsWith('#c') ? diaryCardPage(day) : diaryEvents(day);
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
-function diaryCover(onOpen) {
+function diaryCover(onOpen, months = [], onPick = () => {}) {
   const orn = (c) => `<svg class="dorn ${c}" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 27V9q0-6 6-6h18M8 22V12q0-4 4-4h10M13 17q0-3 3-3h4"/><circle cx="6" cy="6" r="1.6" fill="currentColor"/></svg>`;
   const el = h('div', { class: 'dcover', role: 'button', tabindex: '0', 'aria-label': '日記帳を開く' });
   el.innerHTML = `<div class="dlite"></div><div class="dwear"></div><div class="dspine"><i style="top:14%"></i><i style="top:28%"></i><i style="top:70%"></i><i style="top:84%"></i></div><div class="dstitch"></div><div class="dframe"></div>${orn('tl')}${orn('tr')}${orn('bl')}${orn('br')}
@@ -1944,6 +1946,20 @@ function diaryCover(onOpen) {
     el.classList.add('open');
     setTimeout(onOpen, 1050);
   };
+  if (months.length) {
+    el.classList.add('hasmj');
+    const mj = h('div', { class: 'dmj' }, h('div', { class: 'cap' }, '月をえらんで、ひらく'));
+    const grid = h('div', { class: 'grid' });
+    months.forEach(({ ym, index }, i) => {
+      const yr = ym.slice(0, 4);
+      const b = h('button', { type: 'button' }, ...(i === 0 || yr !== months[i - 1].ym.slice(0, 4) ? [h('small', {}, yr)] : []), h('b', {}, String(Number(ym.slice(5)))), h('i', {}, '月'));
+      b.addEventListener('click', (e) => { e.stopPropagation(); onPick(index); open(); });
+      b.addEventListener('keydown', (e) => e.stopPropagation());
+      grid.append(b);
+    });
+    mj.append(grid);
+    el.append(mj);
+  }
   el.addEventListener('click', open);
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
   return el;
@@ -1962,14 +1978,17 @@ function renderDiary() {
     const at = bm ? keys.indexOf(wide ? dayOfPage(bm) : (bm.includes('#') ? bm : `${bm}#e`)) : -1;
     const home = wide ? keys.length - 1 : Math.max(0, keys.length - (keys[keys.length - 1].endsWith('#c') ? 2 : 1)); // いちばん新しい日の、できごとのページ(しおりのひもで戻る先)
     const start = at >= 0 ? at : home;
-    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onCover: () => { state.diaryOpened = false; mountCover(); }, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
     box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ${wide ? '見開き' : 'ページ'}`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
-    if (!state.diaryOpened) {
-      const bookEl = diaryBook.root.querySelector('.dbook');
+    const bk = diaryBook;
+    function mountCover() {
+      const bookEl = bk.root.querySelector('.dbook');
+      if (bookEl.querySelector('.dcover')) return;
       bookEl.classList.add('closed');
-      const cover = diaryCover(() => { state.diaryOpened = true; cover.remove(); bookEl.classList.remove('closed'); });
+      const cover = diaryCover(() => { state.diaryOpened = true; cover.remove(); bookEl.classList.remove('closed'); }, monthTabs(keys), (i) => bk.jump(i));
       bookEl.append(cover);
     }
+    if (!state.diaryOpened) mountCover();
     return;
   }
   diaryBook.refreshPage();

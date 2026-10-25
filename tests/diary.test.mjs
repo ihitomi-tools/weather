@@ -44,3 +44,9 @@ test('1日=2ページ: できごと、そのあとにお題(お題が出た日�
   assert.equal(dayOfPage('2026-10-24#c'), '2026-10-24'); assert.equal(dayOfPage('2026-10-24'), '2026-10-24');
   assert.deepEqual(monthTabs(pages), [{ ym: '2026-10', index: 0 }]);
 });
+
+test('日記の始まり: from より前の日は出さない(いちばん最初のお題の日から)', () => {
+  const keys = diaryKeys({ cards: [{ date: '2026-10-20' }], recKeys: ['2025-10-03', '2026-10-19', '2026-10-21'], events: [{ date: '2026-04-02' }], todayKey: '2026-10-25', from: '2026-10-20' });
+  assert.deepEqual(keys, ['2026-10-20', '2026-10-21']);
+  assert.deepEqual(diaryKeys({ recKeys: ['2025-10-03'], todayKey: '2026-10-25', from: '' }), ['2025-10-03']);
+});
