@@ -37,19 +37,18 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onCover, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
   const pageEl = (i, cls) => { const el = h('div', { class: `dpage ${cls}` }); el.append(...renderPage(keys[i])); return el; };
-  const pn = h('button', { class: 'dpn', type: 'button', 'aria-label': '表紙にもどって、月をえらぶ' }, h('b', {}), h('small', {}, '表紙で月をえらぶ'));
-  const pnum = pn.firstChild;
+  const pn = h('span', { class: 'dpn' });
   const prev = h('button', { type: 'button' }, '‹ 前の日');
   const next = h('button', { type: 'button' }, '次の日 ›');
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
   function show() {
     stage.replaceChildren(pageEl(cur, 'cur'));
-    pnum.textContent = `${cur + 1} / ${keys.length}`;
+    pn.textContent = `${cur + 1} / ${keys.length}`;
     prev.disabled = cur === 0;
     next.disabled = cur === keys.length - 1;
     if (onTurn) onTurn(keys[cur]);
@@ -67,7 +66,6 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   prev.addEventListener('click', () => go(cur - 1));
   next.addEventListener('click', () => go(cur + 1));
   ribbon.addEventListener('click', () => go(home));
-  pn.addEventListener('click', () => { if (onCover) onCover(); });
   // 指の動き: 斜めでも、横が少しでも強ければ「めくる」。たて向きは、自分でページをスクロールする
   // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
   let g = null;
@@ -77,6 +75,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   stage.addEventListener('pointerdown', (e) => {
     cancelAnimationFrame(raf);
     const pg = topPage();
+    try { stage.setPointerCapture(e.pointerId); } catch (err) { /* 古いブラウザ */ }
     g = { x: e.clientX, y: e.clientY, axis: '', sc: pg ? pg.scrollTop : 0, last: e.clientY, lt: e.timeStamp, v: 0 };
     moved = false;
   });
@@ -86,7 +85,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
     const dy = e.clientY - g.y;
     if (!g.axis) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-      g.axis = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'x' : 'y'; // 横を、少し優先する
+      g.axis = Math.abs(dx) >= Math.abs(dy) * 0.6 ? 'x' : 'y'; // 横を、しっかり優先する
       moved = true;
     }
     if (g.axis === 'y') {
@@ -104,7 +103,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
     if (!gg.axis) return;
     if (gg.axis === 'x') {
       const dx = e.clientX - gg.x;
-      if (Math.abs(dx) > 40) go(dx < 0 ? cur + 1 : cur - 1);
+      if (Math.abs(dx) > 32) go(dx < 0 ? cur + 1 : cur - 1);
       return;
     }
     const pg = topPage();
@@ -112,6 +111,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
     const step = () => { if (!pg || Math.abs(v) < 0.5) return; pg.scrollTop += v; v *= 0.94; raf = requestAnimationFrame(step); };
     raf = requestAnimationFrame(step);
   };
+  stage.addEventListener('touchmove', (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false }); // ページの中のスクロールは、上の処理でしている。ブラウザのスクロールは動かさない
   stage.addEventListener('pointerup', endGesture);
   stage.addEventListener('pointercancel', () => { g = null; });
   stage.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // 動かしたあとの、おまけのタップは無視

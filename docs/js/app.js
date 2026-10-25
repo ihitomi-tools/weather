@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-84';
+const VERSION = '2026.10.25-85';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1978,7 +1978,7 @@ function renderDiary() {
     const at = bm ? keys.indexOf(wide ? dayOfPage(bm) : (bm.includes('#') ? bm : `${bm}#e`)) : -1;
     const home = wide ? keys.length - 1 : Math.max(0, keys.length - (keys[keys.length - 1].endsWith('#c') ? 2 : 1)); // いちばん新しい日の、できごとのページ(しおりのひもで戻る先)
     const start = at >= 0 ? at : home;
-    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onCover: () => { state.diaryOpened = false; mountCover(); }, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
     box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ${wide ? '見開き' : 'ページ'}`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
     const bk = diaryBook;
     function mountCover() {
@@ -1989,6 +1989,14 @@ function renderDiary() {
       bookEl.append(cover);
     }
     if (!state.diaryOpened) mountCover();
+    // 左下の「もどる」: ページ → 表紙(月をえらぶ) / 表紙 → おたのしみの入口
+    const fab = h('button', { class: 'dfab', type: 'button', 'aria-label': 'もどる' }, h('span', { 'aria-hidden': 'true' }, '‹'));
+    fab.addEventListener('click', () => {
+      if (bk.root.querySelector('.dcover')) { state.oto = 'menu'; renderMore(); return; }
+      state.diaryOpened = false;
+      mountCover();
+    });
+    box.append(fab);
     return;
   }
   diaryBook.refreshPage();
