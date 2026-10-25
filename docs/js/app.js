@@ -10,11 +10,11 @@ import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } fr
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
 import { moonScene, VARIANTS, phaseName, gesturesFor } from './moon.js';
-import { analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
+import { dayKey4, analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, WINDOW_MS as MOON_WIN } from './moonlogic.js';
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
-import { pickLine, pickGreeting, isMorning } from './hitorigoto.js';
+import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
 
@@ -34,9 +34,9 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', tagHide: 'app.tagHide',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.24-69';
+const VERSION = '2026.10.25-70';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -257,6 +257,7 @@ async function enter() {
   if (!LS.get(K.seq)) { startRecording('home'); return; }
   startWatching();
   screen('app');
+  countOpen();
   setView(state.view);
   if (state.view === 'home') moonEnterHome();
   moodAskMaybe();
@@ -1011,15 +1012,38 @@ function sayContext({ A, t, today }) {
 // {name} を、呼ばれる側(話すキャラの、もう一方)の名前に置きかえる
 const nameOfRole = (r) => (roleOf(myUid()) === r ? myName() : partnerName());
 const sayText = (pick) => pick.text.replace('{name}', nameOfRole(pick.role === 'h' ? 'y' : 'h'));
+// 1日に5回目・10回目に開いたときの、特別なひとり言(数は、この端末の中だけ)
+function countOpen() {
+  let prev = null;
+  try { prev = JSON.parse(LS.get(K.opens) || 'null'); } catch (e) { prev = null; }
+  const now = Date.now();
+  const r = bumpOpens(prev, dayKey4(now), now);
+  LS.set(K.opens, JSON.stringify(r.state));
+  state.openTier = r.tier;
+}
+function rollOpenSay({ A, t, today }) {
+  if (!state.openTier || !state.loaded.moon || !state.loaded.dy) return;
+  const tier = state.openTier;
+  state.openTier = null;
+  const ctx = sayContext({ A, t, today });
+  const last = LS.get(K.sayLast) || '';
+  const pick = ctx.tiredRoles.length ? pickLine({ ...ctx, resolved: true }, { rand: () => 0, last }) : pickOpenLine(tier, { last }); // しんどい日は、回数に関係なく、やさしい言葉を優先
+  if (!pick) return;
+  state.say = { ...pick, shown: sayText(pick), variant: state.moonVariant, early: true };
+  LS.set(K.sayLast, pick.text);
+  state.sayDone = true; // この訪問では、ふだんのひとり言は、重ねない
+}
 function rollSay({ A, t, today, force, wait }) {
+  rollOpenSay({ A, t, today });
   if (!force && (state.sayDone || !state.loaded.moon || !state.loaded.dy)) return;
   // 午前中に開いたら、あいさつを、その日の1回だけ必ず出す(ブランコの成立は待たない)
   if (!force && isMorning(today.getHours()) && LS.get(K.sayMorning) !== ymd(today)) {
     LS.set(K.sayMorning, ymd(today));
     const g = pickGreeting({ last: LS.get(K.sayLast) || '' });
-    state.say = { ...g, shown: g.text, variant: state.moonVariant };
+    state.say = { ...g, shown: g.text, variant: state.moonVariant, early: true };
     LS.set(K.sayLast, g.text);
   }
+  if (state.say && state.say.early) return; // 特別なひとり言を出している間は、そのまま
   if (!t.resolved) return; // ブランコが成立するまでは、まだ話さない(成立したら、そのときに決める)
   if (wait) { // 成立してふたりがつながって揺れている間は、終わるまで待つ
     if (!state.sayTimer) state.sayTimer = setTimeout(() => { state.sayTimer = 0; renderMoon(); }, wait);
@@ -1027,7 +1051,7 @@ function rollSay({ A, t, today, force, wait }) {
   }
   state.sayDone = true;
   const pick = pickLine(sayContext({ A, t, today }), { last: LS.get(K.sayLast) || '' });
-  if (pick) { state.say = { ...pick, shown: sayText(pick), variant: state.moonVariant }; LS.set(K.sayLast, pick.text); } else if (state.say && state.say.group !== 'morning') state.say = null;
+  if (pick) { state.say = { ...pick, shown: sayText(pick), variant: state.moonVariant }; LS.set(K.sayLast, pick.text); } else if (state.say && !state.say.early) state.say = null;
 }
 function renderSay({ t, today }) {
   const b = $('#mn-talk');
@@ -1036,16 +1060,19 @@ function renderSay({ t, today }) {
   // ふたりの動き(場面)が変わったら、前の場面のセリフは消す
   if (state.say && state.say.variant !== state.moonVariant) { state.say = null; b.dataset.text = ''; }
   const s = state.say;
-  b.hidden = !s || quiet || (!t.resolved && s.group !== 'morning'); // あいさつだけは、成立の前でも出る
+  b.hidden = !s || quiet || (!t.resolved && !s.early); // あいさつと、特別なひとり言は、成立の前でも出る
   if (b.hidden) return;
   if (b.dataset.text !== s.shown) {
     b.dataset.text = s.shown;
-    b.className = `mn-talk ${s.role}`;
-    b.textContent = s.shown;
+    const look = s.group === 'tired' ? 'care' : s.group === 'open5' ? 'glow' : s.group === 'open10' ? 'full' : '';
+    b.className = `mn-talk ${s.role}${look ? ` ${look}` : ''}`;
+    const deco = (cls, ch) => h('span', { class: cls, 'aria-hidden': 'true' }, ch);
+    b.replaceChildren(s.shown, ...(look === 'full' ? [deco('st s1', '★'), deco('st s2', '✦'), deco('up u1', '★'), deco('up u2', '✦'), deco('up u3', '★')] : look === 'care' ? [deco('st s1', '★'), deco('st s2', '✦')] : []));
     b.onclick = () => { state.say = null; b.hidden = true; b.dataset.text = ''; };
   }
 }
 window.__moonVariantNow = () => { state.moonVariant = state.moonVariant === 'hug' ? 'kiss' : 'hug'; renderMoon(); }; // 確認用: 場面を切りかえる
+window.__openNow = (n) => { LS.set(K.opens, JSON.stringify({ day: dayKey4(Date.now()), n: n - 1, last: 0 })); countOpen(); state.say = null; state.sayDone = false; moonSigReset(); renderMoon(); }; // 確認用: その日のn回目に開いたことにする
 window.__sayNow = () => { const A = moonAnalysis().A; rollSay({ A, t: A.today, today: new Date(), force: true }); renderSay({ t: A.today, today: new Date() }); };
 
 // 月に触れる合図: 自分がまだ触れていない間は、バナーと、月のカードの枠の光を出す(触れたら消える)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { LINES, NAME_LINES, groupsFor, candidates, pickLine, pickGreeting, isMorning, P_USUAL, P_TIRED, P_NAME } from '../docs/js/hitorigoto.js';
+import { LINES, NAME_LINES, groupsFor, candidates, pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine, OPEN_TIERS, P_USUAL, P_TIRED, P_NAME } from '../docs/js/hitorigoto.js';
 
 const base = { resolved: true, hour: 14, rain: false, pts: 10, lateToday: false, soon: false, tiredRoles: [] };
 
@@ -44,7 +44,7 @@ test('直前と同じ言葉は、続けて出さない', () => {
   }
 });
 test('言葉の数: どのグループにも、ふたりの口調の言葉がある(特別な場面を除く)', () => {
-  ['usual', 'tired', 'morning', 'night', 'rain'].forEach((g) => { assert.ok(LINES[g].some(([r]) => r === 'h') && LINES[g].some(([r]) => r === 'y'), g); });
+  ['usual', 'tired', 'morning', 'night', 'rain', 'open5', 'open10'].forEach((g) => { assert.ok(LINES[g].some(([r]) => r === 'h') && LINES[g].some(([r]) => r === 'y'), g); });
 });
 
 test('月のブランコが成立するまで(ふたりが触れるまで)は、話さない', () => {
@@ -69,4 +69,27 @@ test('ときどき、相手の名前を呼ぶ(低い確率・しんどい日は�
   assert.notEqual(noCall.group, 'name'); // 12%以上なら、ふつうの言葉
   const tiredPick = pickLine({ ...base, tiredRoles: ['h'] }, { rand: () => 0 });
   assert.equal(tiredPick.group, 'tired');
+});
+
+test('開いた回数: 1日5回目と10回目だけ特別。30秒以内の開き直しは、1回にまとめる', () => {
+  let st = null; const tiers = [];
+  for (let i = 0; i < 12; i++) { const r = bumpOpens(st, '2026-10-25', 1e9 + i * 60000); st = r.state; tiers.push(r.tier); }
+  assert.deepEqual(tiers, [null, null, null, null, 'open5', null, null, null, null, 'open10', null, null]);
+  assert.deepEqual(OPEN_TIERS, { 5: 'open5', 10: 'open10' });
+  const a = bumpOpens(null, 'd', 1000); const b = bumpOpens(a.state, 'd', 1000 + 29000);
+  assert.equal(b.state.n, 1); assert.equal(b.tier, null);
+  const c = bumpOpens(b.state, 'd', 1000 + 29000 + 30000); assert.equal(c.state.n, 2);
+});
+test('開いた回数は、日がかわると数え直す', () => {
+  let st = null;
+  for (let i = 0; i < 4; i++) st = bumpOpens(st, 'd1', 1e9 + i * 60000).state;
+  assert.equal(st.n, 4);
+  const r = bumpOpens(st, 'd2', 1e9 + 5 * 60000);
+  assert.equal(r.state.n, 1); assert.equal(r.tier, null);
+});
+test('特別な言葉: 避ける言い回しを使わず、直前と同じものは続けない', () => {
+  [...LINES.open5, ...LINES.open10, ...LINES.tired].forEach(([, t]) => assert.ok(!/無理しない|しんどい|だめ|ダメ/.test(t), t));
+  const last = LINES.open5[0][1];
+  for (let i = 0; i < 20; i++) assert.notEqual(pickOpenLine('open5', { rand: () => i / 20, last }).text, last);
+  assert.equal(pickOpenLine('open10', { rand: () => 0 }).group, 'open10');
 });
