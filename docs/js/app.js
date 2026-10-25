@@ -14,6 +14,7 @@ import { dayKey4, analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, 
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
+import { roomSvg, pickScene } from './room.js';
 import { diaryKeys, startIndex, createBook } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
@@ -36,7 +37,7 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
 const VERSION = '2026.10.25-80';
 
@@ -1733,7 +1734,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/room.js', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css',
 ];
 
 async function refreshApp(btn) {
@@ -1786,7 +1787,7 @@ function renderMore() {
     const oto0 = nFull
       ? h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, `満月の棚(${nFull}個)`))
       : h('div', { class: 'more-oto lock' }, h('b', {}, lockIcon(), 'おたのしみ'), h('small', {}, 'ふたりの月が満月になったら、あらたな機能が解放されます'));
-    if (nFull) oto0.addEventListener('click', () => { state.more = 'oto'; state.oto = 'menu'; renderMore(); });
+    if (nFull) oto0.addEventListener('click', () => { state.more = 'oto'; state.oto = 'menu'; state.roomScene = null; renderMore(); });
     const setBtn = h('button', { class: 'more-quiet', type: 'button' }, h('span', {}, '設定'), h('span', { 'aria-hidden': 'true' }, '›'));
     setBtn.addEventListener('click', () => { state.more = 'settings'; settingsMore = false; renderMore(); renderSettings(true); });
     const ul = h('div', { class: 'more-menu' }, upd, oto0, setBtn);
@@ -1802,11 +1803,19 @@ function renderOto(A) {
   if (mode === 'shelf') return renderShelf(A);
   otoSig = '';
   if (mode === 'diary') return renderDiary();
-  const shelfB = h('button', { class: 'shelfb', type: 'button' }, h('b', {}, '満月の棚'), h('small', {}, `${A.fulls.length}個の月が、水槽でゆれています`));
-  shelfB.addEventListener('click', () => { state.oto = 'shelf'; renderMore(); });
-  const diaryB = h('button', { class: 'diaryb', type: 'button' }, h('b', {}, '日記帳'), h('small', {}, 'お題の答え・調子・予定を、日ごとにめくって見返せます'));
-  diaryB.addEventListener('click', () => { state.oto = 'diary'; renderMore(); });
-  $('#more-oto').replaceChildren(h('div', { class: 'oto-menu' }, shelfB, diaryB));
+  // 部屋の絵(ファンタジー)。棚→月の棚、デスクの日記帳→日記帳。ふたりの場所は、まだタップできない
+  const hour = new Date().getHours();
+  if (!state.roomScene || state.roomHour !== (hour >= 21 || hour < 5)) {
+    state.roomHour = hour >= 21 || hour < 5;
+    state.roomScene = pickScene({ hour, last: LS.get(K.roomLast) || '' });
+    LS.set(K.roomLast, state.roomScene);
+  }
+  const room = h('div', { class: 'rm-wrap' });
+  room.innerHTML = roomSvg(state.roomScene);
+  const go = (el) => { const to = el && el.dataset.go; if (to === 'shelf' || to === 'diary') { state.oto = to; renderMore(); } };
+  room.addEventListener('click', (e) => go(e.target.closest('[data-go]')));
+  room.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g); } });
+  $('#more-oto').replaceChildren(room);
 }
 
 function renderShelf(A) {

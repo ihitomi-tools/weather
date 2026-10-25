@@ -54,3 +54,16 @@
 .oto-menu small { font-size: 13px; opacity: .92; line-height: 1.6; }
 .dpage button.dq { background: none; border: 0; font: inherit; font-size: 18px; font-weight: 800; line-height: 1.5; color: inherit; text-align: left; padding: 0; cursor: pointer; width: 100%; margin: 2px 0 8px; }
 .dpage .ans .meta { display: none; }
+/* おたのしみの部屋 */
+.rm-wrap { margin: 0 18px 18px; line-height: 0; }
+.rm-svg { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 0, 0, .35); }
+.rm-hot { cursor: pointer; outline: none; }
+.rm-hot rect { stroke: rgba(255, 233, 168, 0); stroke-width: 2; stroke-dasharray: 5 4; animation: rm-hint 4.5s ease-in-out infinite; }
+.rm-hot:focus-visible rect, .rm-hot:hover rect { stroke: rgba(255, 255, 255, .85); animation: none; }
+.rm-hot[data-go="diary"] rect { animation-delay: 1.2s; }
+@keyframes rm-hint { 0%, 70%, 100% { stroke: rgba(255, 233, 168, 0); } 85% { stroke: rgba(255, 233, 168, .7); } }
+.rmtw { animation: rm-tw 3s ease-in-out infinite; }
+.rmfl { animation: rm-fl 6s ease-in-out infinite; }
+@keyframes rm-tw { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes rm-fl { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .rmtw, .rmfl, .rm-hot rect { animation: none; } }

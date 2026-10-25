@@ -937,8 +937,9 @@ await page.click('.tab[data-v="set"]');
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/menu.png` });
 check('満月のあとは、おたのしみが開ける', (await page.locator('button.more-oto').count()) === 1);
 await page.click('button.more-oto');
-check('おたのしみに、「満月の棚」と「日記帳」の入口が並ぶ', (await page.locator('.oto-menu button').count()) === 2);
-await page.click('.oto-menu .diaryb');
+check('おたのしみは、部屋の絵。棚と日記帳が、タップできる', (await page.locator('.rm-svg').count()) === 1 && (await page.locator('.rm-hot[data-go="shelf"]').count()) === 1 && (await page.locator('.rm-hot[data-go="diary"]').count()) === 1);
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/room-real.png` });
+await page.locator('.rm-hot[data-go="diary"]').click();
 await page.waitForSelector('.dpage.top');
 check('日記帳が開き、いちばん新しい(今日の)ページが出る', Number(await page.textContent('.dpage.top .ddate .d')) === new Date().getDate() && (await page.textContent('.dpage.top .ddate .ym')).includes(`${new Date().getFullYear()}年`));
 check('ページに、予定(出張)・この日の調子が出る', (await page.textContent('.dpage.top')).includes('出張') && (await page.textContent('.dpage.top')).includes('この日'));
@@ -979,7 +980,7 @@ await page.waitForTimeout(300);
 check('ひそひそ話のお題は、日記帳のページにならない', Number((await page.textContent('.dpn')).split('/')[1]) === dTotal && !(await page.textContent('.dwrap')).includes('ひみつの題2'));
 await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qw2'); window.__fake.notify(); });
 await page.click('#more-menu button');
-check('日記帳の中の戻るで、おたのしみの入口に戻る', (await page.locator('.oto-menu button').count()) === 2);
+check('日記帳の中の戻るで、おたのしみの部屋に戻る', (await page.locator('.rm-svg').count()) === 1);
 
 // 「最新版にする」で、ファイルを取り直して再読み込みする
 await page.click('.tab[data-v="set"]');
