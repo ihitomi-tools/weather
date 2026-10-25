@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-96';
+const VERSION = '2026.10.25-99';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1864,13 +1864,31 @@ function diaryHead(day) {
 // 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
 // 調子の電池(5段階。ふつうなら3つ点灯)。色は、持ち主の色(CSSの currentColor)
 const batterySvg = (n) => `<svg viewBox="0 0 46 22" width="46" height="22" aria-hidden="true"><rect x="1" y="1.500" width="39" height="19" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><rect x="41.500" y="7" width="3.200" height="8" rx="1.600" fill="currentColor"/>${[0, 1, 2, 3, 4].map((i) => `<rect x="${4.600 + i * 6.900}" y="5" width="5.600" height="12" rx="2" fill="currentColor"${i < n ? '' : ' opacity=".16"'}/>`).join('')}</svg>`;
+// 予定のステッカーを押したときの、吹き出し(名前・日時・詳細のはじめ。くわしくは、これまでの画面で)
+function evBubble(e, close) {
+  const md = (k) => { const d = parseYmd(k); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  const when = e.end && e.end > e.date ? `${md(e.date)}〜${md(e.end)}` : md(e.date);
+  const trip = tripOf(e).length > 0;
+  const pop = h('div', { class: 'dpop ev' },
+    h('div', { class: 'kind' }, TYPE_LABEL[evType(e)] || ''),
+    h('div', { class: 'tt' }, e.title),
+    h('div', { class: 'when' }, `${when}${e.time ? ` ${e.time}` : ''}`),
+    e.note && !trip ? h('div', { class: 'enote' }, e.note) : null);
+  const btns = h('div', { class: 'btns' });
+  if (trip) { const tk = h('button', { class: 'fix', type: 'button' }, 'きっぷを見る'); tk.addEventListener('click', () => { close(); openTicket(e); }); btns.append(tk); }
+  const more = h('button', { class: 'fix', type: 'button' }, trip ? '直す' : '詳しく見る・直す');
+  more.addEventListener('click', () => { close(); openEventNote(e.id); });
+  btns.append(more);
+  pop.append(btns);
+  return pop;
+}
 // 日付(左)と、ふたりの電池(右上)。電池をタップすると、その人の調子とタグが出る(自分のは、直すボタンつき)
 function diaryTop(day) {
   const head = h('div', { class: 'dhead' }, diaryHead(day));
   const bats = h('div', { class: 'dbats' });
   const us = [...new Set([...peopleOf(), myUid()])].sort((x, y) => (whoClass(x) === 'me' ? 0 : 1) - (whoClass(y) === 'me' ? 0 : 1));
   let pop = null;
-  const closePop = () => { if (pop) { pop.remove(); pop = null; bats.querySelectorAll('.on').forEach((b) => b.classList.remove('on')); } };
+  const closePop = () => { if (pop) { pop.remove(); pop = null; head.querySelectorAll('.on').forEach((b) => b.classList.remove('on')); } };
   us.forEach((u) => {
     const rec = recsOf(u).get(day);
     if (u !== myUid() && !hasMoodRec(rec)) return;
@@ -1902,7 +1920,16 @@ function diaryTop(day) {
     const row = h('div', { class: 'devs' });
     evs.slice(0, 2).forEach((e) => {
       const b = h('button', { class: 'dev-ic', type: 'button', title: e.title, 'aria-label': `${e.title}${e.time ? ` ${e.time}` : ''}` }, typeIcon(evType(e), 'dic'));
-      b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const same = b.classList.contains('on');
+        closePop();
+        if (same) return;
+        b.classList.add('on');
+        pop = evBubble(e, closePop);
+        head.append(pop);
+        setTimeout(() => document.addEventListener('click', function off(x) { if (pop && !pop.contains(x.target)) closePop(); document.removeEventListener('click', off); }), 0);
+      });
       row.append(b);
     });
     if (evs.length > 2) row.append(h('span', { class: 'dev-more', 'aria-label': `ほかに${evs.length - 2}件` }, `+${evs.length - 2}`));
