@@ -36,13 +36,11 @@
 .dwrite { display: inline-block; border: 1.5px dashed var(--muted); color: var(--muted); background: transparent; font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 5px 16px; margin: 4px 0; cursor: pointer; }
 .dwrite.fix { border-style: solid; border-color: var(--line); padding: 2px 10px; font-size: 13px; margin: 0; }
 .dribbon { position: absolute; top: -6px; right: 40px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
-.dtabs { position: absolute; right: -3px; top: 52px; bottom: 14px; width: 28px; display: flex; flex-direction: column; gap: 3px; z-index: 4; }
-.dtabs button { flex: 1 1 0; min-height: 0; max-height: 44px; border: 0; border-radius: 0 8px 8px 0; padding: 0 1px; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: -.02em; line-height: 1; color: #fff; cursor: pointer; background: var(--dy-tab); box-shadow: 1px 1px 2px rgba(0, 0, 0, .25); }
-.dtabs button.on { background: var(--dy-ribbon); width: 31px; }
 .dnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 .dnav button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; border-radius: 99px; padding: 10px 18px; cursor: pointer; }
 .dnav button:disabled { opacity: .4; }
-.dpn { font-size: 14px; color: var(--muted); font-weight: 700; }
+.dnav .dpn { background: none; border-radius: 8px; padding: 2px 10px; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 1px; cursor: pointer; }
+.dpn small { font-size: 11px; font-weight: 700; text-decoration: underline; opacity: .85; }
 .dhint { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 18px 24px; }
 .dempty { margin: 0 18px 24px; color: var(--muted); }
 /* おたのしみの入口(棚・日記帳) */
@@ -141,3 +139,14 @@
 .dfull .dstage { flex: 1; height: auto; min-height: 0; }
 .dfull .dnav { margin-top: 8px; }
 .dfull .dnav button { padding: 8px 16px; font-size: 15px; }
+
+/* 表紙の月の札: 押すと、その月の最初のページをひらく */
+.dcover.hasmj .dplate { top: 36%; }
+.dmj { position: absolute; left: 62px; right: 34px; bottom: 44px; text-align: center; font-family: 'BIZ UDPGothic', 'M PLUS Rounded 1c', sans-serif; }
+.dmj .cap { color: #e9c978; font-size: 12px; letter-spacing: .12em; margin-bottom: 8px; opacity: .9; text-shadow: 0 1px 1px rgba(0, 0, 0, .6); }
+.dmj .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
+.dmj button { position: relative; flex: 0 0 calc((100% - 21px) / 4); border: 1.5px solid rgba(233, 201, 120, .75); background: linear-gradient(#5a2f1c, #3d1f12); color: #f4dc94; border-radius: 6px; padding: 12px 0 7px; font: inherit; cursor: pointer; box-shadow: inset 0 0 6px rgba(0, 0, 0, .5), 0 1px 2px rgba(0, 0, 0, .6); }
+.dmj button b { font-size: 20px; font-weight: 800; }
+.dmj button i { font-style: normal; font-size: 11px; margin-left: 1px; }
+.dmj button small { position: absolute; left: 0; right: 0; top: 2px; font-size: 9px; opacity: .8; letter-spacing: .08em; }
+.dmj button:active { filter: brightness(1.25); }
