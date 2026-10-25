@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-72';
+const VERSION = '2026.10.25-73';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1185,7 +1185,7 @@ function renderCalendar() {
       onclick: () => {
         if (calDrag.suppress) return; // なぞって選んだあとの、おまけのタップは無視する
         if (state.cal.range && key > sel) { state.cal.end = key; state.cal.range = false; state.cal.bar = true; renderCalendar(); return; } // 連続の、終わりの日を選ぶ
-        state.cal.sel = key; state.cal.end = null; state.cal.range = false; state.cal.bar = true; renderCalendar();
+        state.cal.sel = key; state.cal.end = null; state.cal.range = false; renderCalendar(); // 日付をタップしただけでは、予定を入れるバーは出さない(入っている予定を、すぐ見られるように)
       },
     }, String(d), moods.length ? h('span', { class: 'mdots' }, moods.map((x) => h('em', { class: `mood ${roleOf(x.u)}`, style: x.rec.l ? `background:var(--m${x.rec.l})` : null }))) : null, hasPat ? h('em', { class: 'pat-mark' }, '♥') : null, hasCake ? h('em', { class: 'cake' }, cakeIcon()) : null, ...EV_TYPES.filter((t) => t !== 'date' && onTypes.has(t)).slice(0, 2).map((t, i) => h('em', { class: `evtk ${i ? 'r' : 'l'}` }, typeIcon(t, 'tk'))), dots.length ? h('i', {}, dots) : null));
   }
@@ -1211,6 +1211,7 @@ function buildCalendar() {
   };
   $('#cal-prev').addEventListener('click', () => move(-1));
   $('#cal-next').addEventListener('click', () => move(1));
+  $('#ev-open').addEventListener('click', () => { state.cal.bar = true; renderCalendar(); });
   $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
   $('#past-record').addEventListener('click', openPastSheet);
 

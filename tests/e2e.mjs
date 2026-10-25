@@ -83,6 +83,7 @@ const addEv = async ({ title, date, end = '', who = 'me', time = '' }) => {
   await page.click('.tab[data-v="cal"]');
   const today = page.locator('#month button.today');
   await ((await today.count()) ? today : page.locator('#month button[data-key]').first()).click();
+  await page.click('#ev-open');
   await page.click('#evb-more');
   await page.fill('#sheet input[aria-label="予定の名前"]', title);
   if (date) await page.fill('#sheet input[aria-label="日付"]', date);
@@ -685,7 +686,9 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   while ((await page.locator('#month button.today').count()) === 0) await page.click('#cal-prev'); // 今月に戻る
   check('はじめは、入れるバーが出ていない', await page.locator('#ev-bar').isHidden());
   await page.locator('#month button.today').click();
-  check('日付をタップすると、下にバーが出る(♥ デート)', (await page.textContent('#evb-date')).includes('デート') && !(await page.textContent('#evb-date')).includes('お泊まり'));
+  check('日付をタップしただけでは、予定を入れるバーは出ない(予定をすぐ見られる)', await page.locator('#ev-bar').isHidden());
+  await page.click('#ev-open');
+  check('「予定を入れる」を押すと、下にバーが出る(♥ デート)', (await page.textContent('#evb-date')).includes('デート') && !(await page.textContent('#evb-date')).includes('お泊まり'));
   const before = await page.evaluate(() => window.__fake.ev.length);
   await page.click('#evb-date');
   await page.waitForFunction((n) => window.__fake.ev.length === n + 1, before);
@@ -694,11 +697,13 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   // ごはん・いっしょの仕事も、ワンタップ(種類つき)
   const decLast = () => page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
   await page.locator('#month button.today').click();
+  await page.click('#ev-open');
   await page.click('#evb-meal');
   await page.waitForFunction((n) => window.__fake.ev.length === n + 2, before);
   const mealEv = await decLast();
   check('「ごはん」が、種類つきで両方の予定として入る', mealEv.title === 'ごはん' && mealEv.kind === 'meal' && mealEv.who === 'both', JSON.stringify(mealEv));
   await page.locator('#month button.today').click();
+  await page.click('#ev-open');
   await page.click('#evb-work');
   await page.waitForFunction((n) => window.__fake.ev.length === n + 3, before);
   const workEv = await decLast();
@@ -718,6 +723,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   // 「そのほか」でアイコンを選ぶ(出張・電車)。詳細で、日付・時刻も直せる
   await page.click('.tab[data-v="cal"]');
   await page.locator('#month button.today').click();
+  await page.click('#ev-open');
   await page.click('#evb-more');
   await page.fill('#sheet input[aria-label="予定の名前"]', '出張(札幌)');
   await page.locator('#sheet .kpick input[value="train"]').check({ force: true });
@@ -804,6 +810,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   check('連続で選ぶと、自動で「お泊まりデート」になる', dt2.title === 'お泊まりデート' && dt2.who === 'both' && !!dt2.end && dt2.end > dt2.date, JSON.stringify(dt2));
   // タップで、終わりの日を選ぶ
   await page.locator('#month button.today').click();
+  await page.click('#ev-open');
   await page.click('#evb-range');
   check('「連続にする」を押すと、終わりの日を選ぶ状態になる', (await page.getAttribute('#evb-range', 'aria-pressed')) === 'true');
   const todayN = new Date().getDate();
