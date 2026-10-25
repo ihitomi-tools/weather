@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-102';
+const VERSION = '2026.10.25-103';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2027,7 +2027,7 @@ function diaryCardPage(day) {
     const st = cardStatus(c, state.qcards, state.answers);
     const q = h('button', { class: `dsticky c-${c.cat || 'none'}`, type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
     q.addEventListener('click', () => openQCardSheet(c.n));
-    box.append(q, ...markAnswers(answersBlock(c.n)));
+    box.append(q, ...markAnswers(answersBlock(c.n, { plain: true })));
   });
   return [box];
 }
@@ -2412,7 +2412,7 @@ function answerForm(card) {
   // 先に答える人だけ、相手の答えを予想できる(任意)
   const canGuess = !otherAnswer(card.n);
   const gbox = canGuess ? h('textarea', { rows: '2', maxlength: '200', placeholder: `${partnerName()}の答えを予想(任意)`, 'aria-label': `${partnerName()}の答えを予想` }) : null;
-  const f = h('form', { class: 'stack' }, h('small', { class: 'lead' }, 'こたえると、あとから書き直せません。'), box, ...(gbox ? [gbox] : []), err, send);
+  const f = h('form', { class: 'stack' }, h('small', { class: 'lead' }, 'こたえたあと、相手が答えるまでは、書き直せます。'), box, ...(gbox ? [gbox] : []), err, send);
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = box.value.trim();
@@ -2490,12 +2490,50 @@ function guessBlock(n) {
   return out;
 }
 
-function answersBlock(n) {
+// 自分の答えを、相手が答えるまで、書き直す(相手が答えたら、もう直せない)
+function openAnswerEdit(wrap, mine) {
+  const ta = h('textarea', { rows: '4', maxlength: '500', 'aria-label': 'あなたの答え' });
+  ta.value = mine.text;
+  const err = h('p', { class: 'error', role: 'alert' });
+  const save = h('button', { class: 'primary', type: 'submit' }, '直す');
+  const cancel = h('button', { class: 'ghost', type: 'button' }, 'やめる');
+  const f = h('form', { class: 'stack ans-form' }, ta, err, h('div', { class: 'ans-btns' }, save, cancel));
+  const back = () => { qSig = ''; renderQuestion(); };
+  cancel.addEventListener('click', back);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (otherAnswer(mine.n)) { err.textContent = `もう${partnerName()}が答えたので、書き直せません。`; return; }
+    const text = ta.value.trim();
+    if (!text) return;
+    if (text === mine.text) { back(); return; }
+    save.disabled = true;
+    try {
+      const next = { n: mine.n, text, at: mine.at, t0: mine.t0 || 0, edits: (mine.edits || 0) + 1, up: Date.now() };
+      const id = await C.dayId(state.keyBytes, `ans|${mine.n}|${myUid()}`);
+      await state.store.saveAnswer(id, await C.encryptJson(state.key, 'answers', next));
+      state.answers.set(answerKey(mine.n, myUid()), { ...next, owner: myUid() });
+      back();
+    } catch (x) { err.textContent = '直せませんでした。もう一度ためしてください。'; save.disabled = false; }
+  });
+  wrap.replaceChildren(f);
+  ta.focus();
+}
+
+// opts.plain: 日記帳のように、読むだけの場所(直すボタンは出さない)
+function answersBlock(n, opts = {}) {
   const mine = myAnswer(n);
   const theirs = otherAnswer(n);
   const bubble = (a, cls, who) => h('div', { class: `ans ${cls}` }, h('small', {}, who), a.text, h('span', { class: 'meta' }, describeAnswer(a)));
   if (mine && theirs) return [bubble(mine, `${whoClass(myUid())} flip-in`, myName()), bubble(theirs, `${whoClass(theirs.owner)} flip-in`, partnerName())];
-  if (mine) return [bubble(mine, whoClass(myUid()), myName()), h('div', { class: 'ans wait' }, svgEl(Ch.pair('think')), `${partnerName()}の答えを待っています`)];
+  if (mine) {
+    const wait = h('div', { class: 'ans wait' }, svgEl(Ch.pair('think')), `${partnerName()}の答えを待っています`);
+    if (opts.plain) return [bubble(mine, whoClass(myUid()), myName()), wait];
+    const wrap = h('div', { class: 'ans-mine' }, bubble(mine, whoClass(myUid()), myName()));
+    const edit = h('button', { class: 'ans-edit', type: 'button' }, '書き直す');
+    edit.addEventListener('click', () => openAnswerEdit(wrap, mine));
+    wrap.append(edit);
+    return [wrap, wait];
+  }
   if (theirs) return [h('div', { class: 'ans wait' }, `${partnerName()}はもう答えました。あなたが答えると、ふたり同時に見られます`)];
   return [];
 }

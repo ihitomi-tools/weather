@@ -46,7 +46,7 @@ export const removeStock = async (id) => { D().stock = D().stock.filter((x) => x
 export const watchQCards = watch('qcards');
 export const createQCard = async (id, n, payload) => { if (exists('qcards', id)) throw new Error('exists'); put('qcards', { id, n, ...payload, from: uid }); };
 export const watchAnswers = watch('answers');
-export const saveAnswer = async (id, payload) => { if (exists('answers', id)) throw new Error('exists'); put('answers', { id, ...payload, owner: uid }); };
+export const saveAnswer = async (id, payload) => put('answers', { id, ...payload, owner: uid }); // 自分の分は、書き直せる(本物のルールと同じ)
 
 export const watchGuesses = watch('guesses');
 export const saveGuess = async (id, payload) => put('guesses', { id, ...payload, owner: uid });
