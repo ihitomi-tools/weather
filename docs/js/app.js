@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-78';
+const VERSION = '2026.10.25-79';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2248,20 +2248,29 @@ function renderQuestion() {
 }
 
 /* ---- カード ---- */
+const fullDate = (key) => { const d = parseYmd(key); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; }; // 2026/10/24(土)
 function renderCards() {
   $$('#c-chips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === state.cfilter)));
   const cards = [...state.qcards].reverse().filter((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
     return state.cfilter === 'all' || st === state.cfilter || (state.cfilter === 'rest' && st === 'rest');
   });
-  $('#c-count').textContent = `${cards.length}枚`;
-  $('#c-grid').replaceChildren(...cards.map((c) => {
-    const st = cardStatus(c, state.qcards, state.answers);
-    const line = st === 'complete' ? '回答済' : st === 'rest' ? 'お休み(あとから答えられる)' : 'いまのお題';
-    const cls = st === 'complete' ? 'me' : 'none';
-    const b = h('button', { class: 'ccard', type: 'button', 'data-by': whoClass(c.by) }, h('time', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}`), h('b', {}, c.text), h('span', { class: `a ${cls}` }, line));
-    b.addEventListener('click', () => openQCardSheet(c.n));
-    return b;
+  // カテゴリごとにまとめる(カテゴリの並びは、決まった順。カテゴリなしは、最後)。中は、日付の新しい順
+  const order = [...CATS.map((x) => x[0]), ''];
+  const groups = order.map((id) => ({ id, name: id ? catLabel(id) : 'カテゴリなし', list: cards.filter((c) => (c.cat || '') === id) })).filter((g) => g.list.length);
+  $('#c-count').textContent = `${cards.length}枚 ・ ${groups.length}カテゴリ`;
+  if (!state.catOpen && groups.length) state.catOpen = new Set([groups.find((g) => g.list.includes(cards[0])).id]); // はじめは、いちばん新しいカードのカテゴリだけ開く
+  $('#c-grid').replaceChildren(...groups.map((g) => {
+    const open = !!state.catOpen && state.catOpen.has(g.id);
+    const head = h('button', { class: 'cathd', type: 'button', 'aria-expanded': String(open) }, h('span', {}, g.name), h('small', {}, `${g.list.length}枚 `, h('span', { class: 'chev', 'aria-hidden': 'true' }, '▾')));
+    head.addEventListener('click', () => { if (state.catOpen.has(g.id)) state.catOpen.delete(g.id); else state.catOpen.add(g.id); renderCards(); });
+    const items = open ? g.list.map((c) => {
+      const st = cardStatus(c, state.qcards, state.answers);
+      const b = h('button', { class: 'catit', type: 'button' }, h('time', {}, `${fullDate(c.date)} ・ 第${c.n}問`), h('i', { class: `cdot ${st}` }, ''), h('span', {}, c.text));
+      b.addEventListener('click', () => openQCardSheet(c.n));
+      return b;
+    }) : [];
+    return h('div', { class: `catbox${open ? '' : ' closed'}` }, head, ...items);
   }));
 }
 
@@ -2275,7 +2284,7 @@ function openQCardSheet(n) {
     if (s === sig) return;
     sig = s;
     const st = cardStatus(c, state.qcards, state.answers);
-    const q = h('div', { class: 'qcard', 'data-by': whoClass(c.by) }, h('small', {}, `第${c.n}問 ・ ${c.date.slice(5).replace('-', '/')}${st === 'rest' ? ' ・ お休み' : ''}`), h('b', {}, c.text));
+    const q = h('div', { class: 'qcard', 'data-by': whoClass(c.by) }, h('small', {}, `第${c.n}問 ・ ${fullDate(c.date)}${st === 'rest' ? ' ・ お休み' : ''}`), h('b', {}, c.text));
     const kids = [q, ...answersBlock(n), ...guessBlock(n)];
     if (!myAnswer(n)) kids.push(answerForm(c));
     body.replaceChildren(...kids);

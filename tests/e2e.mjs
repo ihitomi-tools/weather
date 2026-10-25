@@ -334,8 +334,8 @@ check('残りのお題の数が出る', (await page.textContent('#stock-n')) ===
 
 // カード
 await page.click('#talk-seg [data-t="c"]');
-check('カードが並ぶ', (await page.locator('#c-grid .ccard').count()) === 1);
-await page.click('#c-grid .ccard');
+check('カードが、カテゴリごとにまとまって並ぶ(日付に西暦つき)', (await page.locator('#c-grid .catit').count()) === 1 && /\d{4}\/\d{1,2}\/\d{1,2}\(.\)/.test(await page.textContent('#c-grid .catit time')) && /\d+カテゴリ/.test(await page.textContent('#c-count')));
+await page.click('#c-grid .catit');
 check('カードを開くと答えが見える', (await page.locator('#sheet-body .ans').count()) === 2);
 await page.click('#sheet-close');
 
