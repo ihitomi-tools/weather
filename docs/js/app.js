@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-100';
+const VERSION = '2026.10.25-101';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1957,17 +1957,25 @@ function diaryEvents(day) {
       const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
       ta.value = (cur && cur.m) || '';
       const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
+      // 見せ方: 「日記」(ワッペン) / 「ひとこと」(顔 + 一行)。はじめて書くときは日記。すでにあるメモは、いまの見せ方から
+      let asDiary = !(cur && cur.m) || !!cur.md;
+      const pickBtn = (label, diary) => {
+        const b = h('button', { class: 'dstyle', type: 'button', 'aria-pressed': String(asDiary === diary) }, label);
+        b.addEventListener('click', () => { asDiary = diary; styles.querySelectorAll('.dstyle').forEach((x, i) => x.setAttribute('aria-pressed', String((i === 0) === diary))); });
+        return b;
+      };
+      const styles = h('div', { class: 'dstyles', role: 'group', 'aria-label': 'メモの見せ方' }, pickBtn('日記', true), pickBtn('ひとこと', false));
       const done = async () => {
         save.disabled = true;
         const prev = myRecs().get(day);
         const text = ta.value.trim();
         const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: text };
-        if (text && ((prev && prev.md) || text !== ((prev && prev.m) || ''))) next.md = 1; // 日記から書いた(直さず保存しただけなら、前のまま)
+        if (text && asDiary) next.md = 1;
         try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
         showMine();
       };
       save.addEventListener('click', done);
-      writeArea.replaceChildren(ta, save, ...others());
+      writeArea.replaceChildren(ta, styles, save, ...others());
       ta.focus();
     };
     text.addEventListener('click', edit);

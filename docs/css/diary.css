@@ -241,3 +241,8 @@
 .dnote.hito .av { flex: none; line-height: 0; }
 .dnote.hito .t { min-width: 0; border-bottom: 2px dotted #6cc7a8; }
 .dnote.hito.me .t { border-bottom-color: #e58aae; }
+
+/* メモの見せ方の切り替え(日記 / ひとこと) */
+.dstyles { display: flex; gap: 6px; margin: 6px 0 2px; }
+.dstyle { border: 1.5px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 3px 14px; cursor: pointer; }
+.dstyle[aria-pressed="true"] { background: #fff1f6; border-color: #e58aae; color: #7a3a52; }
