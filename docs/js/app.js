@@ -15,7 +15,7 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, diaryPages, dayOfPage, monthTabs, createBook } from './diary.js';
+import { diaryKeys, dayOfPage, monthTabs, createBook } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-91';
+const VERSION = '2026.10.25-92';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1864,24 +1864,49 @@ function diaryHead(day, small) {
 // 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
 // 調子の電池(5段階。ふつうなら3つ点灯)。色は、持ち主の色(CSSの currentColor)
 const batterySvg = (n) => `<svg viewBox="0 0 46 22" width="46" height="22" aria-hidden="true"><rect x="1" y="1.500" width="39" height="19" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><rect x="41.500" y="7" width="3.200" height="8" rx="1.600" fill="currentColor"/>${[0, 1, 2, 3, 4].map((i) => `<rect x="${4.600 + i * 6.900}" y="5" width="5.600" height="12" rx="2" fill="currentColor"${i < n ? '' : ' opacity=".16"'}/>`).join('')}</svg>`;
+// 日付(左)と、ふたりの電池(右上)。電池をタップすると、その人の調子とタグが出る(自分のは、直すボタンつき)
+function diaryTop(day) {
+  const head = h('div', { class: 'dhead' }, diaryHead(day));
+  const bats = h('div', { class: 'dbats' });
+  const us = [...new Set([...peopleOf(), myUid()])].sort((x, y) => (whoClass(x) === 'me' ? 0 : 1) - (whoClass(y) === 'me' ? 0 : 1));
+  let pop = null;
+  const closePop = () => { if (pop) { pop.remove(); pop = null; bats.querySelectorAll('.on').forEach((b) => b.classList.remove('on')); } };
+  us.forEach((u) => {
+    const rec = recsOf(u).get(day);
+    if (u !== myUid() && !hasMoodRec(rec)) return;
+    const lv = rec && LEVELS.find(([, v]) => v === rec.l);
+    const btn = h('button', { class: `dbat ${whoClass(u)}`, type: 'button', 'aria-label': `${uidName(u)}の調子${lv ? `: ${lv[0]}` : ''}` });
+    btn.innerHTML = batterySvg(lv ? lv[1] : 0);
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const same = btn.classList.contains('on');
+      closePop();
+      if (same) return;
+      btn.classList.add('on');
+      const tags = (rec && rec.t) || [];
+      pop = h('div', { class: 'dpop' }, h('div', { class: 'lv' }, lv ? `調子: ${lv[0]}` : '調子: まだ'), tags.length ? h('div', { class: 'dtags' }, tags.map((x) => h('span', { class: whoClass(u) }, x))) : null);
+      if (u === myUid()) {
+        const fix = h('button', { class: 'fix', type: 'button' }, lv || tags.length ? '調子を直す' : '＋ 調子・気分');
+        fix.addEventListener('click', () => { closePop(); openDaySheet(day); });
+        pop.append(fix);
+      }
+      head.append(pop);
+      setTimeout(() => document.addEventListener('click', function off(ev) { if (pop && !pop.contains(ev.target)) { closePop(); } document.removeEventListener('click', off); }), 0);
+    });
+    bats.append(btn);
+  });
+  head.append(bats);
+  return head;
+}
+// 日記のなかみ(できごと・メモ)
 function diaryEvents(day) {
-  const nodes = [diaryHead(day), h('div', { class: 'dsec' }, 'できごと')];
+  const nodes = [diaryTop(day), h('div', { class: 'dsec' }, 'できごと')];
   state.events.filter((e) => evOn(e, day)).sort(byDate).forEach((e) => {
     const b = h('button', { class: 'dev', type: 'button' }, h('i', {}), `${e.title}${e.time ? ` ${e.time}` : ''}`);
     b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
     nodes.push(b);
   });
-  const mine = myRecs().get(day);
   const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
-  recs.forEach(({ u, rec }) => {
-    const lv = LEVELS.find(([, v]) => v === rec.l);
-    const tags = [...(rec.t || [])];
-    // 名前は書かず、色だけ(ひとみ=ピンク、かずゆき=ミント)。調子は、電池の5段階
-    const row = h('div', { class: `dtags dmood ${whoClass(u)}` });
-    if (lv) { const bat = h('span', { class: 'bat', role: 'img', 'aria-label': `調子: ${lv[0]}` }); bat.innerHTML = batterySvg(lv[1]); row.append(bat); }
-    tags.filter((x) => !x.startsWith('調子: ')).forEach((x) => row.append(h('span', { class: whoClass(u) }, x)));
-    if (lv || row.children.length) nodes.push(row);
-  });
   // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
   const writeArea = h('div', { class: 'dwritebox' });
   const showMine = () => {
@@ -1909,8 +1934,6 @@ function diaryEvents(day) {
   const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('span', { class: 'mk' }, rec.m)));
   showMine();
   nodes.push(writeArea);
-  if (mine && (mine.l || (mine.t && mine.t.length))) { const fix = h('button', { class: 'dwrite fix', type: 'button' }, '調子を直す'); fix.addEventListener('click', () => openDaySheet(day)); nodes.push(fix); }
-  else { const add = h('button', { class: 'dwrite', type: 'button' }, '＋ 調子・気分'); add.addEventListener('click', () => openDaySheet(day)); nodes.push(add); }
   return nodes;
 }
 // 右のページ: その日のお題(おまけ)。付せんにお題、答えはふきだし
@@ -1924,20 +1947,34 @@ function markAnswers(nodes) {
   return nodes;
 }
 function diaryCardPage(day) {
-  const nodes = [diaryHead(day, true)];
-  diaryCards(day).forEach((c) => {
+  const cs = diaryCards(day);
+  if (!cs.length) return [];
+  const box = h('div', { class: 'dodai' }, h('div', { class: 'dsec' }, 'お題'));
+  cs.forEach((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
     const q = h('button', { class: `dsticky c-${c.cat || 'none'}`, type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
     q.addEventListener('click', () => openQCardSheet(c.n));
-    nodes.push(q, ...markAnswers(answersBlock(c.n)));
+    box.append(q, ...markAnswers(answersBlock(c.n)));
   });
-  return nodes;
+  return [box];
 }
-let diarySpread = false;
+// 1ページに入りきらない日は、はみ出す分を隠して、「すべて見る」で全部をシートに出す(ページは、スクロールしない)
+function diaryOnPage(el, stage, key) {
+  if (!el || !stage) return;
+  stage.querySelectorAll(':scope > .dmore').forEach((n) => n.remove());
+  el.classList.remove('clipped');
+  if (el.scrollHeight <= el.clientHeight + 2) return;
+  el.classList.add('clipped');
+  const more = h('button', { class: 'dmore', type: 'button' }, 'すべて見る ▾');
+  more.addEventListener('click', () => {
+    const d = parseYmd(dayOfPage(key));
+    openSheet(h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日`), h('div', { class: 'dpage insheet' }, ...diaryPageNodes(key)));
+  });
+  stage.append(more);
+}
 function diaryPageNodes(key) {
   const day = dayOfPage(key);
-  if (diarySpread) return [h('div', { class: 'dspread' }, h('div', { class: 'dsheet' }, ...diaryEvents(day)), h('div', { class: 'dsheet right' }, ...diaryCardPage(day)))];
-  return String(key).endsWith('#c') ? diaryCardPage(day) : diaryEvents(day);
+  return [...diaryEvents(day), ...diaryCardPage(day)];
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen, months = [], onPick = () => {}) {
@@ -1974,18 +2011,16 @@ function renderDiary() {
   const days = diaryKeyList();
   const box = $('#more-oto');
   if (!days.length) { diaryBook = null; box.replaceChildren(h('p', { class: 'dempty' }, 'まだ、日記に書かれた日がありません')); return; }
-  const wide = !!(window.matchMedia && window.matchMedia('(min-width: 720px)').matches); // 広い画面では見開き(左: できごと / 右: お題)
-  diarySpread = wide;
-  const keys = wide ? days : diaryPages(days, (d) => diaryCards(d).length > 0);
-  const sig = JSON.stringify([wide, keys]);
+  const keys = days; // 1日=1ページ
+  const sig = JSON.stringify(keys);
   if (!diaryBook || sig !== diarySig) {
     diarySig = sig;
     const bm = LS.get(K.diaryAt);
-    const at = bm ? keys.indexOf(wide ? dayOfPage(bm) : (bm.includes('#') ? bm : `${bm}#e`)) : -1;
-    const home = wide ? keys.length - 1 : Math.max(0, keys.length - (keys[keys.length - 1].endsWith('#c') ? 2 : 1)); // いちばん新しい日の、できごとのページ(しおりのひもで戻る先)
+    const at = bm ? keys.indexOf(dayOfPage(bm)) : -1;
+    const home = keys.length - 1; // いちばん新しい日(しおりのひもで戻る先)
     const start = at >= 0 ? at : home;
-    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
-    box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ${wide ? '見開き' : 'ページ'}`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onPage: diaryOnPage, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ページ`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
     const bk = diaryBook;
     function mountCover() {
       const bookEl = bk.root.querySelector('.dbook');
