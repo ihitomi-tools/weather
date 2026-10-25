@@ -184,4 +184,4 @@
 .dodai { margin-top: auto; padding-top: 8px; }
 .dpage.clipped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(transparent, var(--dy-paper) 75%); pointer-events: none; border-radius: 0 0 14px 6px; }
 .dmore { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 6; border: 1.5px solid #e0d2b0; background: #fffdf5; color: #6b5f4e; font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 6px 16px; box-shadow: 0 2px 8px rgba(60, 40, 10, .2); cursor: pointer; }
-.dpage.insheet { position: relative; inset: auto; min-height: 120px; overflow: visible; padding-bottom: 20px; border-radius: 14px; }
+.dpage.insheet { position: relative; inset: auto; min-height: 120px; overflow: visible; padding-bottom: 20px; border-radius: 14px; touch-action: pan-y; overscroll-behavior: auto; }
