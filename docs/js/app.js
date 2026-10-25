@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-95';
+const VERSION = '2026.10.25-96';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1898,12 +1898,14 @@ function diaryTop(day) {
   const evs = state.events.filter((e) => evOn(e, day)).sort(byDate);
   const right = h('div', { class: 'dright' }, bats);
   if (evs.length) {
+    // 予定のステッカー(最大2つ。重ねて、少し傾けて貼る。3つ以上の日は、「+N」)
     const row = h('div', { class: 'devs' });
-    evs.forEach((e) => {
+    evs.slice(0, 2).forEach((e) => {
       const b = h('button', { class: 'dev-ic', type: 'button', title: e.title, 'aria-label': `${e.title}${e.time ? ` ${e.time}` : ''}` }, typeIcon(evType(e), 'dic'));
       b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
       row.append(b);
     });
+    if (evs.length > 2) row.append(h('span', { class: 'dev-more', 'aria-label': `ほかに${evs.length - 2}件` }, `+${evs.length - 2}`));
     right.append(row);
   }
   head.append(right);
