@@ -36,6 +36,7 @@
   <div class="dm-grp"><small>見る画面</small><button data-view="h" aria-pressed="true">彼女</button><button data-view="y" aria-pressed="false">彼氏</button><button data-view="both" aria-pressed="false">ふたり</button></div>
   <div class="dm-grp dm-more"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
   <div class="dm-grp dm-more"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button></div>
+  <div class="dm-grp dm-more"><small>ひとり言</small><button data-open="5">5回目に開く</button><button data-open="10">10回目に開く</button></div>
 </div>
 <div class="dm-stage" id="stage">
   <div class="dm-ph"><h2><i style="background:var(--pink-deep)"></i>彼女</h2><div class="dm-frame" id="fh"><iframe title="彼女" id="f-h"></iframe></div></div>
@@ -97,6 +98,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.rain) { host.rain = !host.rain; b.setAttribute('aria-pressed', String(host.rain)); b.textContent = host.rain ? '雨の日をやめる' : '雨の日にする'; }
   else if (b.dataset.pts != null) reset(Number(b.dataset.pts));
+  else if (b.dataset.open != null) ['h', 'y'].forEach((r) => { try { $(`#f-${r}`).contentWindow.__openNow(Number(b.dataset.open)); } catch (err) { /* まだ開いていない */ } });
   else if (b.dataset.adv != null) {
     if (b.dataset.adv === 'next') { const d = now(); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0); host.offset = d.getTime() - Date.now(); }
     else if (b.dataset.adv === '0') host.offset = 0;

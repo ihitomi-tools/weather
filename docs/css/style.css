@@ -588,3 +588,12 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 @keyframes mn-tw { 0%, 100% { opacity: .35; transform: scale(.8) rotate(0); } 50% { opacity: 1; transform: scale(1.15) rotate(20deg); } }
 @keyframes mn-up { 0% { opacity: 0; transform: translateY(4px) scale(.7); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .mn-talk.glow, .mn-talk.full, .mn-talk .st, .mn-talk .up { animation: none; } .mn-talk .st, .mn-talk .up { opacity: 1; } }
+
+/* 予定: 長押しの合図(期間を選べる状態)と、月のスワイプ */
+.month button.arm { transform: scale(1.12); box-shadow: 0 0 0 3px var(--pink); }
+.month { touch-action: pan-y; }
+.month.from-r { animation: mo-in-r .22s ease-out; }
+.month.from-l { animation: mo-in-l .22s ease-out; }
+@keyframes mo-in-r { from { opacity: .3; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes mo-in-l { from { opacity: .3; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .month.from-r, .month.from-l { animation: none; } }

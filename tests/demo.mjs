@@ -75,6 +75,16 @@ await fh.locator('.tab[data-v="chat"]').click();
 await fh.locator('#talk-seg [data-t="chat"]').click();
 await fh.locator('.row.theirs').first().waitFor();
 check('彼氏の発言は、彼氏の画面でも彼女の画面でも、ミントの役(c-y)', (await fy.locator('.row.mine.c-y').count()) === 1 && (await fh.locator('.row.theirs.c-y').count()) === 1);
+// ひとり言の特別(5回目・10回目): まずブランコを成立させ、そのあと、5回目に開いたことにする
+await page.click('[data-pts="0"]');
+await fh.locator('#mn-card').waitFor({ timeout: 20000 });
+for (const f of [fh, fy]) { await f.locator('#sheet:not([hidden]) #sheet-close').click({ timeout: 8000 }).catch(() => {}); }
+await page.click('[data-open="5"]');
+await fh.locator('#mn-talk.glow:not([hidden])').waitFor({ timeout: 8000 });
+check('デモで「5回目に開く」を押すと、光る吹き出しが出る', true);
+await page.click('[data-open="10"]');
+await fh.locator('#mn-talk.full:not([hidden])').waitFor({ timeout: 8000 });
+check('デモで「10回目に開く」を押すと、全部入りの吹き出しが出る', true);
 // 満月3つ: お祝い → 棚 → 水槽の数字
 await page.click('[data-pts="300"]');
 await fh.locator('#oto-pop:not([hidden])').waitFor({ timeout: 20000 });

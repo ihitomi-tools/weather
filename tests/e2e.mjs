@@ -735,12 +735,36 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.waitForFunction(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return (await C.decryptJson(key, 'events', e)).time === '07:45'; });
   check('詳細のシートで、時刻も直せる(アイコンは変わらない)', (await decLast()).kind === 'train');
   await page.click('.tab[data-v="cal"]');
+  // 月のスワイプ
+  const title0 = await page.textContent('#cal-title');
+  const mb = await page.locator('#month').boundingBox();
+  const cell = await page.locator('#month button[data-key]').nth(15).boundingBox();
+  await page.mouse.move(cell.x + cell.width - 4, cell.y + cell.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cell.x - 90, cell.y + cell.height / 2 + 4, { steps: 8 });
+  await page.mouse.up();
+  const title1 = await page.textContent('#cal-title');
+  check('左へスワイプすると、次の月に進む(日付は選ばれない)', title1 !== title0 && (await page.textContent('#evb-sub')).length >= 0);
+  await page.mouse.move(cell.x + 4, cell.y + cell.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(cell.x + 120, cell.y + cell.height / 2 + 4, { steps: 8 });
+  await page.mouse.up();
+  check('右へスワイプすると、前の月に戻る', (await page.textContent('#cal-title')) === title0);
   // なぞって、連続する日を選ぶ
   const cells = page.locator('#month button[data-key]');
   const a = await cells.nth(10).boundingBox();
   const b = await cells.nth(12).boundingBox();
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.up();
+  check('すぐなぞっても、期間は選ばれない(誤って複数日を選ばない)', !(await page.textContent('#evb-date')).includes('お泊まりデート'));
+  check('すぐ横になぞると、月が動く(スワイプ)', (await page.textContent('#cal-title')) !== title0);
+  await page.click('#cal-next'); // 右へなぞったので、前の月に動いた。戻す
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(500); // 長押しで、期間を選べる状態にする
+  check('長押しすると、期間を選べる合図が出る', (await page.locator('#month button.arm').count()) === 1);
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
   await page.mouse.up();
   check('なぞって選ぶと、期間が選ばれ、ボタンが「お泊まりデート」に変わる', (await page.textContent('#evb-date')).includes('お泊まりデート') && (await page.textContent('#evb-sub')).includes('2泊3日') && (await page.locator('#month button.inrange').count()) === 2);

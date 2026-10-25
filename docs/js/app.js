@@ -36,7 +36,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-70';
+const VERSION = '2026.10.25-71';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1165,27 +1165,44 @@ function renderCalendar() {
 }
 
 function buildCalendar() {
-  const move = (delta) => {
+  const move = (delta, dir) => {
     const d = new Date(state.cal.y, state.cal.m + delta, 1);
     state.cal.y = d.getFullYear();
     state.cal.m = d.getMonth();
     renderCalendar();
+    if (dir) { const mo = $('#month'); mo.classList.remove('from-l', 'from-r'); void mo.offsetWidth; mo.classList.add(dir === 'next' ? 'from-r' : 'from-l'); } // 指の動きに合わせて、月がすべり込む
   };
   $('#cal-prev').addEventListener('click', () => move(-1));
   $('#cal-next').addEventListener('click', () => move(1));
   $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
   $('#past-record').addEventListener('click', openPastSheet);
 
-  // 予定の入れかた: 日付をタップするか、指でなぞって期間を選ぶと、下に「デート」のバーが出る(入力欄は、そのほかのとき、シートで出る)
+  // 予定の入れかた: 日付をタップすると、下に「デート」のバーが出る。期間は、日付を「長押ししてから」なぞって選ぶ
+  // (すぐなぞると、横にスワイプして、前の月・次の月に動く。勝手に複数日が選ばれてしまうのを防ぐ)
   const month = $('#month');
   let start = null;
+  const HOLD_MS = 380;
+  const stopHold = () => { if (start) { clearTimeout(start.timer); } };
   month.addEventListener('pointerdown', (e) => {
     const c = e.target.closest('button[data-key]');
-    start = c ? { key: c.dataset.key, moved: false } : null;
     calDrag.suppress = false;
+    if (!c) { start = null; return; }
+    start = { key: c.dataset.key, x: e.clientX, y: e.clientY, moved: false, armed: false, done: false, el: c };
+    start.timer = setTimeout(() => { if (start && !start.done) { start.armed = true; c.classList.add('arm'); } }, HOLD_MS);
   });
   month.addEventListener('pointermove', (e) => {
-    if (!start) return;
+    if (!start || start.done) return;
+    if (!start.armed) { // 長押しの前に動いたら、スワイプかどうかを見る(期間の選択にはしない)
+      const dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      stopHold();
+      if (Math.abs(dx) >= 44 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        start.done = true;
+        calDrag.suppress = true; setTimeout(() => { calDrag.suppress = false; }, 80);
+        move(dx < 0 ? 1 : -1, dx < 0 ? 'next' : 'prev');
+      } else if (Math.abs(dy) > 10) start.done = true; // たての動きは、画面のスクロール
+      return;
+    }
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const c = el && el.closest && el.closest('#month button[data-key]');
     if (!c) return;
@@ -1199,7 +1216,9 @@ function buildCalendar() {
     paintRange();
   });
   const finish = () => {
+    if (start) stopHold();
     if (start && start.moved) { calDrag.suppress = true; setTimeout(() => { calDrag.suppress = false; }, 50); renderCalendar(); }
+    else if (start && start.armed && start.el) { start.el.classList.remove('arm'); calDrag.suppress = true; setTimeout(() => { calDrag.suppress = false; }, 50); } // 長押しだけで終わったときは、選ばない
     start = null;
   };
   month.addEventListener('pointerup', finish);
