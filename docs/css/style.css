@@ -604,5 +604,5 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 
 /* カレンダーの一番下の、控えめな「この日の調子を記録」 */
 .actions.quiet { display: flex; justify-content: center; margin: 18px 18px 90px; }
-.quietbtn { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; padding: 10px 14px; cursor: pointer; }
+.quietbtn { border: 1.5px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; border-radius: 99px; padding: 10px 20px; cursor: pointer; }
 .quietbtn[hidden] { display: none; }

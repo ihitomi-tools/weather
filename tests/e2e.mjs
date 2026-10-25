@@ -77,6 +77,7 @@ const wx = {
   daily: { time: Array.from({ length: 7 }, (_, i) => { const d = new Date(Date.now() + i * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }), weather_code: [3, 61, 0, 1, 2, 95, 71], temperature_2m_max: [21, 18, 20, 23, 24, 22, 19], temperature_2m_min: [14, 13, 13, 15, 16, 15, 13] },
 };
 
+const D5 = new RegExp(`^${Math.min(5, new Date().getDate())}$`); // 5日。月の初めで5日がまだ先(未来)のときは、今日にする
 const openSet = async () => { await page.click('.tab[data-v="set"]'); await page.click('.more-quiet'); };
 const openPast = async () => { await openSet(); await more(); await page.locator('#settings li', { hasText: '過去の生理の記録' }).locator('button').click(); };
 const more = async () => { const b = page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button'); if ((await b.textContent()) === 'ひらく') await b.click(); };
@@ -493,7 +494,7 @@ check('予定を削除できる(2回タップ)', true);
 const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d; };
 await page.click('.tab[data-v="cal"]');
-await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.locator('#month button', { hasText: D5 }).click();
 await page.click('#day-record');
 await page.waitForSelector('#sheet:not([hidden]) .scale');
 check('日の記録シートに、5つの月と気分のタグが出る', (await page.locator('#sheet .scale button').count()) === 5 && (await page.locator('#sheet .tags button').count()) === 17);
@@ -514,7 +515,7 @@ check('気分のある日をタップすると、内容が大きく出る', awai
 check('大きな表示に、文字の「null」が混ざらない', !(await page.textContent('#day-detail')).includes('null'));
 await page.locator('#month button', { hasText: /^6$/ }).click();
 check('気分のない日では、大きな表示は出ない', !(await page.locator('#day-detail').isVisible()));
-await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.locator('#month button', { hasText: D5 }).click();
 await page.click('#day-record');
 check('開き直すと、前の記録が入っている', await page.locator('#sheet textarea').inputValue() === 'テストメモ' && await page.locator('#sheet .sw').isChecked());
 { // 足したタグは、長押しで候補から消せる(過去の記録は、そのまま)
@@ -528,7 +529,12 @@ check('開き直すと、前の記録が入っている', await page.locator('#s
   check('長押しで、候補から消える', (await page.locator('#sheet .tags button', { hasText: 'ねむねむ' }).count()) === 0);
 }
 await page.click('#sheet-close');
-await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.locator('#month button', { hasText: D5 }).click();
+await page.click('#cal-next'); // 来月の1日は、いつでも未来
+await page.locator('#month button[data-key]').first().click();
+check('未来の日では、「この日の調子を記録」が出ない', await page.locator('#day-record').isHidden());
+await page.click('#cal-prev');
+await page.locator('#month button', { hasText: D5 }).click();
 check('候補から消しても、過去の記録は残る', (await page.textContent('#day-detail')).includes('ねむねむ'));
 await page.click('#day-record');
 check('開き直しても、候補に戻らない(その日の記録にあるタグは、選ばれた状態で出る)', (await page.locator('#sheet .tags button[aria-pressed="true"]', { hasText: 'ねむねむ' }).count()) === 1);
@@ -588,12 +594,12 @@ await page.click('#sheet-close');
 await page.evaluate(() => window.__fake.asUser('u2'));
 await page.click('.tab[data-v="home"]');
 await page.click('.tab[data-v="cal"]');
-await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.locator('#month button', { hasText: D5 }).click();
 check('相手の画面でも「この日を記録」は出る', await page.locator('#day-record').isVisible());
 await openSet(); await more();
 check('生理の「過去の生理の記録」は、相手の画面の設定には出ない', (await page.locator('#settings li', { hasText: '過去の生理の記録' }).count()) === 0);
 await page.click('.tab[data-v="cal"]');
-await page.locator('#month button', { hasText: /^5$/ }).click();
+await page.locator('#month button', { hasText: D5 }).click();
 check('相手の画面では、ひとみの記録が出る', (await page.textContent('#day-detail')).includes('ひとみ'));
 check('相手の画面では、記録の内容は見られる', (await page.textContent('#day-detail')).includes('テストメモ'));
 await page.click('#day-record');
@@ -602,7 +608,7 @@ await page.locator('#sheet .scale button').nth(3).click();
 await page.locator('#sheet-body .primary').click();
 await page.waitForSelector('#sheet', { state: 'hidden' });
 check('ふたりの記録が、同じ大きさで並ぶ', (await page.locator('#day-detail .dd-p').count()) === 2);
-check('カレンダーの日に、ふたり分の印が出る', (await page.locator('#month button', { hasText: /^5$/ }).locator('em.mood').count()) === 2);
+check('カレンダーの日に、ふたり分の印が出る', (await page.locator('#month button', { hasText: D5 }).locator('em.mood').count()) === 2);
 check('調子のポーズが出る', (await page.locator('#day-detail .pose svg.chara').count()) >= 1);
 await page.click('#day-detail .pat');
 await page.waitForSelector('#day-detail .pat-done');
@@ -803,11 +809,12 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   check('すぐなぞっても、期間は選ばれない(誤って複数日を選ばない)', !(await page.textContent('#evb-date')).includes('お泊まりデート'));
   check('すぐ横になぞると、月が動く(スワイプ)', (await page.textContent('#cal-title')) !== title0);
   await page.click('#cal-next'); // 右へなぞったので、前の月に動いた。戻す
-  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  const a3 = await cells.nth(10).boundingBox(); const b3 = await cells.nth(12).boundingBox(); // 画面が動いたかもしれないので、はかり直す
+  await page.mouse.move(a3.x + a3.width / 2, a3.y + a3.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(500); // 長押しで、期間を選べる状態にする
   check('長押しすると、期間を選べる合図が出る', (await page.locator('#month button.arm').count()) === 1);
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 6 });
+  await page.mouse.move(b3.x + b3.width / 2, b3.y + b3.height / 2, { steps: 6 });
   await page.mouse.up();
   check('なぞって選ぶと、期間が選ばれ、ボタンが「お泊まりデート」に変わる', (await page.textContent('#evb-date')).includes('お泊まりデート') && (await page.textContent('#evb-sub')).includes('2泊3日') && (await page.locator('#month button.inrange').count()) === 2);
   await page.click('#evb-date');

@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-75';
+const VERSION = '2026.10.25-76';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1192,6 +1192,7 @@ function renderCalendar() {
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
   renderEvBar();
+  $('#day-record').hidden = sel > todayKey; // 未来の日の調子は、入れられない
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
   $('#cal-day').textContent = `${dt.getMonth() + 1}/${dt.getDate()}(${WEEK[dt.getDay()]})`;
@@ -1514,6 +1515,7 @@ async function writeDays(changes) {
 const SAVE_ERROR = '保存できませんでした。通信を確認してください。';
 
 function openDaySheet(date) {
+  if (date > ymd(new Date())) return; // 未来の日は、入れない
   const rec = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
   const draft = { p: !!rec.p, l: rec.l || 0, t: [...(rec.t || [])] };
   const d = parseYmd(date);
