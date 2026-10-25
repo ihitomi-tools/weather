@@ -1831,13 +1831,13 @@ let diaryBook = null;
 let diarySig = '';
 function diaryKeyList() {
   const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
-  return diaryKeys({ cards: state.qcards, recKeys, events: state.events, todayKey: ymd(new Date()) });
+  return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()) });
 }
 function diaryPageNodes(key) {
   const d = parseYmd(key);
   const wd = d.getDay();
   const nodes = [h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`))];
-  state.qcards.filter((c) => c.date === key).sort((a, b) => a.n - b.n).forEach((c) => {
+  state.qcards.filter((c) => c.date === key && c.cat !== WHISPER).sort((a, b) => a.n - b.n).forEach((c) => { // ひそひそ話は、日記には書かない(見返す場所は、別に考える)
     const st = cardStatus(c, state.qcards, state.answers);
     const q = h('button', { class: 'dq', type: 'button' }, c.text);
     q.addEventListener('click', () => openQCardSheet(c.n));

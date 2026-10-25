@@ -957,6 +957,11 @@ await page.locator('.dpage.top .dwrite').first().click();
 await page.waitForSelector('#sheet:not([hidden]) .scale');
 check('「書く・直す」で、その日の調子の画面が開く', true);
 await page.click('#sheet-close');
+const wd = await enc('qcards', { text: 'ひみつの題2', date: '2026-10-19', by: 'u2', cat: 'whisper' });
+await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qw2', n: 91, ...doc, from: 'u2' }); window.__fake.notify(); }, wd);
+await page.waitForTimeout(300);
+check('ひそひそ話のお題は、日記帳のページにならない', Number((await page.textContent('.dpn')).split('/')[1]) === dTotal && !(await page.textContent('.dwrap')).includes('ひみつの題2'));
+await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qw2'); window.__fake.notify(); });
 await page.click('#more-menu button');
 check('日記帳の中の戻るで、おたのしみの入口に戻る', (await page.locator('.oto-menu button').count()) === 2);
 
