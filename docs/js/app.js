@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-90';
+const VERSION = '2026.10.25-91';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1862,6 +1862,8 @@ function diaryHead(day, small) {
   return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}${small ? ' small' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`));
 }
 // 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
+// 調子の電池(5段階。ふつうなら3つ点灯)。色は、持ち主の色(CSSの currentColor)
+const batterySvg = (n) => `<svg viewBox="0 0 46 22" width="46" height="22" aria-hidden="true"><rect x="1" y="1.500" width="39" height="19" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><rect x="41.500" y="7" width="3.200" height="8" rx="1.600" fill="currentColor"/>${[0, 1, 2, 3, 4].map((i) => `<rect x="${4.600 + i * 6.900}" y="5" width="5.600" height="12" rx="2" fill="currentColor"${i < n ? '' : ' opacity=".16"'}/>`).join('')}</svg>`;
 function diaryEvents(day) {
   const nodes = [diaryHead(day), h('div', { class: 'dsec' }, 'できごと')];
   state.events.filter((e) => evOn(e, day)).sort(byDate).forEach((e) => {
@@ -1873,14 +1875,18 @@ function diaryEvents(day) {
   const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
   recs.forEach(({ u, rec }) => {
     const lv = LEVELS.find(([, v]) => v === rec.l);
-    const tags = [...(lv ? [`調子: ${lv[0]}`] : []), ...(rec.t || [])];
-    if (tags.length) nodes.push(h('div', { class: 'dtags' }, h('b', { style: 'font-size:14px' }, `${nameOfUid(u)} `), tags.map((t) => h('span', { class: whoClass(u) }, t))));
+    const tags = [...(rec.t || [])];
+    // 名前は書かず、色だけ(ひとみ=ピンク、かずゆき=ミント)。調子は、電池の5段階
+    const row = h('div', { class: `dtags dmood ${whoClass(u)}` });
+    if (lv) { const bat = h('span', { class: 'bat', role: 'img', 'aria-label': `調子: ${lv[0]}` }); bat.innerHTML = batterySvg(lv[1]); row.append(bat); }
+    tags.filter((x) => !x.startsWith('調子: ')).forEach((x) => row.append(h('span', { class: whoClass(u) }, x)));
+    if (lv || row.children.length) nodes.push(row);
   });
   // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
   const writeArea = h('div', { class: 'dwritebox' });
   const showMine = () => {
     const cur = myRecs().get(day);
-    const text = h('div', { class: `dnote${cur && cur.m ? '' : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, cur && cur.m ? cur.m : 'ここに、書く');
+    const text = h('div', { class: `dnote ${whoClass(myUid())}${cur && cur.m ? '' : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, cur && cur.m ? h('span', { class: 'mk' }, cur.m) : 'ここに、書く');
     const edit = () => {
       const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
       ta.value = (cur && cur.m) || '';
@@ -1900,7 +1906,7 @@ function diaryEvents(day) {
     text.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); } });
     writeArea.replaceChildren(text, ...others());
   };
-  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('b', {}, `${nameOfUid(u)} `), rec.m));
+  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('span', { class: 'mk' }, rec.m)));
   showMine();
   nodes.push(writeArea);
   if (mine && (mine.l || (mine.t && mine.t.length))) { const fix = h('button', { class: 'dwrite fix', type: 'button' }, '調子を直す'); fix.addEventListener('click', () => openDaySheet(day)); nodes.push(fix); }
