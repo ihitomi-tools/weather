@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SCENES, isNight, pickScene, roomSvg } from '../docs/js/room.js';
+import fs from 'node:fs';
+import { SCENES, PICS, isNight, pickScene, roomSvg } from '../docs/js/room.js';
 
 test('夜は21時から朝5時まで', () => {
   assert.equal(isNight(20), false); assert.equal(isNight(21), true); assert.equal(isNight(2), true); assert.equal(isNight(4), true); assert.equal(isNight(5), false);
@@ -32,3 +33,14 @@ test('絵: 窓の月は点数で満ち欠けし、棚の水槽は満月の数だ
   assert.notEqual(roomSvg('d1', { pts: 20 }), roomSvg('d1', { pts: 70 }));
   assert.ok(roomSvg('d1', { pts: 100 }).includes('<circle cx="188" cy="62" r="16" fill="#ffe08a"/>')); // 満月
 });
+
+test('絵のファイルで出す場面: ファイルがあり、sw.js にも書いてあり、画面の中におさまる', () => {
+  const sw = fs.readFileSync(new URL('../docs/sw.js', import.meta.url), 'utf8');
+  Object.entries(PICS).forEach(([k, [x, y, w, h]]) => {
+    assert.ok(fs.existsSync(new URL(`../docs/img/room/${k}.webp`, import.meta.url)), `${k}.webp がない`);
+    assert.ok(sw.includes(`'img/room/${k}.webp'`), `${k} が sw.js の FILES にない`);
+    assert.ok(x >= 0 && y >= 0 && x + w <= 360 && y + h <= 340, `${k} が画面からはみ出す`);
+    assert.ok(roomSvg(k).includes(`img/room/${k}.webp`), k);
+  });
+});
+test('絵: 夜は、どの場面も絵のファイル(昼は、絵ができるまでSVG)', () => { SCENES.night.forEach((k) => assert.ok(PICS[k], k)); });
