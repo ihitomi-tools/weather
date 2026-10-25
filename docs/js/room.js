@@ -3,10 +3,12 @@
 
 export const SCENES = { day: ['d1', 'd2', 'd3'], night: ['n1', 'n2', 'n3', 'n4'] };
 export const isNight = (hour) => hour >= 21 || hour < 5;
+// 昼の絵ができるまでは、どの時間も夜の場面にする。昼の絵を PICS に足したら、true にすると、昼は昼の場面になる
+export const DAY_READY = false;
 
 // いまの時間の様子から、1つ選ぶ。直前と同じものは、続けて出さない
-export function pickScene({ hour, last = '', rand = Math.random }) {
-  const all = SCENES[isNight(hour) ? 'night' : 'day'];
+export function pickScene({ hour, last = '', rand = Math.random, dayReady = DAY_READY }) {
+  const all = SCENES[isNight(hour) || !dayReady ? 'night' : 'day'];
   const list = all.filter((k) => k !== last);
   const from = list.length ? list : all;
   return from[Math.min(from.length - 1, Math.floor(rand() * from.length))];

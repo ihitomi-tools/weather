@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SCENES, PICS, isNight, pickScene, roomSvg } from '../docs/js/room.js';
+import { SCENES, PICS, DAY_READY, isNight, pickScene, roomSvg } from '../docs/js/room.js';
 
 test('夜は21時から朝5時まで', () => {
   assert.equal(isNight(20), false); assert.equal(isNight(21), true); assert.equal(isNight(2), true); assert.equal(isNight(4), true); assert.equal(isNight(5), false);
 });
 test('昼は昼のパターン、夜は夜のパターンから選ぶ。直前と同じものは続けない', () => {
   for (let i = 0; i < 30; i += 1) {
-    const day = pickScene({ hour: 14, last: 'd1', rand: () => i / 30 });
+    const day = pickScene({ hour: 14, last: 'd1', rand: () => i / 30, dayReady: true });
     assert.ok(SCENES.day.includes(day) && day !== 'd1');
     const night = pickScene({ hour: 22, last: 'n3', rand: () => i / 30 });
     assert.ok(SCENES.night.includes(night) && night !== 'n3');
@@ -44,3 +44,7 @@ test('絵のファイルで出す場面: ファイルがあり、sw.js にも書
   });
 });
 test('絵: 夜は、どの場面も絵のファイル(昼は、絵ができるまでSVG)', () => { SCENES.night.forEach((k) => assert.ok(PICS[k], k)); });
+test('昼の絵ができるまで(DAY_READY が false の間)は、昼間も夜の場面', () => {
+  for (let i = 0; i < 20; i += 1) assert.ok(SCENES.night.includes(pickScene({ hour: 14, rand: () => i / 20, dayReady: false })));
+  assert.equal(DAY_READY, false);
+});
