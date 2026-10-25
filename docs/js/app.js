@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-80';
+const VERSION = '2026.10.25-81';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2525,6 +2525,8 @@ function openStockSheet() {
   const bulk = h('textarea', { rows: '4', placeholder: 'まとめて追加(1行に1つ)', 'aria-label': 'まとめて追加' });
   const addBulk = h('button', { class: 'ghost sm', type: 'button' }, 'まとめて追加');
   const catSel = catSelect('足すお題のカテゴリ');
+  const whisperNote = h('p', { class: 'lead whisper-note', hidden: true }, 'ひそひそ話は、デートの前の日など、特別なタイミングで出題されます。それまで、相手には中身が見えません。');
+  catSel.addEventListener('change', () => { whisperNote.hidden = catSel.value !== WHISPER; }); // ひそひそ話を選んだときだけ、説明を出す
   const push = async (texts) => {
     for (const t of texts) {
       await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now(), ...(catSel.value ? { cat: catSel.value } : {}) }));
@@ -2575,7 +2577,7 @@ function openStockSheet() {
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, one, oneHint, addOne, bulk, bulkHint, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, whisperNote, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 

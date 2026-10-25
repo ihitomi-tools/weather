@@ -293,6 +293,7 @@ check('押すと、使用済みが一覧の下に出る', (await page.locator('#
 await page.locator('#sheet-body .used-toggle button').click();
 // ひそひそ話: 自分が足したものは、自分には中身が見える。相手が足したものは、鍵だけ。似たお題の知らせも、相手のものは中身を出さない
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', 'whisper');
+check('ひそひそ話を選ぶと、出題のタイミングの説明が出る', (await page.locator('#sheet-body .whisper-note').isVisible()) && (await page.textContent('#sheet-body .whisper-note')).includes('特別なタイミングで出題されます'));
 await page.fill('#sheet-body input[type=text]', 'ないしょのひみつを教えてほしい夜');
 await page.locator('#sheet-body button', { hasText: /^追加$/ }).click();
 await page.waitForFunction(() => document.querySelector('#sheet-body .lockrow'));
@@ -328,6 +329,7 @@ await page.locator('#sheet-body .lockrow button', { hasText: '削除' }).click()
 await page.evaluate(() => { window.__fake.sk = window.__fake.sk.filter((x) => x.id !== 'sw2'); window.__fake.notify(); });
 await page.waitForFunction(() => !document.querySelector('#sheet-body .lockrow'));
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', '');
+check('ほかのカテゴリでは、説明は出ない', await page.locator('#sheet-body .whisper-note').isHidden());
 await page.click('#sheet-close');
 await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qx2'); window.__fake.notify(); });
 check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '5');
