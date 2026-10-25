@@ -35,7 +35,7 @@
   <div class="dm-grp dm-more"><span class="dm-clk" id="clk"></span><button data-adv="10">+10分</button><button data-adv="60">+1時間</button><button data-adv="next">あすの朝</button><button data-adv="0">いまに戻す</button></div>
   <div class="dm-grp"><small>見る画面</small><button data-view="h" aria-pressed="true">彼女</button><button data-view="y" aria-pressed="false">彼氏</button><button data-view="both" aria-pressed="false">ふたり</button></div>
   <div class="dm-grp dm-more"><small>天気</small><button id="rain" data-rain="1" aria-pressed="false">雨の日にする</button></div>
-  <div class="dm-grp dm-more"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button></div>
+  <div class="dm-grp dm-more"><small>月のポイント</small><button class="reset" data-pts="0">はじめから</button><button data-pts="20">20</button><button data-pts="50">50</button><button data-pts="90">90</button><button data-pts="99">99</button><button data-pts="300">満月3つ</button><button data-pts="600">満月6つ</button><button data-pts="2000">満月20個</button><button data-diary="1">日記帳の見本</button></div>
   <div class="dm-grp dm-more"><small>ひとり言</small><button data-open="5">5回目に開く</button><button data-open="10">10回目に開く</button></div>
 </div>
 <div class="dm-stage" id="stage">
@@ -44,6 +44,7 @@
 </div>
 <script type="module">
 import * as C from './js/crypto.js';
+import { answerKey } from './js/qa.js';
 const $ = (s) => document.querySelector(s);
 const pad = (n) => String(n).padStart(2, '0');
 const MIN = 60000, DAY = 86400000;
@@ -72,8 +73,46 @@ async function seedMoon(key, pts) {
   return rows;
 }
 
+// 日記帳の見本: 過去14日分の、お題・ふたりの答え・調子とメモ・予定
+const SEED_Q = [
+  ['fav', '1番好きな動物は？', 'フクロウが好きかなぁ', 'ゾウさん！のんびり動くのが羨ましい'],
+  ['mem', '最初にふたりで行った場所は？', '駅前のカフェ。緊張して、味を覚えていない', '同じく駅前のカフェ。ケーキがおいしかった'],
+  ['dream', '5年後は、どこで何をしてる？', '海の見える町で、本を書いてる', 'のんびり畑をしながら、ふたりでごはん'],
+  ['daily', '朝は、パン派？ ごはん派？', 'パン', 'ごはん。納豆は欠かせない'],
+  ['us', 'ふたりの合言葉は？', 'ひみつ、って言って、笑うこと', 'いつものやつ'],
+  ['if', '1日だけ透明人間になれたら？', 'こっそり、美術館を貸し切りで見る', 'おいしいお店を、全部はしごする'],
+  ['work', '仕事で、いちばん嬉しかった瞬間は？', 'ありがとうって言われたとき', '難しい作業が終わったとき'],
+  ['fav', '好きな季節は？', '秋。空気がすきとおるから', '春。あたたかくなる感じ'],
+  ['mem', 'いちばん笑った日は？', '旅行で道に迷った日', '寝ぼけて同じ話を3回した日'],
+  ['daily', '最近うれしかったことは？', '友だちと会えたこと', '新しい本を買った'],
+  ['dream', 'いつか行ってみたい場所は？', '北の海。流氷を見たい', '星がよく見える高原'],
+  ['us', 'ふたりのお気に入りの時間は？', '夜、ならんで話すとき', '朝のコーヒー'],
+  ['if', '魔法がひとつ使えたら？', '好きな時間に戻れる魔法', '空を飛ぶ魔法'],
+  ['fav', '1番好きな食べ物は？', 'いちごのタルト', 'カレー。毎日でもいい']
+];
+async function seedDiary(key, bytes) {
+  const D = host.bus.data;
+  const day = (k) => { const d = new Date(Date.now() - k * DAY); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  for (let i = 0; i < SEED_Q.length; i += 1) {
+    const [cat, text, a, b] = SEED_Q[i];
+    const k = SEED_Q.length - i; // 古い日から
+    const date = day(k);
+    const n = i + 1;
+    const at = new Date(Date.now() - k * DAY); at.setHours(21, 5, 0, 0);
+    D.qcards.push({ id: `q${n}`, n, ...(await C.encryptJson(key, 'qcards', { text, stockId: null, date, by: i % 2 ? 'demo-y' : 'demo-h', cat })), from: i % 2 ? 'demo-y' : 'demo-h' });
+    D.answers.push({ id: answerKey(n, 'demo-h'), ...(await C.encryptJson(key, 'answers', { n, text: a, at: at.getTime(), t0: at.getTime() - 240000, edits: 0 })), owner: 'demo-h' });
+    D.answers.push({ id: answerKey(n, 'demo-y'), ...(await C.encryptJson(key, 'answers', { n, text: b, at: at.getTime() + 60000, t0: at.getTime() - 60000, edits: 1 })), owner: 'demo-y' });
+    if (i % 3 === 0) { // 調子とメモ
+      const rec = (by, l, t, m) => ({ p: false, l, t, m, d: date, by, at: at.getTime(), up: at.getTime() });
+      D.days.push({ id: await C.dayId(bytes, `${date}|demo-h`), ...(await C.encryptJson(key, 'days', rec('demo-h', 3 + (i % 3), ['うれしい', '眠い'], i % 2 ? '' : '午後は雨だった。夜はゆっくり'))), owner: 'demo-h' });
+      D.days.push({ id: await C.dayId(bytes, `${date}|demo-y`), ...(await C.encryptJson(key, 'days', rec('demo-y', 4, ['元気'], ''))), owner: 'demo-y' });
+    }
+    if (i % 4 === 1) D.events.push({ id: `ev${n}`, ...(await C.encryptJson(key, 'events', { title: i % 8 === 1 ? 'デート' : 'ごはん', kind: i % 8 === 1 ? 'date' : 'meal', date, who: 'both', by: 'demo-h', time: '12:00' })) });
+  }
+}
+
 let busy = false;
-async function reset(pts = 0) {
+async function reset(pts = 0, diary = false) {
   if (busy) return;
   busy = true;
   const bytes = C.newSecret();
@@ -83,6 +122,7 @@ async function reset(pts = 0) {
   $('#rain').setAttribute('aria-pressed', 'false'); $('#rain').textContent = '雨の日にする';
   host.bus = { data: EMPTY(), subs: new Set(), n: 0 };
   host.bus.data.moon = await seedMoon(key, pts);
+  if (diary) await seedDiary(key, bytes);
   ['h', 'y'].forEach((r) => {
     host.ls[r] = { 'app.key': C.toB64(bytes), 'app.name': NAME[r], 'app.seq': 'demo', 'app.auto': '0', 'app.role': r };
     $(`#f-${r}`).src = `index.html?demo=${r}&t=${Date.now()}`;
@@ -98,6 +138,7 @@ document.addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.rain) { host.rain = !host.rain; b.setAttribute('aria-pressed', String(host.rain)); b.textContent = host.rain ? '雨の日をやめる' : '雨の日にする'; }
   else if (b.dataset.pts != null) reset(Number(b.dataset.pts));
+  else if (b.dataset.diary != null) reset(250, true);
   else if (b.dataset.open != null) ['h', 'y'].forEach((r) => { try { $(`#f-${r}`).contentWindow.__openNow(Number(b.dataset.open)); } catch (err) { /* まだ開いていない */ } });
   else if (b.dataset.adv != null) {
     if (b.dataset.adv === 'next') { const d = now(); d.setDate(d.getDate() + 1); d.setHours(8, 0, 0, 0); host.offset = d.getTime() - Date.now(); }

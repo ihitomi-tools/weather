@@ -3,6 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "node --test tests/crypto.test.mjs tests/weather.test.mjs tests/emoji.test.mjs tests/cycle.test.mjs tests/card.test.mjs tests/share.test.mjs tests/qa.test.mjs tests/export.test.mjs tests/news.test.mjs tests/moonlogic.test.mjs tests/moon.test.mjs tests/similar.test.mjs tests/hitorigoto.test.mjs tests/shelf.test.mjs tests/ticket.test.mjs"
+    "test": "node --test tests/crypto.test.mjs tests/weather.test.mjs tests/emoji.test.mjs tests/cycle.test.mjs tests/card.test.mjs tests/share.test.mjs tests/qa.test.mjs tests/export.test.mjs tests/news.test.mjs tests/moonlogic.test.mjs tests/moon.test.mjs tests/similar.test.mjs tests/hitorigoto.test.mjs tests/shelf.test.mjs tests/ticket.test.mjs tests/diary.test.mjs tests/room.test.mjs"
   }
 }

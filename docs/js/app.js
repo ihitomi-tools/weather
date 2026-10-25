@@ -14,6 +14,8 @@ import { dayKey4, analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, 
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
+import { roomSvg, pickScene } from './room.js';
+import { diaryKeys, diaryPages, dayOfPage, createBook } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -35,7 +37,7 @@ const LS = DEMO ? {
 };
 const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
-  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
+  auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
 const VERSION = '2026.10.25-82';
 
@@ -1732,7 +1734,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'css/moon.css', 'css/shelf.css', 'css/ticket.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/room.js', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css',
 ];
 
 async function refreshApp(btn) {
@@ -1769,10 +1771,12 @@ function renderMore() {
   set.hidden = sub !== 'settings';
   if (sub !== 'oto') otoSig = '';
   if (sub !== 'menu') {
-    if (menu.dataset.sub !== 'back') {
-      menu.dataset.sub = 'back';
-      const back = h('button', { class: 'ghost', type: 'button', style: 'margin:0 18px 12px' }, '‹ その他');
-      back.addEventListener('click', () => { state.more = 'menu'; renderMore(); });
+    const inOto = sub === 'oto' && state.oto && state.oto !== 'menu'; // 棚・日記帳の中では、おたのしみの入口に戻る
+    const tag = `back:${inOto ? 'oto' : 'more'}`;
+    if (menu.dataset.sub !== tag) {
+      menu.dataset.sub = tag;
+      const back = h('button', { class: 'ghost', type: 'button', style: 'margin:0 18px 12px' }, inOto ? '‹ おたのしみ' : '‹ その他');
+      back.addEventListener('click', () => { if (inOto) state.oto = 'menu'; else state.more = 'menu'; renderMore(); });
       menu.replaceChildren(back);
     }
   } else if (menu.dataset.sub !== 'menu' || menu.dataset.n !== String(nFull)) {
@@ -1780,10 +1784,8 @@ function renderMore() {
     menu.dataset.n = String(nFull);
     const upd = h('button', { class: 'more-upd', type: 'button' }, h('span', {}, '最新版にする', h('small', {}, `いまの版: ${VERSION}`)), '›');
     upd.addEventListener('click', () => refreshApp(upd));
-    const oto0 = nFull
-      ? h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, `満月の棚(${nFull}個)`))
-      : h('div', { class: 'more-oto lock' }, h('b', {}, lockIcon(), 'おたのしみ'), h('small', {}, 'ふたりの月が満月になったら、あらたな機能が解放されます'));
-    if (nFull) oto0.addEventListener('click', () => { state.more = 'oto'; renderMore(); });
+    const oto0 = h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, nFull ? `日記帳・満月の棚(${nFull}個)` : '日記帳・満月の棚'));
+    oto0.addEventListener('click', () => { state.more = 'oto'; state.oto = 'menu'; state.roomScene = null; renderMore(); });
     const setBtn = h('button', { class: 'more-quiet', type: 'button' }, h('span', {}, '設定'), h('span', { 'aria-hidden': 'true' }, '›'));
     setBtn.addEventListener('click', () => { state.more = 'settings'; settingsMore = false; renderMore(); renderSettings(true); });
     const ul = h('div', { class: 'more-menu' }, upd, oto0, setBtn);
@@ -1794,6 +1796,40 @@ function renderMore() {
 }
 
 function renderOto(A) {
+  const mode = state.oto || 'menu';
+  if (mode !== 'diary') diaryBook = null;
+  if (mode !== 'menu') delete $('#more-oto').dataset.room;
+  if (mode === 'menu') state.diaryOpened = false; // 部屋に戻ったら、次は、また閉じた表紙から
+  if (mode === 'shelf') return renderShelf(A);
+  otoSig = '';
+  if (mode === 'diary') return renderDiary();
+  // 部屋の絵(ファンタジー)。棚→月の棚(満月が1つ以上になるまでは、案内だけ)、デスクの日記帳→日記帳。ふたりの場所は、まだタップできない
+  const hour = new Date().getHours();
+  if (!state.roomScene || state.roomHour !== (hour >= 21 || hour < 5)) {
+    state.roomHour = hour >= 21 || hour < 5;
+    state.roomScene = pickScene({ hour, last: LS.get(K.roomLast) || '' });
+    LS.set(K.roomLast, state.roomScene);
+  }
+  const box = $('#more-oto');
+  const sig = JSON.stringify([state.roomScene, A.pts, A.fulls.length]);
+  if (box.dataset.room === sig && box.querySelector('.rm-wrap')) return; // 変わらないときは、描き直さない(星のまたたきを止めない)
+  box.dataset.room = sig;
+  const room = h('div', { class: 'rm-wrap' });
+  room.innerHTML = roomSvg(state.roomScene, { pts: A.pts, full: A.fulls.length });
+  const note = h('div', { class: 'rm-note', hidden: true, role: 'status' }, 'ふたりの月が満月になったら、あらたな機能が解放されます');
+  let noteTimer = 0;
+  const go = (el) => {
+    const to = el && el.dataset.go;
+    if (to === 'shelf' && !A.fulls.length) { note.hidden = false; clearTimeout(noteTimer); noteTimer = setTimeout(() => { note.hidden = true; }, 3500); return; }
+    if (to === 'shelf' || to === 'diary') { state.oto = to; renderMore(); }
+  };
+  room.addEventListener('click', (e) => go(e.target.closest('[data-go]')));
+  room.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g); } });
+  room.append(note);
+  box.replaceChildren(room);
+}
+
+function renderShelf(A) {
   const sig = JSON.stringify(A.fulls.map((f) => [f.n, f.at]));
   if (sig === otoSig) return;
   otoSig = sig;
@@ -1808,6 +1844,135 @@ function renderOto(A) {
     wrap,
     h('p', { class: 'oto-credit' }, '月の写真: NASA'),
   );
+}
+
+/* ---- 日記帳(1日が1ページ。何かが入っている日だけ) ---- */
+let diaryBook = null;
+let diarySig = '';
+function diaryKeyList() {
+  const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
+  return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()) });
+}
+const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // おやすみ前は、日記には書かない(見返す場所は、別に考える)
+function diaryHead(day, small) {
+  const d = parseYmd(day);
+  const wd = d.getDay();
+  return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}${small ? ' small' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`));
+}
+// 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
+function diaryEvents(day) {
+  const nodes = [diaryHead(day), h('div', { class: 'dsec' }, 'できごと')];
+  state.events.filter((e) => evOn(e, day)).sort(byDate).forEach((e) => {
+    const b = h('button', { class: 'dev', type: 'button' }, h('i', {}), `${e.title}${e.time ? ` ${e.time}` : ''}`);
+    b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
+    nodes.push(b);
+  });
+  const mine = myRecs().get(day);
+  const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
+  recs.forEach(({ u, rec }) => {
+    const lv = LEVELS.find(([, v]) => v === rec.l);
+    const tags = [...(lv ? [`調子: ${lv[0]}`] : []), ...(rec.t || [])];
+    if (tags.length) nodes.push(h('div', { class: 'dtags' }, h('b', { style: 'font-size:14px' }, `${nameOfUid(u)} `), tags.map((t) => h('span', { class: whoClass(u) }, t))));
+  });
+  // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
+  const writeArea = h('div', { class: 'dwritebox' });
+  const showMine = () => {
+    const cur = myRecs().get(day);
+    const text = h('div', { class: `dnote${cur && cur.m ? '' : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, cur && cur.m ? cur.m : 'ここに、書く');
+    const edit = () => {
+      const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
+      ta.value = (cur && cur.m) || '';
+      const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
+      const done = async () => {
+        save.disabled = true;
+        const prev = myRecs().get(day);
+        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: ta.value.trim() };
+        try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
+        showMine();
+      };
+      save.addEventListener('click', done);
+      writeArea.replaceChildren(ta, save, ...others());
+      ta.focus();
+    };
+    text.addEventListener('click', edit);
+    text.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); } });
+    writeArea.replaceChildren(text, ...others());
+  };
+  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('b', {}, `${nameOfUid(u)} `), rec.m));
+  showMine();
+  nodes.push(writeArea);
+  if (mine && (mine.l || (mine.t && mine.t.length))) { const fix = h('button', { class: 'dwrite fix', type: 'button' }, '調子を直す'); fix.addEventListener('click', () => openDaySheet(day)); nodes.push(fix); }
+  else { const add = h('button', { class: 'dwrite', type: 'button' }, '＋ 調子・気分'); add.addEventListener('click', () => openDaySheet(day)); nodes.push(add); }
+  return nodes;
+}
+// 右のページ: その日のお題(おまけ)。付せんにお題、答えはふきだし
+// 答えは、名前を書かず、答えごと、その人の色の蛍光ペンで線を引く(ひとみ=ピンク、かずゆき=ミント)
+function markAnswers(nodes) {
+  nodes.forEach((el) => {
+    if (!el.classList || !el.classList.contains('ans') || el.classList.contains('wait')) return;
+    const text = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('');
+    el.replaceChildren(h('span', { class: 'mk' }, text));
+  });
+  return nodes;
+}
+function diaryCardPage(day) {
+  const nodes = [diaryHead(day, true)];
+  diaryCards(day).forEach((c) => {
+    const st = cardStatus(c, state.qcards, state.answers);
+    const q = h('button', { class: `dsticky c-${c.cat || 'none'}`, type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
+    q.addEventListener('click', () => openQCardSheet(c.n));
+    nodes.push(q, ...markAnswers(answersBlock(c.n)));
+  });
+  return nodes;
+}
+let diarySpread = false;
+function diaryPageNodes(key) {
+  const day = dayOfPage(key);
+  if (diarySpread) return [h('div', { class: 'dspread' }, h('div', { class: 'dsheet' }, ...diaryEvents(day)), h('div', { class: 'dsheet right' }, ...diaryCardPage(day)))];
+  return String(key).endsWith('#c') ? diaryCardPage(day) : diaryEvents(day);
+}
+// 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
+function diaryCover(onOpen) {
+  const orn = (c) => `<svg class="dorn ${c}" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 27V9q0-6 6-6h18M8 22V12q0-4 4-4h10M13 17q0-3 3-3h4"/><circle cx="6" cy="6" r="1.6" fill="currentColor"/></svg>`;
+  const el = h('div', { class: 'dcover', role: 'button', tabindex: '0', 'aria-label': '日記帳を開く' });
+  el.innerHTML = `<div class="dlite"></div><div class="dwear"></div><div class="dspine"><i style="top:14%"></i><i style="top:28%"></i><i style="top:70%"></i><i style="top:84%"></i></div><div class="dstitch"></div><div class="dframe"></div>${orn('tl')}${orn('tr')}${orn('bl')}${orn('br')}
+<div class="dplate"><div><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><defs><linearGradient id="dgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbe7a0"/><stop offset=".55" stop-color="#c79a3a"/><stop offset="1" stop-color="#f4d98a"/></linearGradient></defs><path d="M27 6a15 15 0 1 0 7 23A12 12 0 0 1 27 6z" fill="url(#dgg)"/></svg><b>${new Date().getFullYear()}</b></div></div><div class="dcribbon"></div>`;
+  const open = () => {
+    if (el.classList.contains('open')) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { onOpen(); return; }
+    el.classList.add('open');
+    setTimeout(onOpen, 1050);
+  };
+  el.addEventListener('click', open);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  return el;
+}
+function renderDiary() {
+  const days = diaryKeyList();
+  const box = $('#more-oto');
+  if (!days.length) { diaryBook = null; box.replaceChildren(h('p', { class: 'dempty' }, 'まだ、日記に書かれた日がありません')); return; }
+  const wide = !!(window.matchMedia && window.matchMedia('(min-width: 720px)').matches); // 広い画面では見開き(左: できごと / 右: お題)
+  diarySpread = wide;
+  const keys = wide ? days : diaryPages(days, (d) => diaryCards(d).length > 0);
+  const sig = JSON.stringify([wide, keys]);
+  if (!diaryBook || sig !== diarySig) {
+    diarySig = sig;
+    const bm = LS.get(K.diaryAt);
+    const at = bm ? keys.indexOf(wide ? dayOfPage(bm) : (bm.includes('#') ? bm : `${bm}#e`)) : -1;
+    const home = wide ? keys.length - 1 : Math.max(0, keys.length - (keys[keys.length - 1].endsWith('#c') ? 2 : 1)); // いちばん新しい日の、できごとのページ(しおりのひもで戻る先)
+    const start = at >= 0 ? at : home;
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ${wide ? '見開き' : 'ページ'}`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
+    if (!state.diaryOpened) {
+      const bookEl = diaryBook.root.querySelector('.dbook');
+      bookEl.classList.add('closed');
+      const cover = diaryCover(() => { state.diaryOpened = true; cover.remove(); bookEl.classList.remove('closed'); });
+      bookEl.append(cover);
+    }
+    return;
+  }
+  diaryBook.refreshPage();
 }
 
 function openTank(n) {
@@ -1849,7 +2014,7 @@ function maybeCelebrate(A) {
   const art = h('div', {});
   art.innerHTML = tankSvg(f.n, { label: '', num: false });
   const go = h('button', { class: 'go', type: 'button' }, '棚を見る');
-  go.addEventListener('click', () => { close(); state.more = 'oto'; setView('set', true); });
+  go.addEventListener('click', () => { close(); state.more = 'oto'; state.oto = 'shelf'; setView('set', true); });
   const later = h('button', { class: 'later', type: 'button' }, 'あとで');
   later.addEventListener('click', close);
   const stars = Array.from({ length: 14 }, (_, i) => h('i', { class: 'star', style: `left:${(i * 37 + 11) % 96}%;top:${(i * 53 + 7) % 90}%;animation-delay:-${(i % 5) * 0.5}s` }));

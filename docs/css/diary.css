@@ -1,0 +1,144 @@
+/* おたのしみ: 日記帳(1日が1ページ。スワイプでめくる) */
+:root { --dy-paper: #fffdf7; --dy-rule: #ece3cf; --dy-margin: #f2b3c6; --dy-cover: #8a4b5f; --dy-ribbon: #d9534f; --dy-tab: #c0918d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dy-paper: #262a52; --dy-rule: #323766; --dy-margin: #7a4a8a; --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; } }
+:root[data-theme="dark"] { --dy-paper: #262a52; --dy-rule: #323766; --dy-margin: #7a4a8a; --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; }
+.dwrap { margin: 0 18px 24px; }
+.dbook { position: relative; background: var(--dy-cover); border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
+.dbook::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0)); border-radius: 10px 0 0 10px; pointer-events: none; }
+.dstage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
+.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: repeating-linear-gradient(transparent 0 27px, var(--dy-rule) 27px 28px); background-position: 0 8px; transform-origin: left center; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
+.dpage::before { content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 1.5px; background: var(--dy-margin); opacity: .7; }
+.dpage.under { z-index: 1; }
+.dpage.cur { z-index: 2; }
+.dpage.flip { animation: dy-flipout .55s ease-in forwards; }
+.dpage.flipback { animation: dy-flipin .55s ease-out forwards; }
+@keyframes dy-flipout { 0% { transform: rotateY(0); } 60% { box-shadow: 12px 0 24px rgba(0, 0, 0, .35); } 100% { transform: rotateY(-105deg); opacity: .2; } }
+@keyframes dy-flipin { 0% { transform: rotateY(-105deg); opacity: .2; } 100% { transform: rotateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dpage.flip, .dpage.flipback { animation: none; } }
+.ddate { display: flex; align-items: baseline; gap: 10px; line-height: 1.1; margin-bottom: 6px; flex-wrap: wrap; }
+.ddate .d { font-size: 44px; font-weight: 800; }
+.ddate .w { font-size: 18px; font-weight: 800; }
+.ddate .ym { font-size: 14px; color: var(--muted); font-weight: 700; }
+.ddate.sat .w { color: #3f86d6; }
+.ddate.sun .w { color: var(--pink-deep); }
+.dpage .dsub { font-size: 13px; color: var(--muted); font-weight: 700; margin: 8px 0 0; }
+.dpage .dq { font-size: 18px; font-weight: 800; line-height: 1.5; margin: 2px 0 8px; }
+.dpage .ans { box-shadow: 0 1px 3px rgba(0, 0, 0, .08); margin-bottom: 7px; font-size: 16px; }
+.dpage .flip-in { animation: none; }
+.dsec { font-size: 13px; font-weight: 800; color: var(--muted); margin: 12px 0 3px; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
+.dtags { display: flex; flex-wrap: wrap; gap: 5px; font-size: 14px; font-weight: 700; margin: 2px 0; }
+.dtags span { border-radius: 99px; padding: 1px 10px; }
+.dtags .me { background: var(--pink); color: var(--on-pink); }
+.dtags .you { background: var(--mint); color: var(--on-mint); }
+.dmemo { font-size: 16px; margin: 4px 0; white-space: pre-wrap; }
+.dev { font-size: 16px; display: flex; gap: 8px; align-items: center; margin: 3px 0; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; padding: 0; }
+.dev i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint-deep); flex: none; }
+.dwrite { display: inline-block; border: 1.5px dashed var(--muted); color: var(--muted); background: transparent; font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 5px 16px; margin: 4px 0; cursor: pointer; }
+.dwrite.fix { border-style: solid; border-color: var(--line); padding: 2px 10px; font-size: 13px; margin: 0; }
+.dribbon { position: absolute; top: -6px; right: 40px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
+.dtabs { position: absolute; right: -8px; top: 72px; display: flex; flex-direction: column; gap: 6px; z-index: 4; }
+.dtabs button { writing-mode: vertical-rl; border: 0; border-radius: 0 10px 10px 0; padding: 8px 4px; font: inherit; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; background: var(--dy-tab); box-shadow: 2px 1px 3px rgba(0, 0, 0, .25); }
+.dtabs button.on { background: var(--dy-ribbon); padding-right: 9px; }
+.dnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.dnav button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; border-radius: 99px; padding: 10px 18px; cursor: pointer; }
+.dnav button:disabled { opacity: .4; }
+.dpn { font-size: 14px; color: var(--muted); font-weight: 700; }
+.dhint { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 18px 24px; }
+.dempty { margin: 0 18px 24px; color: var(--muted); }
+/* おたのしみの入口(棚・日記帳) */
+.oto-menu { margin: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.oto-menu button { text-align: left; border: 0; font: inherit; cursor: pointer; color: #fff; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
+.oto-menu .shelfb { background: linear-gradient(135deg, #2a2f6a, #4a3a7a 60%, #6a4a8a); box-shadow: 0 0 22px rgba(160, 140, 255, .35); }
+.oto-menu .diaryb { background: linear-gradient(135deg, #7a3a52, #a65a6e); box-shadow: 0 0 22px rgba(240, 150, 170, .3); }
+.oto-menu b { font-size: 18px; }
+.oto-menu small { font-size: 13px; opacity: .92; line-height: 1.6; }
+.dpage button.dq { background: none; border: 0; font: inherit; font-size: 18px; font-weight: 800; line-height: 1.5; color: inherit; text-align: left; padding: 0; cursor: pointer; width: 100%; margin: 2px 0 8px; }
+.dpage .ans .meta { display: none; }
+/* おたのしみの部屋 */
+.rm-wrap { margin: 0 18px 18px; line-height: 0; }
+.rm-svg { width: 100%; max-width: 420px; height: auto; display: block; margin: 0 auto; border-radius: 18px; box-shadow: 0 8px 22px rgba(0, 0, 0, .35); }
+.rm-hot { cursor: pointer; outline: none; }
+.rm-hot rect { stroke: rgba(255, 233, 168, 0); stroke-width: 2; stroke-dasharray: 5 4; animation: rm-hint 4.5s ease-in-out infinite; }
+.rm-hot:focus-visible rect, .rm-hot:hover rect { stroke: rgba(255, 255, 255, .85); animation: none; }
+.rm-hot[data-go="diary"] rect { animation-delay: 1.2s; }
+@keyframes rm-hint { 0%, 70%, 100% { stroke: rgba(255, 233, 168, 0); } 85% { stroke: rgba(255, 233, 168, .7); } }
+.rmtw { animation: rm-tw 3s ease-in-out infinite; }
+.rmfl { animation: rm-fl 6s ease-in-out infinite; }
+@keyframes rm-tw { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@keyframes rm-fl { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .rmtw, .rmfl, .rm-hot rect { animation: none; } }
+.rm-wrap { position: relative; }
+.rm-note { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(86%, 320px); background: rgba(20, 20, 50, .92); color: #fff; font-size: 14px; line-height: 1.5; font-weight: 700; border-radius: 14px; padding: 10px 14px; text-align: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); }
+.rm-note[hidden] { display: none; }
+/* 日記帳の表紙(閉じた革の本。タップで開く) */
+.dbook.closed { perspective: 1600px; }
+.dcover { position: absolute; inset: 0; z-index: 8; transform-origin: left center; transition: transform 1.05s cubic-bezier(.4, .1, .2, 1); border-radius: 8px 16px 16px 8px; overflow: hidden; color: #e9c978; cursor: pointer; background: #5a2f1c url(../img/leather.webp) center / cover; box-shadow: 0 2px 0 rgba(255, 255, 255, .14) inset, 0 -3px 6px rgba(0, 0, 0, .4) inset; outline: none; }
+.dcover:focus-visible { box-shadow: 0 0 0 3px #fff; }
+.dcover.open { transform: rotateY(-158deg); }
+.dcover .dlite { position: absolute; inset: 0; background: radial-gradient(90% 55% at 28% 10%, rgba(255, 225, 180, .30), transparent 60%), radial-gradient(100% 70% at 85% 105%, rgba(0, 0, 0, .5), transparent 60%); mix-blend-mode: soft-light; }
+.dcover .dwear { position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255, 220, 170, .18), inset 0 0 14px 2px rgba(20, 8, 2, .55); }
+.dcover .dspine { position: absolute; left: 0; top: 0; bottom: 0; width: 28px; background: linear-gradient(90deg, rgba(0, 0, 0, .6), rgba(0, 0, 0, .12) 55%, rgba(255, 220, 170, .14) 64%, rgba(0, 0, 0, .3)); border-right: 1px solid rgba(0, 0, 0, .45); }
+.dcover .dspine i { position: absolute; left: 0; right: 0; height: 5px; background: linear-gradient(#f2d98a, #9c7424); opacity: .8; box-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.dcover .dstitch { position: absolute; left: 36px; right: 9px; top: 14px; bottom: 14px; border: 1.5px dashed rgba(233, 201, 120, .5); border-radius: 4px; }
+.dcover .dframe { position: absolute; left: 44px; right: 17px; top: 22px; bottom: 22px; border: 3px solid; border-image: linear-gradient(135deg, #f6dc8a, #a8782a 45%, #f0d27a 70%, #8a5f1e) 1; box-shadow: 0 0 3px rgba(0, 0, 0, .55); }
+.dcover .dframe::before { content: ""; position: absolute; inset: 5px; border: 1.5px solid; border-image: linear-gradient(135deg, #f6dc8a, #a8782a 45%, #f0d27a 70%, #8a5f1e) 1; }
+.dcover .dorn { position: absolute; width: 26px; height: 26px; color: #e9c978; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .7)); }
+.dcover .dorn.tl { left: 50px; top: 28px; } .dcover .dorn.tr { right: 23px; top: 28px; transform: scaleX(-1); } .dcover .dorn.bl { left: 50px; bottom: 28px; transform: scaleY(-1); } .dcover .dorn.br { right: 23px; bottom: 28px; transform: scale(-1, -1); }
+.dcover .dplate { position: absolute; left: 78px; right: 48px; top: 50%; height: 112px; margin-top: -70px; border: 3px solid; border-image: linear-gradient(135deg, #f6dc8a, #a8782a 45%, #f0d27a 70%, #8a5f1e) 1; display: grid; place-items: center; text-align: center; background: linear-gradient(#5a2f1c, #432215); box-shadow: 0 0 0 3px rgba(0, 0, 0, .28), inset 0 2px 8px rgba(0, 0, 0, .6); }
+.dcover .dplate svg { display: block; margin: 0 auto 4px; }
+.dcover .dplate b { display: block; font-family: 'BIZ UDPMincho', 'BIZ UDMincho', serif; font-size: 36px; letter-spacing: .18em; margin-left: .18em; background: linear-gradient(180deg, #fbe7a0, #c79a3a 55%, #f4d98a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .65)) drop-shadow(0 0 1px rgba(255, 230, 160, .55)); }
+.dcover .dcribbon { position: absolute; right: 50px; bottom: -12px; width: 19px; height: 64px; background: linear-gradient(90deg, #9e2f2a, #c9443d 50%, #8e2622); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); box-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
+@media (prefers-reduced-motion: reduce) { .dcover { transition: none; } }
+/* 日付と見出しだけ、手書き風(Klee One)。本文は、読みやすさのため、いつもの文字のまま */
+.ddate .d, .ddate .w, .ddate .ym, .dpage .dsub, .dsec { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; }
+/* できごとのページ(左)と、お題のページ(右): 温度感を変える。右は、方眼(ドット)の紙に、付せん */
+.dnote, .dnote-in { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-size: 18px; line-height: 28px; color: #3a3228; }
+.dwritebox { margin: 6px 0 4px; }
+.dnote { min-height: 56px; white-space: pre-wrap; cursor: text; padding: 0 2px; }
+.dnote.empty { color: #9a8f80; }
+.dnote.theirs { cursor: default; margin-top: 6px; }
+.dnote.theirs b { font-size: 14px; font-weight: 800; }
+.dnote.theirs.me b { color: var(--pink-deep); } .dnote.theirs.you b { color: var(--mint-deep); }
+.dnote-in { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1.5px solid var(--dy-margin); background: rgba(255, 255, 255, .5); border-radius: 6px; padding: 2px 6px; resize: none; outline: none; }
+.dsave { border: 0; background: var(--pink); color: var(--on-pink); font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 6px 16px; margin: 6px 0; cursor: pointer; }
+.dpage .dsheet { padding: 0 14px 0 8px; overflow: hidden; }
+.dspread { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.dsheet.right { border-left: 1.5px solid rgba(0, 0, 0, .18); padding-left: 20px; box-shadow: inset 10px 0 12px -10px rgba(0, 0, 0, .25); }
+.ddate.small .d { font-size: 28px; }
+.dsticky { position: relative; display: block; width: 100%; text-align: left; border: 0; margin: 14px 0 12px; padding: 16px 16px 12px; background: var(--st, #fff1a8); color: var(--st-fg, #3a3228); font: inherit; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 19px; line-height: 1.5; transform: rotate(-1.2deg); box-shadow: 2px 3px 6px rgba(0, 0, 0, .22); border-radius: 2px 2px 14px 2px; cursor: pointer; }
+.dsticky .tape { position: absolute; top: -10px; left: 50%; width: 70px; height: 20px; margin-left: -35px; background: var(--tp, repeating-linear-gradient(135deg, #ffd76a 0 6px, #fff0b8 6px 12px)); border: 1px solid rgba(0, 0, 0, .06); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); transform: rotate(2deg); opacity: .88; }
+.dsticky small { display: block; margin-top: 5px; font-size: 12px; color: var(--st-sub, rgba(58, 50, 40, .65)); font-weight: 700; }
+/* カテゴリごとの色(付せん)と、マスキングテープの柄 */
+.dsticky.c-fav { --st: #fff1a8; --tp: repeating-linear-gradient(135deg, #ffd76a 0 6px, #fff0b8 6px 12px); }
+.dsticky.c-mem { --st: #ffd9e4; --tp: radial-gradient(circle, #ff9cc4 2px, transparent 2.4px) 0 0 / 10px 10px, #ffe6ee; }
+.dsticky.c-dream { --st: #e6dcff; --tp: repeating-linear-gradient(90deg, #b9a3f5 0 5px, #e8dfff 5px 10px); }
+.dsticky.c-daily { --st: #d6f3e6; --tp: repeating-linear-gradient(0deg, #7fd6b4 0 4px, #d8f5ea 4px 8px); }
+.dsticky.c-us { --st: #ffe2c6; --tp: repeating-linear-gradient(45deg, #ffb273 0 6px, #ffe6d0 6px 12px); }
+.dsticky.c-if { --st: #d8ecff; --tp: radial-gradient(circle, #7fb8f0 2px, transparent 2.4px) 0 0 / 10px 10px, #e4f2ff; }
+.dsticky.c-work { --st: #e2edd2; --tp: repeating-linear-gradient(90deg, #9cc17a 0 6px, #e6f1d8 6px 12px); }
+.dsticky.c-none { --st: #fff6e0; --tp: repeating-linear-gradient(135deg, #d9c9a8 0 6px, #f3ead6 6px 12px); }
+/* 答え: 名前は書かず、答えごと、その人の色の蛍光ペン */
+.dpage .ans:not(.wait) { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-size: 18px; font-weight: 600; line-height: 31px; color: #3a3228; }
+.dpage .ans small { display: none; }
+.dpage .ans .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.dpage .ans.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
+.dpage .ans.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dkst: 1; }
+  :root:not([data-theme="light"]) .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
+  :root:not([data-theme="light"]) .dsticky.c-fav { --st: #6b6030; } :root:not([data-theme="light"]) .dsticky.c-mem { --st: #6e4458; } :root:not([data-theme="light"]) .dsticky.c-dream { --st: #50467e; } :root:not([data-theme="light"]) .dsticky.c-daily { --st: #3f6a5a; } :root:not([data-theme="light"]) .dsticky.c-us { --st: #7a5a40; } :root:not([data-theme="light"]) .dsticky.c-if { --st: #3f5f80; } :root:not([data-theme="light"]) .dsticky.c-work { --st: #566a40; } :root:not([data-theme="light"]) .dsticky.c-none { --st: #4a4478; }
+  :root:not([data-theme="light"]) .dpage .ans:not(.wait) { color: #f5f6ff; }
+  :root:not([data-theme="light"]) .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
+  :root:not([data-theme="light"]) .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); } }
+:root[data-theme="dark"] .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
+:root[data-theme="dark"] .dsticky.c-fav { --st: #6b6030; } :root[data-theme="dark"] .dsticky.c-mem { --st: #6e4458; } :root[data-theme="dark"] .dsticky.c-dream { --st: #50467e; } :root[data-theme="dark"] .dsticky.c-daily { --st: #3f6a5a; } :root[data-theme="dark"] .dsticky.c-us { --st: #7a5a40; } :root[data-theme="dark"] .dsticky.c-if { --st: #3f5f80; } :root[data-theme="dark"] .dsticky.c-work { --st: #566a40; } :root[data-theme="dark"] .dsticky.c-none { --st: #4a4478; }
+:root[data-theme="dark"] .dpage .ans:not(.wait) { color: #f5f6ff; }
+:root[data-theme="dark"] .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
+:root[data-theme="dark"] .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); }
+/* お題のページは、ドット方眼 */
+.dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
+.dpage:has(.dsticky)::before { display: none; }
+/* 相手の答え待ちのメモ: ふきだしをやめて、紙に鉛筆で書いたような、うすい字に */
+.dpage .ans.wait { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 16px; line-height: 28px; color: #8a7d6a; border-bottom: 2px dotted rgba(138, 125, 106, .55); display: inline-block; }
+.dpage .ans.wait svg { display: none; }
+:root[data-theme="dark"] .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); } }
