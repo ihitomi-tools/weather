@@ -185,3 +185,22 @@
 .dpage.clipped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(transparent, var(--dy-paper) 75%); pointer-events: none; border-radius: 0 0 14px 6px; }
 .dmore { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 6; border: 1.5px solid #e0d2b0; background: #fffdf5; color: #6b5f4e; font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 6px 16px; box-shadow: 0 2px 8px rgba(60, 40, 10, .2); cursor: pointer; }
 .dpage.insheet { position: relative; inset: auto; min-height: 120px; overflow: visible; padding-bottom: 20px; border-radius: 14px; touch-action: pan-y; overscroll-behavior: auto; }
+
+/* 省スペース: 見出し(できごと・お題)と年月は出さない。日付は「10月21日」。予定は、電池の下に、絵で */
+.dpage { padding: 10px 16px 10px 20px; }
+.dhead .ddate { margin-bottom: 0; align-items: baseline; gap: 8px; flex-wrap: nowrap; }
+.ddate .d { font-size: 32px; font-weight: 600; white-space: nowrap; }
+.ddate .w { font-size: 15px; white-space: nowrap; }
+.dright { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.dbats { margin-top: 2px; }
+.devs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; max-width: 128px; }
+.dev-ic { border: 0; background: none; padding: 3px; line-height: 0; color: var(--fg); border-radius: 8px; cursor: pointer; }
+.dev-ic svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.dev-ic:active { background: rgba(60, 40, 10, .1); }
+.dsticky, .dsticky span { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; }
+.dsticky { margin: 8px 0 6px; padding: 12px 14px 10px; }
+.dpage .ans:not(.wait) { margin: 3px 0; line-height: 28px; }
+.dodai { padding-top: 4px; }
+.dwritebox { margin: 4px 0 2px; }
+.dfull .dpage { padding-bottom: 66px; }
+.sheet-box h2.dsheet-h { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; font-size: 22px; }
