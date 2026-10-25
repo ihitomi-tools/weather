@@ -43,8 +43,15 @@ test('絵のファイルで出す場面: ファイルがあり、sw.js にも書
     assert.ok(roomSvg(k).includes(`img/room/${k}.webp`), k);
   });
 });
-test('絵: 夜は、どの場面も絵のファイル(昼は、絵ができるまでSVG)', () => { SCENES.night.forEach((k) => assert.ok(PICS[k], k)); });
-test('昼の絵ができるまで(DAY_READY が false の間)は、昼間も夜の場面', () => {
-  for (let i = 0; i < 20; i += 1) assert.ok(SCENES.night.includes(pickScene({ hour: 14, rand: () => i / 20, dayReady: false })));
-  assert.equal(DAY_READY, false);
+test('絵: 夜も昼も、どの場面も絵のファイル', () => { [...SCENES.night, ...SCENES.day].forEach((k) => assert.ok(PICS[k], k)); });
+test('DAY_READY が false の間は、昼間も夜の場面。true なら、昼は昼の場面', () => {
+  for (let i = 0; i < 20; i += 1) {
+    assert.ok(SCENES.night.includes(pickScene({ hour: 14, rand: () => i / 20, dayReady: false })));
+    assert.ok(SCENES.day.includes(pickScene({ hour: 14, rand: () => i / 20, dayReady: true })));
+  }
+  assert.equal(typeof DAY_READY, 'boolean');
+});
+test('机の本の絵がある(sw.js にも書いてある)', () => {
+  assert.ok(fs.existsSync(new URL('../docs/img/room/book.webp', import.meta.url)));
+  assert.ok(fs.readFileSync(new URL('../docs/sw.js', import.meta.url), 'utf8').includes("'img/room/book.webp'"));
 });
