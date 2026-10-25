@@ -160,3 +160,11 @@
 /* 日記帳をひらいている間は、下のタブも隠して、本を画面いっぱいに(出るのは、左下の「もどる」) */
 #app:has(#v-set.on.dfull) .tabs { display: none; }
 #v-set.dfull { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* できごと: 名前は書かず、色だけ(ひとみ=ピンク、かずゆき=ミント)。調子は電池、メモは蛍光ペン */
+.dmood { align-items: center; gap: 6px; margin: 8px 0; }
+.dmood .bat { display: inline-flex; line-height: 0; }
+.dmood.me .bat { color: var(--pink-deep); } .dmood.you .bat { color: var(--mint-deep); }
+.dnote .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.dnote.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
+.dnote.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
