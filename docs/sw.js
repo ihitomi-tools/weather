@@ -1,5 +1,5 @@
 // 画面のファイルだけを保存する。通信(天気・Firebase)には触れない。
-const CACHE = 'shell-v70';
+const CACHE = 'shell-v71';
 const FILES = [
   './', 'index.html', 'css/style.css', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css', 'manifest.webmanifest',
   'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/room.js', 'js/config.js', 'js/store.js',

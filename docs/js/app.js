@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-82';
+const VERSION = '2026.10.25-83';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1768,6 +1768,7 @@ function renderMore() {
   const set = $('#settings');
   $('#more-h').textContent = sub === 'oto' ? 'おたのしみ' : sub === 'settings' ? '設定' : 'その他';
   oto.hidden = sub !== 'oto';
+  $('#v-set').classList.toggle('dfull', sub === 'oto' && state.oto === 'diary'); // 日記帳は、画面いっぱいに
   set.hidden = sub !== 'settings';
   if (sub !== 'oto') otoSig = '';
   if (sub !== 'menu') {

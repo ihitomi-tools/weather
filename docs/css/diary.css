@@ -1,13 +1,13 @@
 /* おたのしみ: 日記帳(1日が1ページ。スワイプでめくる) */
-:root { --dy-paper: #fffdf7; --dy-rule: #ece3cf; --dy-margin: #f2b3c6; --dy-cover: #8a4b5f; --dy-ribbon: #d9534f; --dy-tab: #c0918d; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dy-paper: #262a52; --dy-rule: #323766; --dy-margin: #7a4a8a; --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; } }
-:root[data-theme="dark"] { --dy-paper: #262a52; --dy-rule: #323766; --dy-margin: #7a4a8a; --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; }
+:root { --dy-paper: #fbf3df; --dy-rule: #dccfae; --dy-margin: #f2b3c6; --dy-cover: #8a4b5f; --dy-ribbon: #d9534f; --dy-tab: #c0918d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; } }
+:root[data-theme="dark"] { --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; }
 .dwrap { margin: 0 18px 24px; }
 .dbook { position: relative; background: var(--dy-cover); border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
 .dbook::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0)); border-radius: 10px 0 0 10px; pointer-events: none; }
 .dstage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
-.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: repeating-linear-gradient(transparent 0 27px, var(--dy-rule) 27px 28px); background-position: 0 8px; transform-origin: left center; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
-.dpage::before { content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 1.5px; background: var(--dy-margin); opacity: .7; }
+.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; --fg: #3a3228; --muted: #6b5f4e; --line: #e0d2b0; --pink: #f8c4d3; --pink-deep: #c9587e; --mint: #a8e6d0; --mint-deep: #2d8f77; --on-pink: #4a2a35; --on-mint: #1f4338; transform-origin: left center; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
+.dpage::before { display: none; }
 .dpage.under { z-index: 1; }
 .dpage.cur { z-index: 2; }
 .dpage.flip { animation: dy-flipout .55s ease-in forwards; }
@@ -36,9 +36,9 @@
 .dwrite { display: inline-block; border: 1.5px dashed var(--muted); color: var(--muted); background: transparent; font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 5px 16px; margin: 4px 0; cursor: pointer; }
 .dwrite.fix { border-style: solid; border-color: var(--line); padding: 2px 10px; font-size: 13px; margin: 0; }
 .dribbon { position: absolute; top: -6px; right: 40px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
-.dtabs { position: absolute; right: -8px; top: 72px; display: flex; flex-direction: column; gap: 6px; z-index: 4; }
-.dtabs button { writing-mode: vertical-rl; border: 0; border-radius: 0 10px 10px 0; padding: 8px 4px; font: inherit; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; background: var(--dy-tab); box-shadow: 2px 1px 3px rgba(0, 0, 0, .25); }
-.dtabs button.on { background: var(--dy-ribbon); padding-right: 9px; }
+.dtabs { position: absolute; right: -3px; top: 52px; bottom: 14px; width: 28px; display: flex; flex-direction: column; gap: 3px; z-index: 4; }
+.dtabs button { flex: 1 1 0; min-height: 0; max-height: 44px; border: 0; border-radius: 0 8px 8px 0; padding: 0 1px; font: inherit; font-size: 11px; font-weight: 800; letter-spacing: -.02em; line-height: 1; color: #fff; cursor: pointer; background: var(--dy-tab); box-shadow: 1px 1px 2px rgba(0, 0, 0, .25); }
+.dtabs button.on { background: var(--dy-ribbon); width: 31px; }
 .dnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 .dnav button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; border-radius: 99px; padding: 10px 18px; cursor: pointer; }
 .dnav button:disabled { opacity: .4; }
@@ -123,22 +123,21 @@
 .dpage .ans .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .dpage .ans.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
 .dpage .ans.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dkst: 1; }
-  :root:not([data-theme="light"]) .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
-  :root:not([data-theme="light"]) .dsticky.c-fav { --st: #6b6030; } :root:not([data-theme="light"]) .dsticky.c-mem { --st: #6e4458; } :root:not([data-theme="light"]) .dsticky.c-dream { --st: #50467e; } :root:not([data-theme="light"]) .dsticky.c-daily { --st: #3f6a5a; } :root:not([data-theme="light"]) .dsticky.c-us { --st: #7a5a40; } :root:not([data-theme="light"]) .dsticky.c-if { --st: #3f5f80; } :root:not([data-theme="light"]) .dsticky.c-work { --st: #566a40; } :root:not([data-theme="light"]) .dsticky.c-none { --st: #4a4478; }
-  :root:not([data-theme="light"]) .dpage .ans:not(.wait) { color: #f5f6ff; }
-  :root:not([data-theme="light"]) .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
-  :root:not([data-theme="light"]) .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); } }
-:root[data-theme="dark"] .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
-:root[data-theme="dark"] .dsticky.c-fav { --st: #6b6030; } :root[data-theme="dark"] .dsticky.c-mem { --st: #6e4458; } :root[data-theme="dark"] .dsticky.c-dream { --st: #50467e; } :root[data-theme="dark"] .dsticky.c-daily { --st: #3f6a5a; } :root[data-theme="dark"] .dsticky.c-us { --st: #7a5a40; } :root[data-theme="dark"] .dsticky.c-if { --st: #3f5f80; } :root[data-theme="dark"] .dsticky.c-work { --st: #566a40; } :root[data-theme="dark"] .dsticky.c-none { --st: #4a4478; }
-:root[data-theme="dark"] .dpage .ans:not(.wait) { color: #f5f6ff; }
-:root[data-theme="dark"] .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
-:root[data-theme="dark"] .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); }
 /* お題のページは、ドット方眼 */
 .dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
 .dpage:has(.dsticky)::before { display: none; }
 /* 相手の答え待ちのメモ: ふきだしをやめて、紙に鉛筆で書いたような、うすい字に */
 .dpage .ans.wait { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 16px; line-height: 28px; color: #8a7d6a; border-bottom: 2px dotted rgba(138, 125, 106, .55); display: inline-block; }
 .dpage .ans.wait svg { display: none; }
-:root[data-theme="dark"] .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); } }
+
+/* 日記帳: 画面いっぱいに本。画面そのものは、スクロールしない(長いページだけ、ページの中で動く) */
+.dfull { overflow: hidden; }
+.dfull .head { padding: 6px 18px; }
+.dfull #more-menu .ghost { margin: 0 18px 6px !important; padding: 6px 14px; font-size: 14px; }
+.dfull #more-oto:not([hidden]) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dfull .oto-top, .dfull .dhint { display: none; }
+.dfull .dwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 12px 6px; }
+.dfull .dbook { flex: 1; min-height: 0; display: flex; }
+.dfull .dstage { flex: 1; height: auto; min-height: 0; }
+.dfull .dnav { margin-top: 8px; }
+.dfull .dnav button { padding: 8px 16px; font-size: 15px; }
