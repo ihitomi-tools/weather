@@ -49,9 +49,9 @@ export function availableStock(stock, cards) {
 // 番号から決まる「ランダム」。2人の端末で、同じストックなら同じお題を選ぶ。
 // 選びかた: ①前のお題を足した人(lastBy)と、ちがう人が足したお題を優先 ②そのなかで、前と同じカテゴリ(lastCat)を避ける。
 // どちらも、ほかに選べるものが無いときは、そのまま選ぶ。2台の端末で同じ結果になるように、ストックと番号と前のお題だけで決める。
-export const WHISPER = 'whisper'; // 「ひそひそ話」: デートの前の日にだけ出る。それまで、中身は画面に出さない
+export const WHISPER = 'whisper'; // 「おやすみ前」: デートの前の日にだけ出る。それまで、中身は画面に出さない
 
-// whisperOk: 明日がデートの日(=今日が、デートの前日)。その日は「ひそひそ話」だけから選び(100%)、ほかの日は、ひそひそ話を除いて選ぶ。
+// whisperOk: 明日がデートの日(=今日が、デートの前日)。その日は「おやすみ前」だけから選び(100%)、ほかの日は、おやすみ前を除いて選ぶ。
 export function pickStock(avail, n, lastCat = null, lastBy = null, whisperOk = false) {
   const whispers = avail.filter((s) => s.cat === WHISPER);
   const base = whisperOk && whispers.length ? whispers : avail.filter((s) => s.cat !== WHISPER);

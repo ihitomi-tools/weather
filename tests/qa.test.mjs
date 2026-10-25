@@ -134,7 +134,7 @@ import { guessPhase, partnerGuessView, isRate } from '../docs/js/qa.js';
   test('予想: 判定は3つだけ', () => { assert.ok(isRate('hit') && isRate('near') && isRate('miss')); assert.ok(!isRate('x') && !isRate(undefined)); });
 }
 
-test('ひそひそ話: デートの前日だけ出て(その日は必ず)、ほかの日は出ない', () => {
+test('おやすみ前: デートの前日だけ出て(その日は必ず)、ほかの日は出ない', () => {
   const avail = [{ id: 'a', from: 'u1', cat: 'daily' }, { id: 'b', from: 'u2', cat: WHISPER }, { id: 'c', from: 'u1', cat: 'fav' }];
   for (let n = 1; n <= 30; n++) {
     assert.equal(pickStock(avail, n, null, null, true).id, 'b'); // デートの前日は、100%
@@ -142,7 +142,7 @@ test('ひそひそ話: デートの前日だけ出て(その日は必ず)、ほ�
     assert.notEqual(pickStock(avail, n).id, 'b');
   }
 });
-test('ひそひそ話: 前日でも、ストックがなければ、ふつうのお題から選ぶ。ひそひそ話しか残っていない日は、選ばない', () => {
+test('おやすみ前: 前日でも、ストックがなければ、ふつうのお題から選ぶ。おやすみ前しか残っていない日は、選ばない', () => {
   const normal = [{ id: 'a', from: 'u1', cat: 'daily' }];
   assert.equal(pickStock(normal, 3, null, null, true).id, 'a');
   assert.equal(pickStock([{ id: 'b', from: 'u2', cat: WHISPER }], 3, null, null, false), null);

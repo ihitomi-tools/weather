@@ -291,20 +291,20 @@ check('使用済みは、ふだんはたたまれていて、「使用済みを�
 await page.locator('#sheet-body .used-toggle button').click();
 check('押すと、使用済みが一覧の下に出る', (await page.locator('#sheet-body .sitem').count()) === 5 && (await page.locator('#sheet-body .sitem').last().textContent()).includes('使用済み'));
 await page.locator('#sheet-body .used-toggle button').click();
-// ひそひそ話: 自分が足したものは、自分には中身が見える。相手が足したものは、鍵だけ。似たお題の知らせも、相手のものは中身を出さない
+// おやすみ前: 自分が足したものは、自分には中身が見える。相手が足したものは、鍵だけ。似たお題の知らせも、相手のものは中身を出さない
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', 'whisper');
-check('ひそひそ話を選ぶと、出題のタイミングの説明が出る', (await page.locator('#sheet-body .whisper-note').isVisible()) && (await page.textContent('#sheet-body .whisper-note')).includes('特別なタイミングで出題されます'));
+check('おやすみ前を選ぶと、出題のタイミングの説明が出る', (await page.locator('#sheet-body .whisper-note').isVisible()) && (await page.textContent('#sheet-body .whisper-note')).includes('特別な夜に出題されます'));
 await page.fill('#sheet-body input[type=text]', 'ないしょのひみつを教えてほしい夜');
 await page.locator('#sheet-body button', { hasText: /^追加$/ }).click();
 await page.waitForFunction(() => document.querySelector('#sheet-body .lockrow'));
-check('自分が足したひそひそ話も、ふだんは鍵だけ(「長押しで見る」)で、中身は見えない', (await page.textContent('#sheet-body .lockrow')).includes('長押しで見る') && !(await page.textContent('#sheet-body .lockrow')).includes('ないしょのひみつ'));
+check('自分が足したおやすみ前も、ふだんは鍵だけ(「長押しで見る」)で、中身は見えない', (await page.textContent('#sheet-body .lockrow')).includes('長押しで見る') && !(await page.textContent('#sheet-body .lockrow')).includes('ないしょのひみつ'));
 const lockBox = await page.locator('#sheet-body .lockrow').first().boundingBox();
 await page.mouse.move(lockBox.x + 20, lockBox.y + lockBox.height / 2);
 await page.mouse.down();
 await page.waitForTimeout(700);
 await page.mouse.up();
 await page.waitForFunction(() => document.querySelector('#sheet-body .lockrow.open'));
-check('長押しすると、自分が足したひそひそ話の中身が見える(相手には内緒、の印つき)', (await page.textContent('#sheet-body .lockrow')).includes('ないしょのひみつ') && (await page.textContent('#sheet-body .lockrow')).includes('相手には、デートの前日まで内緒'));
+check('長押しすると、自分が足したおやすみ前の中身が見える(相手には内緒、の印つき)', (await page.textContent('#sheet-body .lockrow')).includes('ないしょのひみつ') && (await page.textContent('#sheet-body .lockrow')).includes('相手には、デートの前日まで内緒'));
 await page.waitForTimeout(800);
 await page.locator('#sheet-body .lockrow.open span').click();
 await page.waitForFunction(() => !document.querySelector('#sheet-body .lockrow.open'));
@@ -319,11 +319,11 @@ check('見えてから10秒たつと、自動で隠れる', !(await page.locator
 const theirWhisper = await enc('stock', { text: 'ふたりだけの思い出の夜を教えて', cat: 'whisper', at: Date.now() });
 await page.evaluate((doc) => { window.__fake.sk.push({ id: 'sw2', ...doc, from: 'u2' }); window.__fake.notify(); }, theirWhisper);
 await page.waitForFunction(() => document.querySelectorAll('#sheet-body .lockrow').length === 2);
-check('相手が足したひそひそ話は、鍵だけで、中身は出ない', (await page.textContent('#sheet-body')).includes('デートの前日に鍵が開きます') && !(await page.textContent('#sheet-body')).includes('ふたりだけの思い出の夜'));
+check('相手が足したおやすみ前は、鍵だけで、中身は出ない', (await page.textContent('#sheet-body')).includes('デートの前日に鍵が開きます') && !(await page.textContent('#sheet-body')).includes('ふたりだけの思い出の夜'));
 await page.fill('#sheet-body input[type=text]', 'ふたりだけの思い出の夜を教えて');
-check('似たお題の知らせ: 相手のひそひそ話は、中身を出さない', (await page.textContent('#sheet-body .sim')).includes('ひそひそ話に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('思い出の夜'));
+check('似たお題の知らせ: 相手のおやすみ前は、中身を出さない', (await page.textContent('#sheet-body .sim')).includes('おやすみ前に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('思い出の夜'));
 await page.fill('#sheet-body input[type=text]', 'ないしょのひみつを教えてほしい夜');
-check('似たお題の知らせ: 自分のひそひそ話も、中身は出さない', (await page.textContent('#sheet-body .sim')).includes('ひそひそ話に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('ないしょのひみつ'));
+check('似たお題の知らせ: 自分のおやすみ前も、中身は出さない', (await page.textContent('#sheet-body .sim')).includes('おやすみ前に、ほとんど同じお題があります') && !(await page.textContent('#sheet-body .sim')).includes('ないしょのひみつ'));
 await page.fill('#sheet-body input[type=text]', '');
 await page.locator('#sheet-body .lockrow button', { hasText: '削除' }).click();
 await page.evaluate(() => { window.__fake.sk = window.__fake.sk.filter((x) => x.id !== 'sw2'); window.__fake.notify(); });
@@ -338,7 +338,7 @@ check('残りのお題の数が出る', (await page.textContent('#stock-n')) ===
 const whisperCard = await enc('qcards', { text: 'ひみつの題', date: '2026-10-20', by: 'u2', cat: 'whisper' });
 await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qw1', n: 90, ...doc, from: 'u2' }); window.__fake.notify(); }, whisperCard);
 await page.click('#talk-seg [data-t="c"]');
-check('ひそひそ話のカードは、カードの一覧に並ばない', (await page.locator('#c-grid').textContent()).indexOf('ひみつの題') < 0 && (await page.locator('#c-grid .catit').count()) === 1);
+check('おやすみ前のカードは、カードの一覧に並ばない', (await page.locator('#c-grid').textContent()).indexOf('ひみつの題') < 0 && (await page.locator('#c-grid .catit').count()) === 1);
 await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qw1'); window.__fake.notify(); });
 check('カードが、カテゴリごとにまとまって並ぶ(日付に西暦つき)', (await page.locator('#c-grid .catit').count()) === 1 && /\d{4}\/\d{1,2}\/\d{1,2}\(.\)/.test(await page.textContent('#c-grid .catit time')) && /\d+カテゴリ/.test(await page.textContent('#c-count')));
 await page.click('#c-grid .catit');
