@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-93';
+const VERSION = '2026.10.25-94';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1856,10 +1856,10 @@ function diaryKeyList() {
   return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()), from });
 }
 const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // おやすみ前は、日記には書かない(見返す場所は、別に考える)
-function diaryHead(day, small) {
+function diaryHead(day) {
   const d = parseYmd(day);
   const wd = d.getDay();
-  return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}${small ? ' small' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`));
+  return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}` }, h('span', { class: 'd' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('span', { class: 'w' }, `(${WEEK[wd]})`));
 }
 // 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
 // 調子の電池(5段階。ふつうなら3つ点灯)。色は、持ち主の色(CSSの currentColor)
@@ -1895,17 +1895,23 @@ function diaryTop(day) {
     });
     bats.append(btn);
   });
-  head.append(bats);
+  const evs = state.events.filter((e) => evOn(e, day)).sort(byDate);
+  const right = h('div', { class: 'dright' }, bats);
+  if (evs.length) {
+    const row = h('div', { class: 'devs' });
+    evs.forEach((e) => {
+      const b = h('button', { class: 'dev-ic', type: 'button', title: e.title, 'aria-label': `${e.title}${e.time ? ` ${e.time}` : ''}` }, typeIcon(evType(e), 'dic'));
+      b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
+      row.append(b);
+    });
+    right.append(row);
+  }
+  head.append(right);
   return head;
 }
 // 日記のなかみ(できごと・メモ)
 function diaryEvents(day) {
-  const nodes = [diaryTop(day), h('div', { class: 'dsec' }, 'できごと')];
-  state.events.filter((e) => evOn(e, day)).sort(byDate).forEach((e) => {
-    const b = h('button', { class: 'dev', type: 'button' }, h('i', {}), `${e.title}${e.time ? ` ${e.time}` : ''}`);
-    b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
-    nodes.push(b);
-  });
+  const nodes = [diaryTop(day)];
   const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
   // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
   const writeArea = h('div', { class: 'dwritebox' });
@@ -1949,7 +1955,7 @@ function markAnswers(nodes) {
 function diaryCardPage(day) {
   const cs = diaryCards(day);
   if (!cs.length) return [];
-  const box = h('div', { class: 'dodai' }, h('div', { class: 'dsec' }, 'お題'));
+  const box = h('div', { class: 'dodai' });
   cs.forEach((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
     const q = h('button', { class: `dsticky c-${c.cat || 'none'}`, type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
@@ -1968,7 +1974,7 @@ function diaryOnPage(el, stage, key) {
   const more = h('button', { class: 'dmore', type: 'button' }, 'すべて見る ▾');
   more.addEventListener('click', () => {
     const d = parseYmd(dayOfPage(key));
-    openSheet(h('h2', {}, `${d.getMonth() + 1}月${d.getDate()}日`), h('div', { class: 'dpage insheet' }, ...diaryPageNodes(key)));
+    openSheet(h('h2', { class: 'dsheet-h' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('div', { class: 'dpage insheet' }, ...diaryPageNodes(key)));
   });
   stage.append(more);
 }
