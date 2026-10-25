@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-99';
+const VERSION = '2026.10.25-100';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -991,7 +991,7 @@ function openMoodAsk(date) {
       try {
         const cur = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
         const had = myRecs().get(date);
-        await writeDays([{ date, rec: stampRec(had, { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '' }) }]);
+        await writeDays([{ date, rec: stampRec(had, { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '', ...(cur.md && cur.m ? { md: 1 } : {}) }) }]);
         state.sheetClose = null;
         note.textContent = 'カレンダーに入れたよ';
         setTimeout(closeSheet, 1300);
@@ -1616,8 +1616,9 @@ function openDaySheet(date) {
     err.textContent = '';
     save.disabled = true;
     try {
-      const next = { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) };
       const prev = myRecs().get(date);
+      const next = { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) };
+      if (prev && prev.md && prev.m && prev.m === next.m) next.md = 1;
       if (!(prev && sameRec(prev, next))) await writeDays([{ date, rec: stampRec(prev, next) }]); // 変えていなければ、時刻は更新しない
       closeSheet();
     } catch (e) {
@@ -1938,6 +1939,11 @@ function diaryTop(day) {
   head.append(right);
   return head;
 }
+// メモの中身。日記から書いた分(印あり)は、ワッペンの文字。調子のひとこと(印なし)は、顔アイコンと一行
+function memoNodes(u, rec) {
+  if (rec.md) return [h('span', { class: 'mk' }, rec.m)];
+  return [h('span', { class: 'av' }, svgEl(Ch.bust(roleOf(u), 30))), h('span', { class: 't' }, rec.m)];
+}
 // 日記のなかみ(できごと・メモ)
 function diaryEvents(day) {
   const nodes = [diaryTop(day)];
@@ -1946,7 +1952,7 @@ function diaryEvents(day) {
   const writeArea = h('div', { class: 'dwritebox' });
   const showMine = () => {
     const cur = myRecs().get(day);
-    const text = h('div', { class: `dnote ${whoClass(myUid())}${cur && cur.m ? '' : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, cur && cur.m ? h('span', { class: 'mk' }, cur.m) : 'ここに、書く');
+    const text = h('div', { class: `dnote ${whoClass(myUid())}${cur && cur.m ? (cur.md ? '' : ' hito') : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, ...(cur && cur.m ? memoNodes(myUid(), cur) : ['ここに、書く']));
     const edit = () => {
       const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
       ta.value = (cur && cur.m) || '';
@@ -1954,7 +1960,9 @@ function diaryEvents(day) {
       const done = async () => {
         save.disabled = true;
         const prev = myRecs().get(day);
-        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: ta.value.trim() };
+        const text = ta.value.trim();
+        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: text };
+        if (text && ((prev && prev.md) || text !== ((prev && prev.m) || ''))) next.md = 1; // 日記から書いた(直さず保存しただけなら、前のまま)
         try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
         showMine();
       };
@@ -1966,7 +1974,7 @@ function diaryEvents(day) {
     text.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); } });
     writeArea.replaceChildren(text, ...others());
   };
-  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('span', { class: 'mk' }, rec.m)));
+  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}${rec.md ? '' : ' hito'}` }, ...memoNodes(u, rec)));
   showMine();
   nodes.push(writeArea);
   return nodes;
