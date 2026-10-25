@@ -21,20 +21,12 @@
 .ddate .ym { font-size: 14px; color: var(--muted); font-weight: 700; }
 .ddate.sat .w { color: #3f86d6; }
 .ddate.sun .w { color: var(--pink-deep); }
-.dpage .dsub { font-size: 13px; color: var(--muted); font-weight: 700; margin: 8px 0 0; }
-.dpage .dq { font-size: 18px; font-weight: 800; line-height: 1.5; margin: 2px 0 8px; }
 .dpage .ans { box-shadow: 0 1px 3px rgba(0, 0, 0, .08); margin-bottom: 7px; font-size: 16px; }
 .dpage .flip-in { animation: none; }
-.dsec { font-size: 13px; font-weight: 800; color: var(--muted); margin: 12px 0 3px; letter-spacing: .06em; display: flex; align-items: center; gap: 8px; }
 .dtags { display: flex; flex-wrap: wrap; gap: 5px; font-size: 14px; font-weight: 700; margin: 2px 0; }
 .dtags span { border-radius: 99px; padding: 1px 10px; }
 .dtags .me { background: var(--pink); color: var(--on-pink); }
 .dtags .you { background: var(--mint); color: var(--on-mint); }
-.dmemo { font-size: 16px; margin: 4px 0; white-space: pre-wrap; }
-.dev { font-size: 16px; display: flex; gap: 8px; align-items: center; margin: 3px 0; background: none; border: 0; color: var(--fg); font: inherit; text-align: left; cursor: pointer; padding: 0; }
-.dev i { width: 9px; height: 9px; border-radius: 50%; background: var(--mint-deep); flex: none; }
-.dwrite { display: inline-block; border: 1.5px dashed var(--muted); color: var(--muted); background: transparent; font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 5px 16px; margin: 4px 0; cursor: pointer; }
-.dwrite.fix { border-style: solid; border-color: var(--line); padding: 2px 10px; font-size: 13px; margin: 0; }
 .dribbon { position: absolute; top: -6px; right: 118px; width: 18px; height: 62px; background: var(--dy-ribbon); z-index: 5; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); border: 0; padding: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
 .dnav { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
 .dnav button { border: 0; background: var(--surface); color: var(--fg); font: inherit; font-weight: 800; font-size: 16px; border-radius: 99px; padding: 10px 18px; cursor: pointer; }
@@ -42,14 +34,6 @@
 .dpn { font-size: 14px; color: var(--muted); font-weight: 700; }
 .dhint { font-size: 13px; color: var(--muted); text-align: center; margin: 8px 18px 24px; }
 .dempty { margin: 0 18px 24px; color: var(--muted); }
-/* おたのしみの入口(棚・日記帳) */
-.oto-menu { margin: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; }
-.oto-menu button { text-align: left; border: 0; font: inherit; cursor: pointer; color: #fff; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 2px; }
-.oto-menu .shelfb { background: linear-gradient(135deg, #2a2f6a, #4a3a7a 60%, #6a4a8a); box-shadow: 0 0 22px rgba(160, 140, 255, .35); }
-.oto-menu .diaryb { background: linear-gradient(135deg, #7a3a52, #a65a6e); box-shadow: 0 0 22px rgba(240, 150, 170, .3); }
-.oto-menu b { font-size: 18px; }
-.oto-menu small { font-size: 13px; opacity: .92; line-height: 1.6; }
-.dpage button.dq { background: none; border: 0; font: inherit; font-size: 18px; font-weight: 800; line-height: 1.5; color: inherit; text-align: left; padding: 0; cursor: pointer; width: 100%; margin: 2px 0 8px; }
 .dpage .ans .meta { display: none; }
 /* おたのしみの部屋 */
 .rm-wrap { margin: 0 18px 18px; line-height: 0; }
@@ -89,8 +73,7 @@
 .dcover .dcribbon { position: absolute; right: 50px; bottom: -12px; width: 19px; height: 64px; background: linear-gradient(90deg, #9e2f2a, #c9443d 50%, #8e2622); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%); box-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
 @media (prefers-reduced-motion: reduce) { .dcover { transition: none; } }
 /* 日付と見出しだけ、手書き風(Klee One)。本文は、読みやすさのため、いつもの文字のまま */
-.ddate .d, .ddate .w, .ddate .ym, .dpage .dsub, .dsec { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; }
-/* できごとのページ(左)と、お題のページ(右): 温度感を変える。右は、方眼(ドット)の紙に、付せん */
+.ddate .d, .ddate .w { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; }
 .dnote, .dnote-in { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-size: 18px; line-height: 28px; color: #3a3228; }
 .dwritebox { margin: 6px 0 4px; }
 .dnote { min-height: 56px; white-space: pre-wrap; cursor: text; padding: 0 2px; }
@@ -100,9 +83,6 @@
 .dnote.theirs.me b { color: var(--pink-deep); } .dnote.theirs.you b { color: var(--mint-deep); }
 .dnote-in { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1.5px solid var(--dy-margin); background: rgba(255, 255, 255, .5); border-radius: 6px; padding: 2px 6px; resize: none; outline: none; }
 .dsave { border: 0; background: var(--pink); color: var(--on-pink); font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 6px 16px; margin: 6px 0; cursor: pointer; }
-.dpage .dsheet { padding: 0 14px 0 8px; overflow: hidden; }
-.dspread { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
-.dsheet.right { border-left: 1.5px solid rgba(0, 0, 0, .18); padding-left: 20px; box-shadow: inset 10px 0 12px -10px rgba(0, 0, 0, .25); }
 .ddate.small .d { font-size: 28px; }
 .dsticky { position: relative; display: block; width: 100%; text-align: left; border: 0; margin: 14px 0 12px; padding: 16px 16px 12px; background: var(--st, #fff1a8); color: var(--st-fg, #3a3228); font: inherit; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 19px; line-height: 1.5; transform: rotate(-1.2deg); box-shadow: 2px 3px 6px rgba(0, 0, 0, .22); border-radius: 2px 2px 14px 2px; cursor: pointer; }
 .dsticky .tape { position: absolute; top: -10px; left: 50%; width: 70px; height: 20px; margin-left: -35px; background: var(--tp, repeating-linear-gradient(135deg, #ffd76a 0 6px, #fff0b8 6px 12px)); border: 1px solid rgba(0, 0, 0, .06); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); transform: rotate(2deg); opacity: .88; }
@@ -122,9 +102,6 @@
 .dpage .ans .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .dpage .ans.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
 .dpage .ans.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
-/* お題のページは、ドット方眼 */
-.dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
-.dpage:has(.dsticky)::before { display: none; }
 /* 相手の答え待ちのメモ: ふきだしをやめて、紙に鉛筆で書いたような、うすい字に */
 .dpage .ans.wait { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 16px; line-height: 28px; color: #8a7d6a; border-bottom: 2px dotted rgba(138, 125, 106, .55); display: inline-block; }
 .dpage .ans.wait svg { display: none; }
@@ -162,9 +139,6 @@
 #v-set.dfull { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* できごと: 名前は書かず、色だけ(ひとみ=ピンク、かずゆき=ミント)。調子は電池、メモは蛍光ペン */
-.dmood { align-items: center; gap: 6px; margin: 8px 0; }
-.dmood .bat { display: inline-flex; line-height: 0; }
-.dmood.me .bat { color: var(--pink-deep); } .dmood.you .bat { color: var(--mint-deep); }
 
 /* 1日=1ページ。日付(左)と電池(右上)。電池をタップで、調子とタグ。ページは、スクロールしない */
 .dhead { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -243,9 +217,6 @@
 .dnote.hito.me .t { border-bottom-color: #e58aae; }
 
 /* メモの見せ方の切り替え(日記 / ひとこと) */
-.dstyles { display: flex; gap: 6px; margin: 6px 0 2px; }
-.dstyle { border: 1.5px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 3px 14px; cursor: pointer; }
-.dstyle[aria-pressed="true"] { background: #fff1f6; border-color: #e58aae; color: #7a3a52; }
 
 /* メモの書き直し欄 */
 .dedit { margin: 8px 0; }
