@@ -137,3 +137,8 @@
 /* お題のページは、ドット方眼 */
 .dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
 .dpage:has(.dsticky)::before { display: none; }
+/* 相手の答え待ちのメモ: ふきだしをやめて、紙に鉛筆で書いたような、うすい字に */
+.dpage .ans.wait { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 16px; line-height: 28px; color: #8a7d6a; border-bottom: 2px dotted rgba(138, 125, 106, .55); display: inline-block; }
+.dpage .ans.wait svg { display: none; }
+:root[data-theme="dark"] .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dpage .ans.wait { color: #b8b8d8; border-bottom-color: rgba(184, 184, 216, .5); } }
