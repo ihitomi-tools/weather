@@ -246,3 +246,8 @@
 .dstyles { display: flex; gap: 6px; margin: 6px 0 2px; }
 .dstyle { border: 1.5px solid var(--line); background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 3px 14px; cursor: pointer; }
 .dstyle[aria-pressed="true"] { background: #fff1f6; border-color: #e58aae; color: #7a3a52; }
+
+/* メモの書き直し欄 */
+.dedit { margin: 8px 0; }
+.dbtns { display: flex; gap: 8px; align-items: center; }
+.dcancel { border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 800; text-decoration: underline; padding: 6px 8px; cursor: pointer; }

@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-101';
+const VERSION = '2026.10.25-102';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -676,6 +676,12 @@ const isHer = () => myRole() === 'h';
 const emptyWith = (text, pose, tag = 'li') => h(tag, { class: 'empty-pose' }, svgEl(Ch.pair(pose)), h('span', {}, text));
 const svgEl = (str) => { const t = document.createElement('template'); t.innerHTML = str.trim(); return t.content.firstElementChild; };
 const hasMoodRec = (r) => !!r && !!(r.l || (r.t && r.t.length) || r.m);
+// 日記の文章(dm)は、ひとこと(m)とは別の欄。印(md)のあるメモは、これまでの日記として、日記の文章に数える
+const DIARY_MAX = 1000;
+const diaryTextOf = (r) => (r ? r.dm || (r.md ? r.m || '' : '') : '');
+const hitoOf = (r) => (r && !r.md ? r.m || '' : '');
+const hasDiaryRec = (r) => hasMoodRec(r) || !!(r && r.dm);
+const keepDiary = (r) => (r && r.dm ? { dm: r.dm, ...(r.dmt ? { dmt: r.dmt } : {}) } : {});
 // 記録のある人(ひとみ→ゆうきの順)
 function peopleOf() {
   const ids = new Set([myUid(), partnerUid(), ...state.daysBy.keys()].filter(Boolean));
@@ -991,7 +997,7 @@ function openMoodAsk(date) {
       try {
         const cur = myRecs().get(date) || { p: false, l: 0, t: [], m: '' };
         const had = myRecs().get(date);
-        await writeDays([{ date, rec: stampRec(had, { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '', ...(cur.md && cur.m ? { md: 1 } : {}) }) }]);
+        await writeDays([{ date, rec: stampRec(had, { p: !!cur.p, l: lv, t: cur.t || [], m: cur.m || '', ...(cur.md && cur.m ? { md: 1 } : {}), ...keepDiary(cur) }) }]);
         state.sheetClose = null;
         note.textContent = 'カレンダーに入れたよ';
         setTimeout(closeSheet, 1300);
@@ -1504,7 +1510,7 @@ function stampRec(prev, rec, now = Date.now()) {
   return out;
 }
 const sameRec = (x, y) => !!x && !!y && !!x.p === !!y.p && (x.l || 0) === (y.l || 0) && (x.m || '') === (y.m || '') && JSON.stringify([...(x.t || [])].sort()) === JSON.stringify([...(y.t || [])].sort());
-const emptyRec = (r) => !r.p && !r.l && !(r.t && r.t.length) && !r.m;
+const emptyRec = (r) => !r.p && !r.l && !(r.t && r.t.length) && !r.m && !r.dm;
 const withTimeout = (promise, ms) => Promise.race([promise, new Promise((resolve) => setTimeout(resolve, ms))]);
 
 // changes: [{ date, rec }]。rec が空なら、その日の記録を消す。
@@ -1619,6 +1625,7 @@ function openDaySheet(date) {
       const prev = myRecs().get(date);
       const next = { p: draft.p, l: draft.l, t: draft.t, m: memo.value.trim().slice(0, 200) };
       if (prev && prev.md && prev.m && prev.m === next.m) next.md = 1;
+      Object.assign(next, keepDiary(prev));
       if (!(prev && sameRec(prev, next))) await writeDays([{ date, rec: stampRec(prev, next) }]); // 変えていなければ、時刻は更新しない
       closeSheet();
     } catch (e) {
@@ -1852,7 +1859,7 @@ function renderShelf(A) {
 let diaryBook = null;
 let diarySig = '';
 function diaryKeyList() {
-  const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
+  const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasDiaryRec(r)).map(([k]) => k));
   const from = state.qcards.map((c) => c.date).filter(Boolean).sort()[0] || ''; // 日記帳は、いちばん最初のお題の日から
   return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()), from });
 }
@@ -1939,52 +1946,67 @@ function diaryTop(day) {
   head.append(right);
   return head;
 }
-// メモの中身。日記から書いた分(印あり)は、ワッペンの文字。調子のひとこと(印なし)は、顔アイコンと一行
-function memoNodes(u, rec) {
-  if (rec.md) return [h('span', { class: 'mk' }, rec.m)];
-  return [h('span', { class: 'av' }, svgEl(Ch.bust(roleOf(u), 30))), h('span', { class: 't' }, rec.m)];
+// メモの中身。日記の文章は、ワッペンの文字。調子のひとことは、顔アイコンと一行
+function memoNodes(u, kind, text) {
+  if (kind === 'dm') return [h('span', { class: 'mk' }, text)];
+  return [h('span', { class: 'av' }, svgEl(Ch.bust(roleOf(u), 30))), h('span', { class: 't' }, text)];
 }
-// 日記のなかみ(できごと・メモ)
+// 日記のなかみ(ひとこと・日記の文章。自分の欄は、相手が先に書いたら、その下)
 function diaryEvents(day) {
   const nodes = [diaryTop(day)];
-  const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
-  // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
-  const writeArea = h('div', { class: 'dwritebox' });
-  const showMine = () => {
-    const cur = myRecs().get(day);
-    const text = h('div', { class: `dnote ${whoClass(myUid())}${cur && cur.m ? (cur.md ? '' : ' hito') : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, ...(cur && cur.m ? memoNodes(myUid(), cur) : ['ここに、書く']));
-    const edit = () => {
-      const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
-      ta.value = (cur && cur.m) || '';
-      const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
-      // 見せ方: 「日記」(ワッペン) / 「ひとこと」(顔 + 一行)。はじめて書くときは日記。すでにあるメモは、いまの見せ方から
-      let asDiary = !(cur && cur.m) || !!cur.md;
-      const pickBtn = (label, diary) => {
-        const b = h('button', { class: 'dstyle', type: 'button', 'aria-pressed': String(asDiary === diary) }, label);
-        b.addEventListener('click', () => { asDiary = diary; styles.querySelectorAll('.dstyle').forEach((x, i) => x.setAttribute('aria-pressed', String((i === 0) === diary))); });
-        return b;
-      };
-      const styles = h('div', { class: 'dstyles', role: 'group', 'aria-label': 'メモの見せ方' }, pickBtn('日記', true), pickBtn('ひとこと', false));
-      const done = async () => {
-        save.disabled = true;
-        const prev = myRecs().get(day);
-        const text = ta.value.trim();
-        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: text };
-        if (text && asDiary) next.md = 1;
-        try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
-        showMine();
-      };
-      save.addEventListener('click', done);
-      writeArea.replaceChildren(ta, styles, save, ...others());
-      ta.focus();
-    };
-    text.addEventListener('click', edit);
-    text.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); } });
-    writeArea.replaceChildren(text, ...others());
+  const area = h('div', { class: 'dwritebox' });
+  let editing = '';
+  const editor = (kind, init) => {
+    const ta = h('textarea', { class: 'dnote-in', maxlength: String(kind === 'dm' ? DIARY_MAX : 200), rows: kind === 'dm' ? '5' : '2', 'aria-label': kind === 'dm' ? 'この日の日記' : 'ひとこと', placeholder: 'ここに、書く' });
+    ta.value = init;
+    const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
+    const cancel = h('button', { class: 'dcancel', type: 'button' }, 'やめる');
+    cancel.addEventListener('click', () => { editing = ''; render(); });
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      const prev = myRecs().get(day);
+      const text = ta.value.trim();
+      const base = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [] };
+      const next = kind === 'dm'
+        ? { ...base, m: hitoOf(prev), ...(text ? { dm: text, dmt: text === diaryTextOf(prev) && prev && prev.dmt ? prev.dmt : Date.now() } : {}) }
+        : { ...base, m: text, ...keepDiary(prev) };
+      try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
+      editing = '';
+      render();
+    });
+    return h('div', { class: 'dedit' }, ta, h('div', { class: 'dbtns' }, save, cancel));
   };
-  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}${rec.md ? '' : ' hito'}` }, ...memoNodes(u, rec)));
-  showMine();
-  nodes.push(writeArea);
+  const tappable = (el, kind) => {
+    const go = () => { editing = kind; render(); };
+    el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0');
+    el.addEventListener('click', go);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    return el;
+  };
+  const render = () => {
+    const parts = [];
+    const people = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day), mine: u === myUid() }));
+    // 調子のひとこと(顔アイコン + 一行)
+    people.forEach(({ u, rec, mine }) => {
+      const text = hitoOf(rec);
+      if (!text) return;
+      if (mine && editing === 'm') { parts.push(editor('m', text)); return; }
+      const el = h('div', { class: `dnote ${whoClass(u)} hito${mine ? '' : ' theirs'}` }, ...memoNodes(u, 'm', text));
+      parts.push(mine ? tappable(el, 'm') : el);
+    });
+    // 日記の文章(ワッペン)。書いた順に並べる。自分の欄は、まだ書いていなければ、いちばん下
+    const stamp = (r) => r.dmt || r.up || r.at || 0;
+    people.filter((x) => diaryTextOf(x.rec)).sort((x, y) => stamp(x.rec) - stamp(y.rec)).forEach(({ u, rec, mine }) => {
+      const text = diaryTextOf(rec);
+      if (mine && editing === 'dm') { parts.push(editor('dm', text)); return; }
+      const el = h('div', { class: `dnote ${whoClass(u)}${mine ? '' : ' theirs'}` }, ...memoNodes(u, 'dm', text));
+      parts.push(mine ? tappable(el, 'dm') : el);
+    });
+    if (!diaryTextOf(myRecs().get(day))) parts.push(editing === 'dm' ? editor('dm', '') : tappable(h('div', { class: 'dnote empty', 'aria-label': 'ここに書く' }, 'ここに、書く'), 'dm'));
+    area.replaceChildren(...parts);
+  };
+  render();
+  nodes.push(area);
   return nodes;
 }
 // 右のページ: その日のお題(おまけ)。付せんにお題、答えはふきだし

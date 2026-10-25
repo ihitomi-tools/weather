@@ -14,7 +14,7 @@ export function buildExport(s, now = Date.now()) {
 
   out.push('', '■ 記録(生理・調子・気分)');
   [...s.days.values()].sort((a, b) => a.d.localeCompare(b.d) || String(a.by).localeCompare(String(b.by))).forEach((r) => {
-    const parts = [r.p ? '生理' : '', r.l ? `調子${r.l}/5` : '', ...(r.t || []), r.m || ''].filter(Boolean);
+    const parts = [r.p ? '生理' : '', r.l ? `調子${r.l}/5` : '', ...(r.t || []), r.m || '', r.dm ? `日記: ${r.dm}` : ''].filter(Boolean);
     if (parts.length) out.push(`${r.d} ${r.by ? `${nameOf(r.by)}: ` : ''}${parts.join('、')}`);
   });
 
