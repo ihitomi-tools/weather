@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-77';
+const VERSION = '2026.10.25-78';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1002,7 +1002,7 @@ function openMoodAsk(date) {
   });
   state.sheetClose = () => LS.set(K.moodAsk, date);
   openSheet(h('h2', {}, '今日の調子は?'), pic, scale, note, err,
-    h('p', { class: 'lock' }, '気分やメモは、カレンダーから入れられます。「とじる」と、今日はもう聞きません。'));
+    h('p', { class: 'lock' }, '体調や気分のタグ・ひとことメモは、カレンダーから入れられます。「とじる」と、今日はもう聞きません。'));
 }
 
 // よしよしが届いたとき、イラストを大きく映す(数秒の動きつき。タップで閉じる)
