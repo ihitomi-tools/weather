@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-76';
+const VERSION = '2026.10.25-77';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1159,6 +1159,7 @@ function renderPatBanner() {
 function renderCalendar() {
   const { y, m, sel } = state.cal;
   $('#cal-title').textContent = `${y}年${m + 1}月`;
+  { const t = new Date(); $('#cal-today').hidden = y === t.getFullYear() && m === t.getMonth() && sel === ymd(t); } // 今日から離れているときだけ、「今日」で戻れる
   const first = new Date(y, m, 1).getDay();
   const count = new Date(y, m + 1, 0).getDate();
   const todayKey = ymd(new Date());
@@ -1209,6 +1210,13 @@ function buildCalendar() {
     renderCalendar();
     if (dir) { const mo = $('#month'); mo.classList.remove('from-l', 'from-r'); void mo.offsetWidth; mo.classList.add(dir === 'next' ? 'from-r' : 'from-l'); } // 指の動きに合わせて、月がすべり込む
   };
+  $('#cal-today').addEventListener('click', () => {
+    const t = new Date();
+    const dir = t.getFullYear() * 12 + t.getMonth() > state.cal.y * 12 + state.cal.m ? 'next' : t.getFullYear() * 12 + t.getMonth() < state.cal.y * 12 + state.cal.m ? 'prev' : '';
+    state.cal.y = t.getFullYear(); state.cal.m = t.getMonth(); state.cal.sel = ymd(t); state.cal.end = null; state.cal.range = false;
+    renderCalendar();
+    if (dir) { const mo = $('#month'); mo.classList.remove('from-l', 'from-r'); void mo.offsetWidth; mo.classList.add(dir === 'next' ? 'from-r' : 'from-l'); }
+  });
   $('#cal-prev').addEventListener('click', () => move(-1));
   $('#cal-next').addEventListener('click', () => move(1));
   $('#ev-open').addEventListener('click', () => { state.cal.bar = true; renderCalendar(); });

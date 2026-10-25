@@ -780,6 +780,13 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
     check('「詳細を見る・直す」で、元の文章を直せる', (await page.inputValue('#sheet textarea[aria-label="詳細"]')).includes('乗換回数'));
     await page.click('#sheet-close');
   }
+  const title00 = await page.textContent('#cal-title');
+  // 「今日」で戻る
+  await page.click('#cal-next');
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/cal-today.png` });
+  check('別の月を見ていると、「今日」が出る', await page.locator('#cal-today').isVisible());
+  await page.click('#cal-today');
+  check('「今日」で、今日の月・今日の日付に戻る', (await page.textContent('#cal-title')) === title00 && await page.locator('#month button.today.sel').count() === 1 && await page.locator('#cal-today').isHidden());
   // 月のスワイプ
   const title0 = await page.textContent('#cal-title');
   const mb = await page.locator('#month').boundingBox();

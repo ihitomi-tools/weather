@@ -606,3 +606,8 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 .actions.quiet { display: flex; justify-content: center; margin: 18px 18px 90px; }
 .quietbtn { border: 1.5px solid var(--line); background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 700; border-radius: 99px; padding: 10px 20px; cursor: pointer; }
 .quietbtn[hidden] { display: none; }
+
+/* カレンダー: 今日から離れたときに出る「今日」 */
+.cal-h { position: relative; text-align: center; }
+.todaybtn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); border: 1.5px solid var(--pink-deep); background: transparent; color: var(--pink-deep); font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 3px 12px; cursor: pointer; }
+.todaybtn[hidden] { display: none; }
