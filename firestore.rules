@@ -57,13 +57,18 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'n', 'from']);
       allow update, delete: if false;
     }
-    // 答え: 自分の分を、1回だけ書ける(あとから書き換えられない)。
+    // 答え: 自分の分を書ける。書き直せるのは、自分の分だけ(消せない)。
+    // 「相手が答えるまで」の制限は、アプリの側でかけている(書類の名前が暗号化されていて、ルールからは、相手の分を探せないため)。
     match /answers/{id} {
       allow read: if isUs();
       allow create: if isUs()
         && request.resource.data.owner == request.auth.uid
         && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
-      allow update, delete: if false;
+      allow update: if isUs()
+        && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'owner']);
+      allow delete: if false;
     }
     // 予想: 先に答えた人が書く、相手の答えの予想。自分の分だけ、書き直せる(判定を足すのも書き直し)。消せない。
     match /guesses/{id} {

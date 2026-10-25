@@ -251,3 +251,8 @@
 .dedit { margin: 8px 0; }
 .dbtns { display: flex; gap: 8px; align-items: center; }
 .dcancel { border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; font-weight: 800; text-decoration: underline; padding: 6px 8px; cursor: pointer; }
+
+/* お題の答え: 相手が答えるまでの「書き直す」 */
+.ans-mine { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.ans-edit { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; text-decoration: underline; padding: 2px 6px; cursor: pointer; }
+.ans-btns { display: flex; gap: 8px; }
