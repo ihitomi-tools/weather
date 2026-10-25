@@ -37,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-73';
+const VERSION = '2026.10.25-74';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1191,7 +1191,6 @@ function renderCalendar() {
   }
   $('#month').replaceChildren(...cells);
   renderDayDetail(sel);
-  $('#past-record').hidden = !isHer();
   renderEvBar();
   $('#cyc-sum').replaceChildren(...(cyc.cycle ? ['平均の周期は ', h('b', {}, `${cyc.cycle}日`), '、生理の期間は ', h('b', {}, `${cyc.len}日`), 'くらいです。'] : ['記録が2回分たまると、予想が出ます。']));
   const dt = parseYmd(sel);
@@ -1213,7 +1212,6 @@ function buildCalendar() {
   $('#cal-next').addEventListener('click', () => move(1));
   $('#ev-open').addEventListener('click', () => { state.cal.bar = true; renderCalendar(); });
   $('#day-record').addEventListener('click', () => openDaySheet(state.cal.sel));
-  $('#past-record').addEventListener('click', openPastSheet);
 
   // 予定の入れかた: 日付をタップすると、下に「デート」のバーが出る。期間は、日付を「長押ししてから」なぞって選ぶ
   // (すぐなぞると、横にスワイプして、前の月・次の月に動く。勝手に複数日が選ばれてしまうのを防ぐ)
@@ -1301,6 +1299,7 @@ function renderEvBar() {
   const bar = $('#ev-bar');
   const { sel, end, range } = state.cal;
   bar.hidden = !(state.cal.bar && state.view === 'cal');
+  $('#ev-open').hidden = state.view !== 'cal' || !bar.hidden; // 右下の「＋」は、カレンダーを見ていて、入れるバーが出ていないときだけ
   if (bar.hidden) return;
   $('#evb-label').textContent = end ? `${mdOf(sel)}〜${mdOf(end)}` : mdOf(sel);
   $('#evb-sub').textContent = range ? '終わりの日を、カレンダーでタップしてください' : end ? `連続で選んだので、お泊まり(${nightsLabel(sel, end)})` : 'この日に、ふたりの予定を入れる';
@@ -1906,6 +1905,8 @@ function renderSettings(force = false) {
     a.remove();
   });
 
+  const pastBtn = h('button', { class: 'act', type: 'button' }, '開く');
+  pastBtn.addEventListener('click', openPastSheet);
   const cardBtn = h('button', { class: 'act', type: 'button' }, '設定');
   cardBtn.addEventListener('click', openCardSheet);
 
@@ -1958,6 +1959,7 @@ function renderSettings(force = false) {
     ...(settingsMore ? [
       row('あなたの名前', '相手の画面に表示されます', h('span', { style: 'display:flex;gap:6px' }, name, saveName)),
       row('誕生日', '月と日だけ。相手にも見えます', h('span', { style: 'display:flex;gap:6px' }, bdM, bdD)),
+      ...(isHer() ? [row('過去の生理の記録', '過去の分を、まとめて入れたり、消したりします', pastBtn)] : []),
       row('ホームのカード', '名前と日付を、自分で決められます', cardBtn),
       row('月のブランコの役', 'ふたりで別々の役にします。おまかせなら、自動で決まります', roleSel),
       row('既読を相手に伝える', 'オフにすると、あなたが読んだ印は出ません', rcpt),

@@ -597,3 +597,7 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 @keyframes mo-in-r { from { opacity: .3; transform: translateX(26px); } to { opacity: 1; transform: none; } }
 @keyframes mo-in-l { from { opacity: .3; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .month.from-r, .month.from-l { animation: none; } }
+
+/* 予定を入れる、右下の丸い「＋」 */
+.fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 66px); z-index: 15; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--pink); color: var(--on-pink); font-size: 32px; font-weight: 800; line-height: 1; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); cursor: pointer; }
+.fab[hidden] { display: none; }

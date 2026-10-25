@@ -78,6 +78,7 @@ const wx = {
 };
 
 const openSet = async () => { await page.click('.tab[data-v="set"]'); await page.click('.more-quiet'); };
+const openPast = async () => { await openSet(); await more(); await page.locator('#settings li', { hasText: '過去の生理の記録' }).locator('button').click(); };
 const more = async () => { const b = page.locator('#settings li', { hasText: 'そのほかの設定' }).locator('button'); if ((await b.textContent()) === 'ひらく') await b.click(); };
 const addEv = async ({ title, date, end = '', who = 'me', time = '' }) => {
   await page.click('.tab[data-v="cal"]');
@@ -548,7 +549,7 @@ await page.click('#sheet-close');
   check('変えずに保存しても、時刻は変わらない', /眠い ＋\d\d:\d\d/.test(await page.textContent('#day-detail')));
 }
 
-await page.click('#past-record');
+await openPast();
 await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(48)));
 await page.locator('#sheet input[type=date]').nth(1).fill(fmt(ago(44)));
 await page.click('#sheet .primary');
@@ -575,7 +576,7 @@ check('ホームの最近の気分に出る', (await page.textContent('#home-moo
   check('たたむと、また隠れる', !(await page.textContent('#home-mood')).includes('前の記録'));
 }
 await page.click('.tab[data-v="cal"]');
-await page.click('#past-record');
+await openPast();
 const before = await page.locator('#sheet .mini-list .item').count();
 await page.locator('#sheet .mini-list .x').first().click();
 await page.locator('#sheet .mini-list .x').first().click();
@@ -588,7 +589,11 @@ await page.evaluate(() => window.__fake.asUser('u2'));
 await page.click('.tab[data-v="home"]');
 await page.click('.tab[data-v="cal"]');
 await page.locator('#month button', { hasText: /^5$/ }).click();
-check('相手の画面でも「この日を記録」は出る。生理の「過去の記録」は出ない', (await page.locator('#day-record').isVisible()) && !(await page.locator('#past-record').isVisible()));
+check('相手の画面でも「この日を記録」は出る', await page.locator('#day-record').isVisible());
+await openSet(); await more();
+check('生理の「過去の生理の記録」は、相手の画面の設定には出ない', (await page.locator('#settings li', { hasText: '過去の生理の記録' }).count()) === 0);
+await page.click('.tab[data-v="cal"]');
+await page.locator('#month button', { hasText: /^5$/ }).click();
 check('相手の画面では、ひとみの記録が出る', (await page.textContent('#day-detail')).includes('ひとみ'));
 check('相手の画面では、記録の内容は見られる', (await page.textContent('#day-detail')).includes('テストメモ'));
 await page.click('#day-record');
@@ -686,6 +691,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   while ((await page.locator('#month button.today').count()) === 0) await page.click('#cal-prev'); // 今月に戻る
   check('はじめは、入れるバーが出ていない', await page.locator('#ev-bar').isHidden());
   await page.locator('#month button.today').click();
+  if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/cal-fab.png` });
   check('日付をタップしただけでは、予定を入れるバーは出ない(予定をすぐ見られる)', await page.locator('#ev-bar').isHidden());
   await page.click('#ev-open');
   check('「予定を入れる」を押すと、下にバーが出る(♥ デート)', (await page.textContent('#evb-date')).includes('デート') && !(await page.textContent('#evb-date')).includes('お泊まり'));
