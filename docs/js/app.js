@@ -38,7 +38,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-79';
+const VERSION = '2026.10.25-80';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2319,7 +2319,7 @@ function renderQuestion() {
 const fullDate = (key) => { const d = parseYmd(key); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; }; // 2026/10/24(土)
 function renderCards() {
   $$('#c-chips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === state.cfilter)));
-  const cards = [...state.qcards].reverse().filter((c) => {
+  const cards = [...state.qcards].reverse().filter((c) => c.cat !== WHISPER).filter((c) => { // ひそひそ話は、ここには並べない(見返す場所は、別に考える)
     const st = cardStatus(c, state.qcards, state.answers);
     return state.cfilter === 'all' || st === state.cfilter || (state.cfilter === 'rest' && st === 'rest');
   });

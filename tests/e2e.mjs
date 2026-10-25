@@ -333,7 +333,11 @@ await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.
 check('残りのお題の数が出る', (await page.textContent('#stock-n')) === '5');
 
 // カード
+const whisperCard = await enc('qcards', { text: 'ひみつの題', date: '2026-10-20', by: 'u2', cat: 'whisper' });
+await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qw1', n: 90, ...doc, from: 'u2' }); window.__fake.notify(); }, whisperCard);
 await page.click('#talk-seg [data-t="c"]');
+check('ひそひそ話のカードは、カードの一覧に並ばない', (await page.locator('#c-grid').textContent()).indexOf('ひみつの題') < 0 && (await page.locator('#c-grid .catit').count()) === 1);
+await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qw1'); window.__fake.notify(); });
 check('カードが、カテゴリごとにまとまって並ぶ(日付に西暦つき)', (await page.locator('#c-grid .catit').count()) === 1 && /\d{4}\/\d{1,2}\/\d{1,2}\(.\)/.test(await page.textContent('#c-grid .catit time')) && /\d+カテゴリ/.test(await page.textContent('#c-count')));
 await page.click('#c-grid .catit');
 check('カードを開くと答えが見える', (await page.locator('#sheet-body .ans').count()) === 2);
