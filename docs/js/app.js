@@ -1799,6 +1799,7 @@ function renderOto(A) {
   const mode = state.oto || 'menu';
   if (mode !== 'diary') diaryBook = null;
   if (mode !== 'menu') delete $('#more-oto').dataset.room;
+  if (mode === 'menu') state.diaryOpened = false; // 部屋に戻ったら、次は、また閉じた表紙から
   if (mode === 'shelf') return renderShelf(A);
   otoSig = '';
   if (mode === 'diary') return renderDiary();
@@ -1883,6 +1884,23 @@ function diaryPageNodes(key) {
   }
   return nodes;
 }
+// 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
+function diaryCover(onOpen) {
+  const orn = (c) => `<svg class="dorn ${c}" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 27V9q0-6 6-6h18M8 22V12q0-4 4-4h10M13 17q0-3 3-3h4"/><circle cx="6" cy="6" r="1.6" fill="currentColor"/></svg>`;
+  const el = h('div', { class: 'dcover', role: 'button', tabindex: '0', 'aria-label': '日記帳を開く' });
+  el.innerHTML = `<div class="dlite"></div><div class="dwear"></div><div class="dspine"><i style="top:14%"></i><i style="top:28%"></i><i style="top:70%"></i><i style="top:84%"></i></div><div class="dstitch"></div><div class="dframe"></div>${orn('tl')}${orn('tr')}${orn('bl')}${orn('br')}
+<div class="dplate"><div><svg viewBox="0 0 40 40" width="40" height="40" aria-hidden="true"><defs><linearGradient id="dgg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fbe7a0"/><stop offset=".55" stop-color="#c79a3a"/><stop offset="1" stop-color="#f4d98a"/></linearGradient></defs><path d="M27 6a15 15 0 1 0 7 23A12 12 0 0 1 27 6z" fill="url(#dgg)"/></svg><b>${new Date().getFullYear()}</b></div></div><div class="dcribbon"></div>`;
+  const open = () => {
+    if (el.classList.contains('open')) return;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { onOpen(); return; }
+    el.classList.add('open');
+    setTimeout(onOpen, 1050);
+  };
+  el.addEventListener('click', open);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  return el;
+}
 function renderDiary() {
   const keys = diaryKeyList();
   const box = $('#more-oto');
@@ -1892,6 +1910,12 @@ function renderDiary() {
     diarySig = sig;
     diaryBook = createBook({ h, keys, start: startIndex(keys, LS.get(K.diaryAt)), renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
     box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ページ`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
+    if (!state.diaryOpened) {
+      const bookEl = diaryBook.root.querySelector('.dbook');
+      bookEl.classList.add('closed');
+      const cover = diaryCover(() => { state.diaryOpened = true; cover.remove(); bookEl.classList.remove('closed'); });
+      bookEl.append(cover);
+    }
     return;
   }
   diaryBook.refreshPage();

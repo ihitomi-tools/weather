@@ -945,6 +945,12 @@ check('満月が1つなら、部屋の棚は、水槽が1つだけ光り、残�
 check('おたのしみは、部屋の絵。棚と日記帳が、タップできる', (await page.locator('.rm-svg').count()) === 1 && (await page.locator('.rm-hot[data-go="shelf"]').count()) === 1 && (await page.locator('.rm-hot[data-go="diary"]').count()) === 1);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/room-real.png` });
 await page.locator('.rm-hot[data-go="diary"]').click();
+await page.waitForSelector('.dcover');
+check('日記帳は、閉じた革の表紙から(年だけ・無題)', (await page.textContent('.dcover .dplate')).trim() === String(new Date().getFullYear()));
+if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/cover-real.png` });
+await page.click('.dcover');
+await page.waitForSelector('.dcover', { state: 'detached' });
+check('表紙をタップすると、表紙が開いて、ページが出る', await page.locator('.dpage.top').isVisible());
 await page.waitForSelector('.dpage.top');
 check('日記帳が開き、いちばん新しい(今日の)ページが出る', Number(await page.textContent('.dpage.top .ddate .d')) === new Date().getDate() && (await page.textContent('.dpage.top .ddate .ym')).includes(`${new Date().getFullYear()}年`));
 check('ページに、予定(出張)・この日の調子が出る', (await page.textContent('.dpage.top')).includes('出張') && (await page.textContent('.dpage.top')).includes('この日'));
