@@ -1784,10 +1784,8 @@ function renderMore() {
     menu.dataset.n = String(nFull);
     const upd = h('button', { class: 'more-upd', type: 'button' }, h('span', {}, '最新版にする', h('small', {}, `いまの版: ${VERSION}`)), '›');
     upd.addEventListener('click', () => refreshApp(upd));
-    const oto0 = nFull
-      ? h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, `満月の棚(${nFull}個)`))
-      : h('div', { class: 'more-oto lock' }, h('b', {}, lockIcon(), 'おたのしみ'), h('small', {}, 'ふたりの月が満月になったら、あらたな機能が解放されます'));
-    if (nFull) oto0.addEventListener('click', () => { state.more = 'oto'; state.oto = 'menu'; state.roomScene = null; renderMore(); });
+    const oto0 = h('button', { class: 'more-oto', type: 'button' }, h('b', {}, 'おたのしみ'), h('small', {}, nFull ? `日記帳・満月の棚(${nFull}個)` : '日記帳・満月の棚'));
+    oto0.addEventListener('click', () => { state.more = 'oto'; state.oto = 'menu'; state.roomScene = null; renderMore(); });
     const setBtn = h('button', { class: 'more-quiet', type: 'button' }, h('span', {}, '設定'), h('span', { 'aria-hidden': 'true' }, '›'));
     setBtn.addEventListener('click', () => { state.more = 'settings'; settingsMore = false; renderMore(); renderSettings(true); });
     const ul = h('div', { class: 'more-menu' }, upd, oto0, setBtn);
@@ -1800,22 +1798,34 @@ function renderMore() {
 function renderOto(A) {
   const mode = state.oto || 'menu';
   if (mode !== 'diary') diaryBook = null;
+  if (mode !== 'menu') delete $('#more-oto').dataset.room;
   if (mode === 'shelf') return renderShelf(A);
   otoSig = '';
   if (mode === 'diary') return renderDiary();
-  // 部屋の絵(ファンタジー)。棚→月の棚、デスクの日記帳→日記帳。ふたりの場所は、まだタップできない
+  // 部屋の絵(ファンタジー)。棚→月の棚(満月が1つ以上になるまでは、案内だけ)、デスクの日記帳→日記帳。ふたりの場所は、まだタップできない
   const hour = new Date().getHours();
   if (!state.roomScene || state.roomHour !== (hour >= 21 || hour < 5)) {
     state.roomHour = hour >= 21 || hour < 5;
     state.roomScene = pickScene({ hour, last: LS.get(K.roomLast) || '' });
     LS.set(K.roomLast, state.roomScene);
   }
+  const box = $('#more-oto');
+  const sig = JSON.stringify([state.roomScene, A.pts, A.fulls.length]);
+  if (box.dataset.room === sig && box.querySelector('.rm-wrap')) return; // 変わらないときは、描き直さない(星のまたたきを止めない)
+  box.dataset.room = sig;
   const room = h('div', { class: 'rm-wrap' });
-  room.innerHTML = roomSvg(state.roomScene);
-  const go = (el) => { const to = el && el.dataset.go; if (to === 'shelf' || to === 'diary') { state.oto = to; renderMore(); } };
+  room.innerHTML = roomSvg(state.roomScene, { pts: A.pts, full: A.fulls.length });
+  const note = h('div', { class: 'rm-note', hidden: true, role: 'status' }, 'ふたりの月が満月になったら、あらたな機能が解放されます');
+  let noteTimer = 0;
+  const go = (el) => {
+    const to = el && el.dataset.go;
+    if (to === 'shelf' && !A.fulls.length) { note.hidden = false; clearTimeout(noteTimer); noteTimer = setTimeout(() => { note.hidden = true; }, 3500); return; }
+    if (to === 'shelf' || to === 'diary') { state.oto = to; renderMore(); }
+  };
   room.addEventListener('click', (e) => go(e.target.closest('[data-go]')));
   room.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('[data-go]'); if (g) { e.preventDefault(); go(g); } });
-  $('#more-oto').replaceChildren(room);
+  room.append(note);
+  box.replaceChildren(room);
 }
 
 function renderShelf(A) {

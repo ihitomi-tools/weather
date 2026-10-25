@@ -18,12 +18,26 @@ const heart=(x,y,s=1)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0
 const tank=(x,y,i)=>`<g transform="translate(${x} ${y})"><rect width="22" height="28" rx="6" fill="#5a6cd8" stroke="#aeb8ff" stroke-opacity=".8"/><circle cx="11" cy="13" r="10" fill="${['#a8c4ff','#c0b0ff','#9fd0ff','#d0b8ff'][i%4]}" opacity=".5"/><circle cx="11" cy="13" r="5.5" fill="#e8e4d4"/><rect x="2" y="-3" width="18" height="4" rx="2" fill="#6a72b8"/></g>`;
 const diary=(x,y)=>`<g transform="translate(${x} ${y}) rotate(-6)"><rect width="42" height="34" rx="3" fill="#5a2f1c"/><rect x="4" y="4" width="34" height="26" fill="none" stroke="#e9c978" stroke-width="1.2"/><rect x="11" y="11" width="20" height="12" fill="none" stroke="#e9c978"/><rect x="39" y="3" width="3" height="28" fill="#fbf3df"/><rect x="31" y="30" width="4" height="12" fill="#c9443d"/></g>`;
 // 背景(固定のファンタジーの部屋)
-function base(){return `<defs><linearGradient id="fw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a7a"/><stop offset="1" stop-color="#150f3a"/></linearGradient><linearGradient id="ff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1f5a"/><stop offset="1" stop-color="#160f38"/></linearGradient><radialGradient id="fl"><stop offset="0" stop-color="#ffd98a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient></defs>
+// 窓から見える月。ふたりの月(ホームの月)と同じ満ち欠け(点数÷100)で、光のかさも、点数に合わせて大きくなる
+const MOONX = 188; const MOONY = 62; const MOONR = 16;
+function windowMoon(pts) {
+  const f = pts / 100;
+  let lit = '';
+  if (f >= 0.999) lit = `<circle cx="${MOONX}" cy="${MOONY}" r="${MOONR}" fill="#ffe08a"/>`;
+  else if (f > 0.001) {
+    const rx = MOONR * Math.abs(1 - 2 * f);
+    lit = `<path d="M${MOONX} ${MOONY - MOONR} A${MOONR} ${MOONR} 0 0 1 ${MOONX} ${MOONY + MOONR} A${rx.toFixed(2)} ${MOONR} 0 0 ${f >= 0.5 ? 1 : 0} ${MOONX} ${MOONY - MOONR}Z" fill="#ffe08a"/>`;
+  }
+  const halo = pts < 8 ? '' : `<circle cx="${MOONX}" cy="${MOONY}" r="${(MOONR + 6 + pts * 0.22).toFixed(0)}" fill="url(#rmh)" opacity="${Math.min(1, pts / 70).toFixed(2)}"/>`;
+  return `${halo}<circle cx="${MOONX}" cy="${MOONY}" r="${MOONR}" fill="#3c3a68" stroke="#6f6ca8" stroke-width="1.2"/>${lit}<circle cx="${MOONX - 6}" cy="${MOONY - 5}" r="3" fill="#000" opacity=".12"/><circle cx="${MOONX + 5}" cy="${MOONY + 6}" r="2.2" fill="#000" opacity=".12"/>`;
+}
+const emptyTank = (x, y) => `<g transform="translate(${x} ${y})"><rect width="22" height="28" rx="6" fill="none" stroke="#8a92d8" stroke-width="1.2" stroke-dasharray="3 3" opacity=".6"/><circle cx="11" cy="13" r="1.3" fill="#8a92d8" opacity=".6"/></g>`;
+function base(o = {}){const pts = Math.max(0, Math.min(100, Number(o.pts) || 0)); const full = Math.max(0, Number(o.full) || 0); return `<defs><radialGradient id="rmh"><stop offset="0" stop-color="#ffe9a8" stop-opacity=".75"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient><linearGradient id="fw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2a7a"/><stop offset="1" stop-color="#150f3a"/></linearGradient><linearGradient id="ff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1f5a"/><stop offset="1" stop-color="#160f38"/></linearGradient><radialGradient id="fl"><stop offset="0" stop-color="#ffd98a" stop-opacity=".7"/><stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient></defs>
 <rect width="360" height="340" fill="url(#fw)"/>
-<g><rect x="120" y="36" width="90" height="86" rx="40" fill="#1a1456" stroke="#8a8fd0" stroke-width="4"/><path d="M165 36v86M120 80h90" stroke="#8a8fd0" stroke-width="3"/><circle cx="188" cy="62" r="16" fill="#f3efe0"/><circle cx="182" cy="56" r="4" fill="#fff" opacity=".5"/></g>
+<g><rect x="120" y="36" width="90" height="86" rx="40" fill="#1a1456" stroke="#8a8fd0" stroke-width="4"/><path d="M165 36v86M120 80h90" stroke="#8a8fd0" stroke-width="3"/>${windowMoon(pts)}</g>
 <g fill="#ffe9a8">${[[30,60],[70,90],[250,70],[300,110],[20,150],[330,60],[110,150],[340,160]].map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="2.2" class="rmtw" style="animation-delay:-${i*.4}s"/>`).join('')}</g><g class="rmfl"><path d="M300 50q10-14 20 0t-20 0z" fill="#c0b0ff" opacity=".8"/></g>
 <rect y="262" width="360" height="78" fill="url(#ff)"/>
-<g><rect x="12" y="120" width="92" height="6" fill="#7a5aa8"/><rect x="12" y="176" width="92" height="6" fill="#7a5aa8"/><rect x="12" y="232" width="92" height="6" fill="#7a5aa8"/><rect x="10" y="120" width="5" height="120" fill="#7a5aa8"/><rect x="101" y="120" width="5" height="120" fill="#7a5aa8"/>${tank(20,140,0)}${tank(46,140,1)}${tank(72,140,2)}${tank(20,196,3)}${tank(46,196,0)}</g>
+<g><rect x="12" y="120" width="92" height="6" fill="#7a5aa8"/><rect x="12" y="176" width="92" height="6" fill="#7a5aa8"/><rect x="12" y="232" width="92" height="6" fill="#7a5aa8"/><rect x="10" y="120" width="5" height="120" fill="#7a5aa8"/><rect x="101" y="120" width="5" height="120" fill="#7a5aa8"/>${[[20,140],[46,140],[72,140],[20,196],[46,196]].map(([x, y], i) => (i < full ? tank(x, y, i) : emptyTank(x, y))).join('')}</g>
 <g><rect x="116" y="226" width="80" height="9" rx="2" fill="#5a4a8a"/><rect x="122" y="235" width="7" height="36" fill="#5a4a8a"/><rect x="186" y="235" width="7" height="36" fill="#5a4a8a"/>${diary(132,190)}<ellipse cx="186" cy="198" rx="26" ry="22" fill="url(#fl)"/><path d="M180 226v-22l-8-9" stroke="#caa" stroke-width="3" fill="none"/><path d="M164 186l17-5 3 11z" fill="#d9a85a"/></g>
 <g transform="translate(206 250)"><path d="M0 12q-4-14 6-16 10 2 6 16z" fill="#ff9cc4"/><rect x="4" y="10" width="4" height="10" fill="#e8d8f8"/></g><g transform="translate(228 256) scale(.8)"><path d="M0 12q-4-14 6-16 10 2 6 16z" fill="#9fd0ff"/><rect x="4" y="10" width="4" height="10" fill="#e8d8f8"/></g>`;}
 // ベッド・ソファ
@@ -48,7 +62,7 @@ const S={
 const HOT = `<g class="rm-hot" data-go="shelf" role="button" tabindex="0" aria-label="月の棚"><rect x="6" y="112" width="104" height="132" rx="8" fill="transparent"/></g>
 <g class="rm-hot" data-go="diary" role="button" tabindex="0" aria-label="日記帳"><rect x="118" y="176" width="86" height="66" rx="8" fill="transparent"/></g>`;
 
-export function roomSvg(key) {
+export function roomSvg(key, opts = {}) {
   const scene = S[key] || S.d1;
-  return `<svg viewBox="0 0 360 340" class="rm-svg" role="group" aria-label="おたのしみの部屋">${base()}${scene()}${HOT}</svg>`;
+  return `<svg viewBox="0 0 360 340" class="rm-svg" role="group" aria-label="おたのしみの部屋">${base(opts)}${scene()}${HOT}</svg>`;
 }

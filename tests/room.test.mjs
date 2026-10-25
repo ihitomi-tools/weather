@@ -21,3 +21,14 @@ test('絵: どのパターンも、棚と日記帳がタップできて、ふた
   });
 });
 test('絵: 知らないパターンでも、昼の1つ目の絵になる', () => { assert.equal(roomSvg('zzz'), roomSvg('d1')); });
+
+test('絵: 窓の月は点数で満ち欠けし、棚の水槽は満月の数だけ光る', () => {
+  const dashed = (svg) => (svg.match(/stroke-dasharray="3 3"/g) || []).length;
+  assert.equal(dashed(roomSvg('d1', { pts: 0, full: 0 })), 5);
+  assert.equal(dashed(roomSvg('d1', { pts: 0, full: 2 })), 3);
+  assert.equal(dashed(roomSvg('d1', { pts: 0, full: 9 })), 0);
+  assert.ok(!roomSvg('d1', { pts: 0 }).includes('fill="url(#rmh)"')); // 新月は、光のかさなし
+  assert.ok(roomSvg('d1', { pts: 80 }).includes('fill="url(#rmh)"'));
+  assert.notEqual(roomSvg('d1', { pts: 20 }), roomSvg('d1', { pts: 70 }));
+  assert.ok(roomSvg('d1', { pts: 100 }).includes('<circle cx="188" cy="62" r="16" fill="#ffe08a"/>')); // 満月
+});

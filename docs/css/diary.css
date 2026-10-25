@@ -67,3 +67,6 @@
 @keyframes rm-tw { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 @keyframes rm-fl { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .rmtw, .rmfl, .rm-hot rect { animation: none; } }
+.rm-wrap { position: relative; }
+.rm-note { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(86%, 320px); background: rgba(20, 20, 50, .92); color: #fff; font-size: 14px; line-height: 1.5; font-weight: 700; border-radius: 14px; padding: 10px 14px; text-align: center; box-shadow: 0 4px 14px rgba(0, 0, 0, .4); }
+.rm-note[hidden] { display: none; }

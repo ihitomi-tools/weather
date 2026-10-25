@@ -910,7 +910,11 @@ check('新しいパターンで開く', true);
 // おたのしみ(満月の棚)
 await page.click('.tab[data-v="set"]');
 check('その他: 最新版・おたのしみ・設定が並ぶ', (await page.locator('.more-upd').count()) === 1 && (await page.locator('.more-quiet').count()) === 1);
-check('満月になる前は、おたのしみに鍵と案内が出る', (await page.textContent('.more-oto.lock')).includes('ふたりの月が満月になったら、あらたな機能が解放されます') && (await page.locator('button.more-oto').count()) === 0);
+await page.click('button.more-oto');
+check('満月になる前でも、おたのしみは開き、部屋の絵が出る(棚は空)', (await page.locator('.rm-svg').count()) === 1 && (await page.locator('.rm-svg [stroke-dasharray="3 3"]').count()) === 5);
+await page.locator('.rm-hot[data-go="shelf"]').click();
+check('満月になる前の棚は、案内だけが出る', (await page.textContent('.rm-note')).includes('ふたりの月が満月になったら、あらたな機能が解放されます') && (await page.locator('.rm-note').isVisible()) && (await page.locator('.oto-shelf').count()) === 0);
+await page.click('#more-menu button');
 await page.evaluate(() => { localStorage.removeItem('app.fullSeen'); });
 const D0 = Date.now();
 for (let i = 1; i <= 22; i += 1) {
@@ -937,6 +941,7 @@ await page.click('.tab[data-v="set"]');
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/menu.png` });
 check('満月のあとは、おたのしみが開ける', (await page.locator('button.more-oto').count()) === 1);
 await page.click('button.more-oto');
+check('満月が1つなら、部屋の棚は、水槽が1つだけ光り、残り4つは空', (await page.locator('.rm-svg [stroke-dasharray="3 3"]').count()) === 4);
 check('おたのしみは、部屋の絵。棚と日記帳が、タップできる', (await page.locator('.rm-svg').count()) === 1 && (await page.locator('.rm-hot[data-go="shelf"]').count()) === 1 && (await page.locator('.rm-hot[data-go="diary"]').count()) === 1);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/room-real.png` });
 await page.locator('.rm-hot[data-go="diary"]').click();
