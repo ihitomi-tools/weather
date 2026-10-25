@@ -1,9 +1,9 @@
 /* おたのしみ: 日記帳(1日が1ページ。スワイプでめくる) */
-:root { --dy-paper: #fbf3df; --dy-rule: #dccfae; --dy-margin: #f2b3c6; --dy-cover: #8a4b5f; --dy-ribbon: #d9534f; --dy-tab: #c0918d; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; } }
-:root[data-theme="dark"] { --dy-cover: #5b3a7a; --dy-tab: #7d5a9a; }
+:root { --dy-paper: #fbf3df; --dy-rule: #dccfae; --dy-margin: #f2b3c6; --dy-cover: #5a2f1c; --dy-ribbon: #d9534f; --dy-tab: #c0918d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dy-cover: #5a2f1c; --dy-tab: #8a5a3c; } }
+:root[data-theme="dark"] { --dy-cover: #5a2f1c; --dy-tab: #8a5a3c; }
 .dwrap { margin: 0 18px 24px; }
-.dbook { position: relative; background: var(--dy-cover); border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
+.dbook { position: relative; background: var(--dy-cover) url(../img/leather.webp) center / cover; border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
 .dbook::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0)); border-radius: 10px 0 0 10px; pointer-events: none; }
 .dstage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
 .dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 18px 12px 22px; overflow: hidden; display: flex; flex-direction: column; background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; --fg: #3a3228; --muted: #6b5f4e; --line: #e0d2b0; --pink: #f8c4d3; --pink-deep: #c9587e; --mint: #a8e6d0; --mint-deep: #2d8f77; --on-pink: #4a2a35; --on-mint: #1f4338; transform-origin: left center; touch-action: none; overscroll-behavior: contain; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
@@ -232,3 +232,6 @@
 .dpop .btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .dev-ic.on { transform: rotate(-5deg) scale(1.08); }
 .dev-ic + .dev-ic.on { transform: rotate(4deg) scale(1.08); }
+
+/* ページのふちは、表紙と同じ革の茶色(うすい金の縁) */
+.dbook { box-shadow: 0 6px 18px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(233, 201, 120, .28), inset 0 0 14px 2px rgba(20, 8, 2, .5); }
