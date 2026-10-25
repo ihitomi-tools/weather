@@ -91,3 +91,25 @@
 @media (prefers-reduced-motion: reduce) { .dcover { transition: none; } }
 /* 日付と見出しだけ、手書き風(Klee One)。本文は、読みやすさのため、いつもの文字のまま */
 .ddate .d, .ddate .w, .ddate .ym, .dpage .dsub, .dsec { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; }
+/* できごとのページ(左)と、お題のページ(右): 温度感を変える。右は、方眼(ドット)の紙に、付せん */
+.dnote, .dnote-in { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-size: 18px; line-height: 28px; color: #3a3228; }
+.dwritebox { margin: 6px 0 4px; }
+.dnote { min-height: 56px; white-space: pre-wrap; cursor: text; padding: 0 2px; }
+.dnote.empty { color: #9a8f80; }
+.dnote.theirs { cursor: default; margin-top: 6px; }
+.dnote.theirs b { font-size: 14px; font-weight: 800; }
+.dnote.theirs.me b { color: var(--pink-deep); } .dnote.theirs.you b { color: var(--mint-deep); }
+.dnote-in { width: 100%; box-sizing: border-box; border: 0; border-bottom: 1.5px solid var(--dy-margin); background: rgba(255, 255, 255, .5); border-radius: 6px; padding: 2px 6px; resize: none; outline: none; }
+.dsave { border: 0; background: var(--pink); color: var(--on-pink); font: inherit; font-weight: 800; font-size: 14px; border-radius: 99px; padding: 6px 16px; margin: 6px 0; cursor: pointer; }
+.dpage .dsheet { padding: 0 14px 0 8px; overflow: hidden; }
+.dspread { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+.dsheet.right { border-left: 1.5px solid rgba(0, 0, 0, .18); padding-left: 20px; box-shadow: inset 10px 0 12px -10px rgba(0, 0, 0, .25); }
+.ddate.small .d { font-size: 28px; }
+.dsticky { position: relative; display: block; width: 100%; text-align: left; border: 0; margin: 14px 0 12px; padding: 16px 16px 12px; background: #fff1a8; color: #3a3228; font: inherit; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 19px; line-height: 1.5; transform: rotate(-1.2deg); box-shadow: 2px 3px 6px rgba(0, 0, 0, .22); border-radius: 2px 2px 14px 2px; cursor: pointer; }
+.dsticky .tape { position: absolute; top: -9px; left: 50%; width: 64px; height: 18px; margin-left: -32px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .06); transform: rotate(2deg); }
+.dsticky small { display: block; margin-top: 6px; font-size: 12px; color: #7a6a40; font-weight: 700; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dsticky { background: #4a4478; color: #f5f6ff; } :root:not([data-theme="light"]) .dsticky small { color: #cdd2ee; } :root:not([data-theme="light"]) .dnote, :root:not([data-theme="light"]) .dnote-in { color: #f5f6ff; } :root:not([data-theme="light"]) .dnote.empty { color: #9a9ab8; } }
+:root[data-theme="dark"] .dsticky { background: #4a4478; color: #f5f6ff; } :root[data-theme="dark"] .dsticky small { color: #cdd2ee; } :root[data-theme="dark"] .dnote, :root[data-theme="dark"] .dnote-in { color: #f5f6ff; } :root[data-theme="dark"] .dnote.empty { color: #9a9ab8; }
+/* お題のページは、ドット方眼 */
+.dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
+.dpage:has(.dsticky)::before { display: none; }

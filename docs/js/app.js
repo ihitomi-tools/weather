@@ -15,7 +15,7 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, startIndex, createBook } from './diary.js';
+import { diaryKeys, diaryPages, dayOfPage, createBook } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -1853,36 +1853,74 @@ function diaryKeyList() {
   const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
   return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()) });
 }
-function diaryPageNodes(key) {
-  const d = parseYmd(key);
+const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // ひそひそ話は、日記には書かない(見返す場所は、別に考える)
+function diaryHead(day, small) {
+  const d = parseYmd(day);
   const wd = d.getDay();
-  const nodes = [h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`))];
-  state.qcards.filter((c) => c.date === key && c.cat !== WHISPER).sort((a, b) => a.n - b.n).forEach((c) => { // ひそひそ話は、日記には書かない(見返す場所は、別に考える)
-    const st = cardStatus(c, state.qcards, state.answers);
-    const q = h('button', { class: 'dq', type: 'button' }, c.text);
-    q.addEventListener('click', () => openQCardSheet(c.n));
-    nodes.push(h('p', { class: 'dsub' }, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`), q, ...answersBlock(c.n));
+  return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}${small ? ' small' : ''}` }, h('span', { class: 'd' }, String(d.getDate())), h('span', { class: 'w' }, `${WEEK[wd]}曜日`), h('span', { class: 'ym' }, `${d.getFullYear()}年${d.getMonth() + 1}月`));
+}
+// 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
+function diaryEvents(day) {
+  const nodes = [diaryHead(day), h('div', { class: 'dsec' }, 'できごと')];
+  state.events.filter((e) => evOn(e, day)).sort(byDate).forEach((e) => {
+    const b = h('button', { class: 'dev', type: 'button' }, h('i', {}), `${e.title}${e.time ? ` ${e.time}` : ''}`);
+    b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
+    nodes.push(b);
   });
-  const mine = myRecs().get(key);
-  const writeBtn = (label, cls) => { const b = h('button', { class: cls, type: 'button' }, label); b.addEventListener('click', () => openDaySheet(key)); return b; };
-  const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(key) })).filter((x) => hasMoodRec(x.rec));
-  nodes.push(h('div', { class: 'dsec' }, 'この日', hasMoodRec(mine) ? writeBtn('直す', 'dwrite fix') : null));
+  const mine = myRecs().get(day);
+  const recs = peopleOf().map((u) => ({ u, rec: recsOf(u).get(day) })).filter((x) => hasMoodRec(x.rec));
   recs.forEach(({ u, rec }) => {
     const lv = LEVELS.find(([, v]) => v === rec.l);
     const tags = [...(lv ? [`調子: ${lv[0]}`] : []), ...(rec.t || [])];
-    nodes.push(h('div', {}, h('div', { class: 'dtags' }, h('b', { style: 'font-size:14px' }, `${nameOfUid(u)} `), tags.map((t) => h('span', { class: whoClass(u) }, t))), rec.m ? h('div', { class: 'dmemo' }, rec.m) : null));
+    if (tags.length) nodes.push(h('div', { class: 'dtags' }, h('b', { style: 'font-size:14px' }, `${nameOfUid(u)} `), tags.map((t) => h('span', { class: whoClass(u) }, t))));
   });
-  if (!hasMoodRec(mine)) nodes.push(writeBtn('＋ この日の調子を書く', 'dwrite'));
-  const evs = state.events.filter((e) => evOn(e, key)).sort(byDate);
-  if (evs.length) {
-    nodes.push(h('div', { class: 'dsec' }, '予定'));
-    evs.forEach((e) => {
-      const b = h('button', { class: 'dev', type: 'button' }, h('i', {}), `${e.title}${e.time ? ` ${e.time}` : ''}`);
-      b.addEventListener('click', () => (tripOf(e).length ? openTicket(e) : openEventNote(e.id)));
-      nodes.push(b);
-    });
-  }
+  // 書き込み欄(罫線の上に、手書き風の文字で。自分の分は、その場で書ける。相手の分は、読むだけ)
+  const writeArea = h('div', { class: 'dwritebox' });
+  const showMine = () => {
+    const cur = myRecs().get(day);
+    const text = h('div', { class: `dnote${cur && cur.m ? '' : ' empty'}`, role: 'button', tabindex: '0', 'aria-label': 'ここに書く' }, cur && cur.m ? cur.m : 'ここに、書く');
+    const edit = () => {
+      const ta = h('textarea', { class: 'dnote-in', maxlength: '200', rows: '4', 'aria-label': 'この日のメモ', placeholder: 'ここに、書く' });
+      ta.value = (cur && cur.m) || '';
+      const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
+      const done = async () => {
+        save.disabled = true;
+        const prev = myRecs().get(day);
+        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: ta.value.trim() };
+        try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { save.disabled = false; return; }
+        showMine();
+      };
+      save.addEventListener('click', done);
+      writeArea.replaceChildren(ta, save, ...others());
+      ta.focus();
+    };
+    text.addEventListener('click', edit);
+    text.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); edit(); } });
+    writeArea.replaceChildren(text, ...others());
+  };
+  const others = () => recs.filter(({ u, rec }) => u !== myUid() && rec.m).map(({ u, rec }) => h('div', { class: `dnote theirs ${whoClass(u)}` }, h('b', {}, `${nameOfUid(u)} `), rec.m));
+  showMine();
+  nodes.push(writeArea);
+  if (mine && (mine.l || (mine.t && mine.t.length))) { const fix = h('button', { class: 'dwrite fix', type: 'button' }, '調子を直す'); fix.addEventListener('click', () => openDaySheet(day)); nodes.push(fix); }
+  else { const add = h('button', { class: 'dwrite', type: 'button' }, '＋ 調子・気分'); add.addEventListener('click', () => openDaySheet(day)); nodes.push(add); }
   return nodes;
+}
+// 右のページ: その日のお題(おまけ)。付せんにお題、答えはふきだし
+function diaryCardPage(day) {
+  const nodes = [diaryHead(day, true)];
+  diaryCards(day).forEach((c) => {
+    const st = cardStatus(c, state.qcards, state.answers);
+    const q = h('button', { class: 'dsticky', type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
+    q.addEventListener('click', () => openQCardSheet(c.n));
+    nodes.push(q, ...answersBlock(c.n));
+  });
+  return nodes;
+}
+let diarySpread = false;
+function diaryPageNodes(key) {
+  const day = dayOfPage(key);
+  if (diarySpread) return [h('div', { class: 'dspread' }, h('div', { class: 'dsheet' }, ...diaryEvents(day)), h('div', { class: 'dsheet right' }, ...diaryCardPage(day)))];
+  return String(key).endsWith('#c') ? diaryCardPage(day) : diaryEvents(day);
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen) {
@@ -1902,14 +1940,21 @@ function diaryCover(onOpen) {
   return el;
 }
 function renderDiary() {
-  const keys = diaryKeyList();
+  const days = diaryKeyList();
   const box = $('#more-oto');
-  if (!keys.length) { diaryBook = null; box.replaceChildren(h('p', { class: 'dempty' }, 'まだ、日記に書かれた日がありません')); return; }
-  const sig = JSON.stringify(keys);
+  if (!days.length) { diaryBook = null; box.replaceChildren(h('p', { class: 'dempty' }, 'まだ、日記に書かれた日がありません')); return; }
+  const wide = !!(window.matchMedia && window.matchMedia('(min-width: 720px)').matches); // 広い画面では見開き(左: できごと / 右: お題)
+  diarySpread = wide;
+  const keys = wide ? days : diaryPages(days, (d) => diaryCards(d).length > 0);
+  const sig = JSON.stringify([wide, keys]);
   if (!diaryBook || sig !== diarySig) {
     diarySig = sig;
-    diaryBook = createBook({ h, keys, start: startIndex(keys, LS.get(K.diaryAt)), renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
-    box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ページ`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
+    const bm = LS.get(K.diaryAt);
+    const at = bm ? keys.indexOf(wide ? dayOfPage(bm) : (bm.includes('#') ? bm : `${bm}#e`)) : -1;
+    const home = wide ? keys.length - 1 : Math.max(0, keys.length - (keys[keys.length - 1].endsWith('#c') ? 2 : 1)); // いちばん新しい日の、できごとのページ(しおりのひもで戻る先)
+    const start = at >= 0 ? at : home;
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ${wide ? '見開き' : 'ページ'}`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
     if (!state.diaryOpened) {
       const bookEl = diaryBook.root.querySelector('.dbook');
       bookEl.classList.add('closed');

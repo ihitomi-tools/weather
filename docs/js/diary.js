@@ -18,6 +18,12 @@ export function diaryKeys({ cards = [], recKeys = [], events = [], todayKey }) {
   return [...set].filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && k <= todayKey).sort();
 }
 
+// 1日=2ページ(できごと → お題)。お題が出た日だけ、2枚目がある。ページの名前は「日付#e」「日付#c」
+export function diaryPages(days, hasCard) {
+  return days.flatMap((d) => [`${d}#e`, ...(hasCard(d) ? [`${d}#c`] : [])]);
+}
+export const dayOfPage = (k) => String(k).split('#')[0];
+
 // 月のふせん。古い月 → 新しい月。多いときは、新しい方から12個まで
 export function monthTabs(keys, max = 12) {
   const months = [...new Set(keys.map((k) => k.slice(0, 7)))];
@@ -31,7 +37,7 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, renderPage, onTurn, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
@@ -61,7 +67,7 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
   }
   prev.addEventListener('click', () => go(cur - 1));
   next.addEventListener('click', () => go(cur + 1));
-  ribbon.addEventListener('click', () => go(keys.length - 1));
+  ribbon.addEventListener('click', () => go(home));
   // 指の動き: 斜めでも、横が少しでも強ければ「めくる」。たて向きは、自分でページをスクロールする
   // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
   let g = null;
@@ -126,6 +132,8 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
       if (!top || busy) return;
       const tmp = h('div', {});
       tmp.append(...renderPage(keys[cur]));
+      const ae = document.activeElement;
+      if (ae && top.contains(ae) && ae.matches('textarea, input')) return; // 書いている途中は、描き直さない
       if (tmp.innerHTML !== top.innerHTML) top.replaceChildren(...tmp.childNodes);
     },
   };
