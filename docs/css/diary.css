@@ -165,9 +165,6 @@
 .dmood { align-items: center; gap: 6px; margin: 8px 0; }
 .dmood .bat { display: inline-flex; line-height: 0; }
 .dmood.me .bat { color: var(--pink-deep); } .dmood.you .bat { color: var(--mint-deep); }
-.dnote .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.dnote.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
-.dnote.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
 
 /* 1日=1ページ。日付(左)と電池(右上)。電池をタップで、調子とタグ。ページは、スクロールしない */
 .dhead { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -204,3 +201,18 @@
 .dwritebox { margin: 4px 0 2px; }
 .dfull .dpage { padding-bottom: 66px; }
 .sheet-box h2.dsheet-h { font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-weight: 600; font-size: 22px; }
+
+/* ひとことメモは、ワッペン(縫いつけた札)。ひとみ=ピンク、かずゆき=ミント。答えは、これまでどおり蛍光ペン */
+.dnote:not(.empty) { margin: 10px 2px; }
+.dnote .mk { display: inline-block; max-width: 100%; position: relative; padding: 8px 14px; border-radius: 12px; border: 2px dashed; line-height: 28px; box-sizing: border-box; }
+.dnote.me .mk { border-color: #e58aae; background: #fff1f6; transform: rotate(-.8deg); }
+.dnote.you .mk { border-color: #5fbf9f; background: #effaf5; transform: rotate(.9deg); margin-left: 18px; }
+.dnote .mk::before { content: ""; position: absolute; top: -7px; width: 16px; height: 16px; border-radius: 50%; }
+.dnote.me .mk::before { left: -7px; background: #e0558f; }
+.dnote.you .mk::before { right: -7px; background: #2d9c80; }
+/* できごとのアイコンの色(予定を選ぶときの色と同じ。紙は、いつも明るいので、明るい画面用の色) */
+.dev-ic .dic.date { color: #c9587e; } .dev-ic .dic.meal { color: #c98a1d; } .dev-ic .dic.work { color: #2d8f77; }
+.dev-ic .dic.train { color: #4a86c8; } .dev-ic .dic.car { color: #2a8f9c; } .dev-ic .dic.trip { color: #8a6bd1; }
+.dev-ic .dic.clinic { color: #d6554f; } .dev-ic .dic.drink { color: #b5476f; } .dev-ic .dic.shop { color: #e07b39; }
+.dev-ic .dic.study { color: #5a9f4a; } .dev-ic .dic.star { color: #d4a21c; } .dev-ic .dic.other { color: #6b5f4e; }
+.dhead { margin-bottom: 8px; }
