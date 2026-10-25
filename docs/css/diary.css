@@ -150,7 +150,11 @@
 .dmj button:active { filter: brightness(1.25); }
 
 /* 左下の「もどる」(予定の＋ボタンと同じ位置の、左がわ)。スマホでは、前の日・次の日のボタンは出さない(スワイプでめくる) */
-.dfab { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(max(10px, env(safe-area-inset-bottom, 0px)) + 66px); z-index: 15; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--pink); color: var(--on-pink); font: inherit; font-size: 34px; font-weight: 800; line-height: 1; padding: 0 0 4px; cursor: pointer; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); }
+.dfab { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 8px); z-index: 15; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--pink); color: var(--on-pink); font: inherit; font-size: 34px; font-weight: 800; line-height: 1; padding: 0 0 4px; cursor: pointer; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); }
 .dfab:active { filter: brightness(1.2); }
 .dfull .dpage { padding-bottom: 76px; }
 @media (pointer: coarse) { .dfull .dnav { display: none; } }
+
+/* 日記帳をひらいている間は、下のタブも隠して、本を画面いっぱいに(出るのは、左下の「もどる」) */
+#app:has(#v-set.on.dfull) .tabs { display: none; }
+#v-set.dfull { padding-bottom: env(safe-area-inset-bottom, 0px); }
