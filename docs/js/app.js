@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-81';
+const VERSION = '2026.10.25-82';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -73,7 +73,7 @@ const STAMPS = [
   '🐱', '🐶', '🐰', '🐻', '🚃', '🏠', '🛏️', '📞',
 ];
 // お題のカテゴリ(足す人が選ぶ。コードに書いてあるのは名前だけで、言葉の判定はしない)
-const CATS = [['fav', '好きな○○'], ['mem', '思い出'], ['dream', '将来・夢'], ['daily', '日常'], ['us', 'ふたりのこと'], ['if', 'もしも'], ['work', '仕事・学び'], ['whisper', 'ひそひそ話']];
+const CATS = [['fav', '好きな○○'], ['mem', '思い出'], ['dream', '将来・夢'], ['daily', '日常'], ['us', 'ふたりのこと'], ['if', 'もしも'], ['work', '仕事・学び'], ['whisper', '🩷 おやすみ前']];
 const catLabel = (id) => { const c = CATS.find((x) => x[0] === id); return c ? c[1] : ''; };
 const catSelect = (label = 'カテゴリ') => h('select', { 'aria-label': label }, h('option', { value: '' }, 'カテゴリなし'), ...CATS.map(([id, nm]) => h('option', { value: id }, nm)));
 const EXPIRE_MS = { '24h': 24 * 3600e3, '7d': 7 * 24 * 3600e3, off: 0 };
@@ -1853,7 +1853,7 @@ function diaryKeyList() {
   const recKeys = peopleOf().flatMap((u) => [...recsOf(u).entries()].filter(([, r]) => hasMoodRec(r)).map(([k]) => k));
   return diaryKeys({ cards: state.qcards.filter((c) => c.cat !== WHISPER), recKeys, events: state.events, todayKey: ymd(new Date()) });
 }
-const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // ひそひそ話は、日記には書かない(見返す場所は、別に考える)
+const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !== WHISPER).sort((a, b) => a.n - b.n); // おやすみ前は、日記には書かない(見返す場所は、別に考える)
 function diaryHead(day, small) {
   const d = parseYmd(day);
   const wd = d.getDay();
@@ -2230,7 +2230,7 @@ async function createCard(n, text, stockId, by, cat) {
 
 async function makeNextCard(n) {
   const prev = state.qcards.find((c) => c.n === n - 1);
-  // 明日がデートの日(=今日がデートの前日)なら、「ひそひそ話」を優先して出す。ほかの日は、ひそひそ話は出さない
+  // 明日がデートの日(=今日がデートの前日)なら、「おやすみ前」を優先して出す。ほかの日は、おやすみ前は出さない
   const tomorrow = keyOf(dayNum(ymd(new Date())) + 1);
   const whisperOk = state.events.some((e) => evType(e) === 'date' && e.date === tomorrow);
   const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by, whisperOk); // ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
@@ -2416,7 +2416,7 @@ function renderQuestion() {
 const fullDate = (key) => { const d = parseYmd(key); return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${WEEK[d.getDay()]})`; }; // 2026/10/24(土)
 function renderCards() {
   $$('#c-chips button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.f === state.cfilter)));
-  const cards = [...state.qcards].reverse().filter((c) => c.cat !== WHISPER).filter((c) => { // ひそひそ話は、ここには並べない(見返す場所は、別に考える)
+  const cards = [...state.qcards].reverse().filter((c) => c.cat !== WHISPER).filter((c) => { // おやすみ前は、ここには並べない(見返す場所は、別に考える)
     const st = cardStatus(c, state.qcards, state.answers);
     return state.cfilter === 'all' || st === state.cfilter || (state.cfilter === 'rest' && st === 'rest');
   });
@@ -2465,7 +2465,7 @@ function openStockSheet() {
   const list = h('ul', { class: 'stack', style: 'list-style:none;padding:0;margin:0' });
   let catFilter = 'all';
   let showUsed = false;
-  let shownId = null; // 長押しで、いま中身を見せている、ひそひそ話のid
+  let shownId = null; // 長押しで、いま中身を見せている、おやすみ前のid
   let shownAt = 0;
   let hideTimer = 0;
   const filterRow = h('div', { class: 'chips' });
@@ -2485,10 +2485,10 @@ function openStockSheet() {
       const isUsed = used.has(s.id);
       const del = s.from === myUid() && !isUsed ? h('button', { type: 'button' }, '削除') : null;
       if (del) del.addEventListener('click', () => state.store.removeStock(s.id).catch(() => {}));
-      if (s.cat === WHISPER && !isUsed) { // ひそひそ話は、出るまで、相手には中身を出さない(足した本人には、見える)
+      if (s.cat === WHISPER && !isUsed) { // おやすみ前は、出るまで、相手には中身を出さない(足した本人には、見える)
         if (s.from === myUid()) { // 自分が足したものは、長押しすると、10秒だけ中身が見える(のぞき見されても見えないように)
           const open = shownId === s.id;
-          const row = h('li', { class: `sitem lockrow mine${open ? ' open' : ''}`, 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), open ? s.text : 'ひそひそ話', h('small', { class: 'catname' }, open ? ' 相手には、デートの前日まで内緒(タップで隠す)' : ' 長押しで見る')), del);
+          const row = h('li', { class: `sitem lockrow mine${open ? ' open' : ''}`, 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), open ? s.text : '🩷 おやすみ前', h('small', { class: 'catname' }, open ? ' 相手には、デートの前日まで内緒(タップで隠す)' : ' 長押しで見る')), del);
           let hold = null;
           const stopHold = () => { clearTimeout(hold); hold = null; };
           row.addEventListener('pointerdown', (e) => {
@@ -2506,7 +2506,7 @@ function openStockSheet() {
           row.addEventListener('click', (e) => { if (e.target.closest('button') || shownId !== s.id || Date.now() - shownAt < 700) return; shownId = null; clearTimeout(hideTimer); fill(); });
           return row;
         }
-        return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), 'ひそひそ話', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
+        return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), '🩷 おやすみ前', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
       }
       return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
     };
@@ -2525,8 +2525,8 @@ function openStockSheet() {
   const bulk = h('textarea', { rows: '4', placeholder: 'まとめて追加(1行に1つ)', 'aria-label': 'まとめて追加' });
   const addBulk = h('button', { class: 'ghost sm', type: 'button' }, 'まとめて追加');
   const catSel = catSelect('足すお題のカテゴリ');
-  const whisperNote = h('p', { class: 'lead whisper-note', hidden: true }, 'ひそひそ話は、デートの前の日など、特別なタイミングで出題されます。それまで、相手には中身が見えません。');
-  catSel.addEventListener('change', () => { whisperNote.hidden = catSel.value !== WHISPER; }); // ひそひそ話を選んだときだけ、説明を出す
+  const whisperNote = h('p', { class: 'lead whisper-note', hidden: true }, '🩷 おやすみ前は、特別な夜に出題されます。それまで、相手には中身が見えません。');
+  catSel.addEventListener('change', () => { whisperNote.hidden = catSel.value !== WHISPER; }); // おやすみ前を選んだときだけ、説明を出す
   const push = async (texts) => {
     for (const t of texts) {
       await state.store.addStock(await C.encryptJson(state.key, 'stock', { text: t, at: Date.now(), ...(catSel.value ? { cat: catSel.value } : {}) }));
@@ -2536,11 +2536,11 @@ function openStockSheet() {
   const known = () => {
     const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
     return [
-      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id), secret: s.cat === WHISPER && !used.has(s.id) })), // ひそひそ話は、使うまで、知らせにも中身を出さない
+      ...state.stock.map((s) => ({ text: s.text, by: s.from, used: used.has(s.id), secret: s.cat === WHISPER && !used.has(s.id) })), // おやすみ前は、使うまで、知らせにも中身を出さない
       ...state.qcards.filter((c) => !c.stockId).map((c) => ({ text: c.text, by: c.by, used: true })),
     ];
   };
-  const simList = (items) => h('ul', { class: 'sim-list' }, items.map((m) => h('li', {}, m.secret ? 'ひそひそ話に、ほとんど同じお題があります' : `「${m.text}」`, m.secret ? null : h('small', {}, m.batch ? ' (いま入れた中の同じもの)' : ` ${nameOfUid(m.by)}が追加${m.used ? '・使用済み' : ''}`))));
+  const simList = (items) => h('ul', { class: 'sim-list' }, items.map((m) => h('li', {}, m.secret ? '🩷 おやすみ前に、ほとんど同じお題があります' : `「${m.text}」`, m.secret ? null : h('small', {}, m.batch ? ' (いま入れた中の同じもの)' : ` ${nameOfUid(m.by)}が追加${m.used ? '・使用済み' : ''}`))));
   const oneHint = h('div', { class: 'sim', hidden: true });
   const bulkHint = h('div', { class: 'sim', hidden: true });
   one.addEventListener('input', () => {
