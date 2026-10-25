@@ -735,6 +735,33 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.waitForFunction(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return (await C.decryptJson(key, 'events', e)).time === '07:45'; });
   check('詳細のシートで、時刻も直せる(アイコンは変わらない)', (await decLast()).kind === 'train');
   await page.click('.tab[data-v="cal"]');
+  // 旅券: 電車の予定の詳細に、乗換案内を貼ると、旅券になる
+  {
+    const t = new Date(); const dk = `${t.getFullYear()}年${t.getMonth() + 1}月${t.getDate()}日(土)`;
+    const trip = `甲府 → 宇都宮\n${dk} 16:39出発\n\n乗換回数：1回\n所要時間：3時間14分\n\n[出発] 甲府\n│ 16:39発(２番線)\n│ あずさ78号[指定席]\n│ 18:29着(７番線)\n[乗換] 新宿\n│ 18:33発(８番線)\n│ ＪＲ中央線\n│ 19:53着(１番線)\n[到着] 宇都宮`;
+    await page.locator('#cal-events .item', { hasText: '出張' }).locator('button', { hasText: '詳細' }).click();
+    await page.fill('#sheet textarea[aria-label="詳細"]', trip);
+    await page.click('#sheet form button[type=submit]');
+    await page.waitForSelector('#cal-events .tk-badge');
+    check('乗換案内を貼ると、予定に「旅券」の印が付き、文章は短い要約になる', (await page.textContent('#cal-events .evnote')).includes('甲府→宇都宮 16:39→19:53') && !(await page.textContent('#cal-events .evnote')).includes('乗換回数'));
+    await page.click('.tab[data-v="home"]');
+    await page.waitForSelector('#home-tickets .tkA');
+    check('その日のホームに、きっぷが出る(ふたりの予定)', (await page.textContent('#home-tickets')).includes('甲府') && (await page.textContent('#home-tickets')).includes('16:39'));
+    if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/tk-home.png` });
+    await page.click('#home-tickets .tkA');
+    await page.waitForSelector('#tk-pop:not([hidden]) .tkC');
+    if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/tk-full.png` });
+    check('きっぷをタップすると、全画面で路線図が出る(乗換駅つき)', (await page.textContent('#tk-pop')).includes('新宿') && (await page.locator('#tk-pop .tkseg').count()) === 2);
+    await page.click('#tk-pop .tkbar button');
+    check('もどるで、全画面が閉じる', await page.locator('#tk-pop').isHidden());
+    await page.click('.tab[data-v="cal"]');
+    await page.locator('#cal-events .item.has-ticket').click();
+    await page.waitForSelector('#tk-pop:not([hidden]) .tkC');
+    await page.locator('#tk-pop > button').click();
+    await page.waitForSelector('#sheet textarea[aria-label="詳細"]');
+    check('「詳細を見る・直す」で、元の文章を直せる', (await page.inputValue('#sheet textarea[aria-label="詳細"]')).includes('乗換回数'));
+    await page.click('#sheet-close');
+  }
   // 月のスワイプ
   const title0 = await page.textContent('#cal-title');
   const mb = await page.locator('#month').boundingBox();
@@ -743,12 +770,15 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.mouse.down();
   await page.mouse.move(cell.x - 90, cell.y + cell.height / 2 + 4, { steps: 8 });
   await page.mouse.up();
+  await page.waitForTimeout(350); // すべり込みが終わるのを待つ
   const title1 = await page.textContent('#cal-title');
   check('左へスワイプすると、次の月に進む(日付は選ばれない)', title1 !== title0 && (await page.textContent('#evb-sub')).length >= 0);
-  await page.mouse.move(cell.x + 4, cell.y + cell.height / 2);
+  const cell2 = await page.locator('#month button[data-key]').nth(15).boundingBox(); // 月が変わったので、はかり直す
+  await page.mouse.move(cell2.x + 4, cell2.y + cell2.height / 2);
   await page.mouse.down();
-  await page.mouse.move(cell.x + 120, cell.y + cell.height / 2 + 4, { steps: 8 });
+  await page.mouse.move(Math.min(cell2.x + 104, 384), cell2.y + cell2.height / 2 + 4, { steps: 8 });
   await page.mouse.up();
+  await page.waitForTimeout(350);
   check('右へスワイプすると、前の月に戻る', (await page.textContent('#cal-title')) === title0);
   // なぞって、連続する日を選ぶ
   const cells = page.locator('#month button[data-key]');
@@ -787,7 +817,7 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.click('#sheet form button[type=submit]');
   await page.waitForSelector('#cal-events .evnote');
   check('詳細を書くと、予定の下に出る(改行つき)', (await page.textContent('#cal-events .evnote')).includes('夕焼け'));
-  const evAfter = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const raw = window.__fake.ev; const all = []; for (const r of raw) all.push(await C.decryptJson(key, 'events', r)); return { n: raw.length, hasPlain: JSON.stringify(raw).includes('山中湖'), d: all.find((x) => x.note) }; });
+  const evAfter = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const raw = window.__fake.ev; const all = []; for (const r of raw) all.push(await C.decryptJson(key, 'events', r)); return { n: raw.length, hasPlain: JSON.stringify(raw).includes('山中湖'), d: all.find((x) => x.note && x.note.includes('夕焼け')) }; });
   check('詳細は暗号化され、予定は増えず、元の項目も残る', !evAfter.hasPlain && evAfter.d.title.includes('デート') && !!evAfter.d.who && !!evAfter.d.by);
   await page.click('.tab[data-v="home"]');
 }

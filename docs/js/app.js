@@ -14,6 +14,7 @@ import { dayKey4, analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, 
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
+import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
 import { firebaseConfig, isConfigured } from './config.js';
@@ -36,7 +37,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-71';
+const VERSION = '2026.10.25-72';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -202,6 +203,7 @@ function startRecording(view) {
 
 function lock() {
   closePatOverlay();
+  $('#tk-pop').hidden = true;
   state.otoPop = false; $('#oto-pop').hidden = true; // お祝いは、閉じずに離れたら、次に開いたときにまた出る
   state.sheetClose = null;
   settingsMore = false;
@@ -636,10 +638,16 @@ function eventMark(ev) {
   const kind = kindOf(ev);
   return h('span', { class: 'ev-mark' }, svgEl(kind === 'both' ? Ch.pair('heart') : Ch.bust(kind === 'me' ? myRole() : (myRole() === 'h' ? 'y' : 'h'), 30)));
 }
+// 電車の予定の詳細に、乗換案内が貼ってあれば、旅券にする(往路・復路のラベルは、日付の順)
+const tripOf = (ev) => (ev.kind === 'train' && ev.note ? parseTrip(ev.note) : []);
+const tripLabel = (routes, r) => (routes.length < 2 ? '乗車券' : routes.indexOf(r) === 0 ? '往路 乗車券' : routes.indexOf(r) === routes.length - 1 ? '復路 乗車券' : '乗車券');
 function eventItem(ev, withDelete) {
-  const li = h('li', { class: 'item' },
+  const trip = tripOf(ev);
+  const li = h('li', { class: `item${trip.length ? ' has-ticket' : ''}` },
     eventMark(ev),
-    h('div', { class: 't' }, ev.title, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}(${nightsLabel(ev.date, evEnd(ev))})` : ''}${ev.time ? ` ${ev.time}` : ''}`), ev.note ? h('span', { class: 'evnote' }, ev.note) : null));
+    h('div', { class: 't' }, ev.title, trip.length ? h('span', { class: 'tk-badge' }, '旅券') : null, h('small', {}, `${ev.date.slice(5).replace('-', '/')}${evEnd(ev) !== ev.date ? `〜${evEnd(ev).slice(5).replace('-', '/')}(${nightsLabel(ev.date, evEnd(ev))})` : ''}${ev.time ? ` ${ev.time}` : ''}`),
+      trip.length ? h('span', { class: 'evnote' }, trip.map((r) => `${r.from}→${r.to} ${r.dep}→${r.arr}`).join('\n')) : ev.note ? h('span', { class: 'evnote' }, ev.note) : null));
+  if (trip.length) li.addEventListener('click', (e) => { if (!e.target.closest('button')) openTicket(ev); });
   if (withDelete) {
     const more = h('button', { class: 'x more', type: 'button' }, '詳細');
     more.addEventListener('click', () => openEventNote(ev.id));
@@ -774,9 +782,38 @@ function buildCard() {
   });
 }
 
+function openTicket(ev) {
+  const trip = tripOf(ev);
+  if (!trip.length) return;
+  const pop = $('#tk-pop');
+  const close = () => { pop.hidden = true; pop.replaceChildren(); };
+  const x = h('button', { class: 'ghost', type: 'button' }, 'もどる');
+  x.addEventListener('click', close);
+  const edit = h('button', { class: 'ghost', type: 'button' }, '詳細を見る・直す');
+  edit.addEventListener('click', () => { close(); openEventNote(ev.id); });
+  pop.replaceChildren(h('div', { class: 'tkbar' }, h('b', {}, ev.title), x), ...trip.map((r) => ticketRoute(h, r, tripLabel(trip, r).replace(' 乗車券', ''))), edit);
+  pop.hidden = false;
+  pop.scrollTop = 0;
+}
+
+// ホームに、今日の旅券(ふたりで乗る電車の分だけ)
+function renderHomeTickets() {
+  const box = $('#home-tickets');
+  const list = ticketsOn(state.events, ymd(new Date()));
+  box.hidden = !list.length;
+  box.replaceChildren(...list.map(({ ev, route }) => {
+    const card = ticketCard(h, { route, label: tripLabel(parseTrip(ev.note), route) });
+    card.setAttribute('role', 'button'); card.tabIndex = 0;
+    card.addEventListener('click', () => openTicket(ev));
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTicket(ev); } });
+    return card;
+  }));
+}
+
 function renderHome() {
   $('#home-title').textContent = `${myName()} & ${partnerName()}`;
   renderCard();
+  renderHomeTickets();
   renderPatBanner();
   renderGuessBanner();
   renderBirthdayHome();
@@ -1685,7 +1722,7 @@ function openCardSheet() {
 // アプリのファイルをサーバーから取り直して、再読み込みする(ブラウザの一時保存を飛ばす)
 const SHELL_FILES = [
   'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'css/moon.css', 'css/shelf.css',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/config.js', 'js/store.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'css/moon.css', 'css/shelf.css', 'css/ticket.css',
 ];
 
 async function refreshApp(btn) {
