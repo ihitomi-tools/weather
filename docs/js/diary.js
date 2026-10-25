@@ -42,7 +42,7 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
   const tabs = h('div', { class: 'dtabs' });
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
   function show() {
-    stage.replaceChildren(pageEl(cur, 'top'));
+    stage.replaceChildren(pageEl(cur, 'cur'));
     pn.textContent = `${cur + 1} / ${keys.length}`;
     prev.disabled = cur === 0;
     next.disabled = cur === keys.length - 1;
@@ -55,7 +55,7 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
     busy = true;
     const old = stage.firstChild;
     const fwd = to > cur;
-    const np = pageEl(to, fwd ? 'under' : 'top flipback');
+    const np = pageEl(to, fwd ? 'under' : 'cur flipback');
     if (fwd) { stage.insertBefore(np, old); old.classList.add('flip'); } else stage.append(np);
     setTimeout(() => { cur = to; busy = false; show(); }, 560);
   }
@@ -67,7 +67,7 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
   let g = null;
   let moved = false;
   let raf = 0;
-  const topPage = () => stage.querySelector('.dpage.top');
+  const topPage = () => stage.querySelector('.dpage.cur');
   stage.addEventListener('pointerdown', (e) => {
     cancelAnimationFrame(raf);
     const pg = topPage();
@@ -122,7 +122,7 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
     key: () => keys[cur],
     // いまのページの中身が変わったとき(調子を書いた・予定が増えたなど)に、めくらず、その場で描き直す
     refreshPage() {
-      const top = stage.querySelector('.dpage.top');
+      const top = stage.querySelector('.dpage.cur');
       if (!top || busy) return;
       const tmp = h('div', {});
       tmp.append(...renderPage(keys[cur]));
