@@ -945,6 +945,22 @@ check('ページに、予定(出張)・この日の調子が出る', (await page
 const dTotal = Number((await page.textContent('.dpn')).split('/')[1]);
 check('何かが入っている日だけが、ページになる(2ページ以上)', dTotal >= 2 && (await page.locator('.dtabs button').count()) >= 1);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-real.png` });
+// 指の動き(タッチ)。斜めの動きでも、横が強ければめくれる。たての動きは、ページのスクロール
+const swipe = (dx, dy) => page.evaluate(async ([dx, dy]) => {
+  const st = document.querySelector('.dstage'); const r = st.getBoundingClientRect();
+  const x = r.left + r.width / 2; const y = r.top + r.height / 2;
+  const fire = (t, ox, oy) => st.dispatchEvent(new PointerEvent(t, { bubbles: true, clientX: x + ox, clientY: y + oy, pointerType: 'touch', pointerId: 5, isPrimary: true }));
+  fire('pointerdown', 0, 0);
+  for (let i = 1; i <= 8; i += 1) { fire('pointermove', (dx * i) / 8, (dy * i) / 8); await new Promise((r2) => setTimeout(r2, 12)); }
+  fire('pointerup', dx, dy);
+}, [dx, dy]);
+const dn0 = await page.textContent('.dpn');
+await swipe(90, 55); // 斜め(横のほうが強い)。いちばん新しいページから、前の日へ
+await page.waitForTimeout(800);
+check('斜めのスワイプでも、めくれる', (await page.textContent('.dpn')) !== dn0 || dTotal === 1);
+await swipe(-90, 20);
+await page.waitForTimeout(800);
+check('左へのスワイプで、また次の日(新しいほう)に戻る', (await page.textContent('.dpn')) === dn0);
 await page.click('.dnav button:first-child');
 await page.waitForTimeout(250);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-real-mid.png` });

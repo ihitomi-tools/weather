@@ -5,8 +5,8 @@
 .dwrap { margin: 0 18px 24px; }
 .dbook { position: relative; background: var(--dy-cover); border-radius: 10px 18px 18px 10px; padding: 8px 8px 8px 16px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); }
 .dbook::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: linear-gradient(90deg, rgba(0, 0, 0, .35), rgba(0, 0, 0, 0)); border-radius: 10px 0 0 10px; pointer-events: none; }
-.dstage { position: relative; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
-.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: repeating-linear-gradient(transparent 0 27px, var(--dy-rule) 27px 28px); background-position: 0 8px; transform-origin: left center; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); touch-action: pan-y; }
+.dstage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; perspective: 1400px; height: clamp(380px, calc(100dvh - 340px), 640px); }
+.dpage { position: absolute; inset: 0; background: var(--dy-paper); color: var(--fg); border-radius: 6px 14px 14px 6px; padding: 14px 30px 12px 24px; overflow-y: auto; background-image: repeating-linear-gradient(transparent 0 27px, var(--dy-rule) 27px 28px); background-position: 0 8px; transform-origin: left center; backface-visibility: hidden; box-shadow: inset 8px 0 10px -8px rgba(0, 0, 0, .25); }
 .dpage::before { content: ""; position: absolute; left: 14px; top: 0; bottom: 0; width: 1.5px; background: var(--dy-margin); opacity: .7; }
 .dpage.under { z-index: 1; }
 .dpage.top { z-index: 2; }

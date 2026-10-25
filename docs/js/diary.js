@@ -62,17 +62,53 @@ export function createBook({ h, keys, start, renderPage, onTurn, reduce = false 
   prev.addEventListener('click', () => go(cur - 1));
   next.addEventListener('click', () => go(cur + 1));
   ribbon.addEventListener('click', () => go(keys.length - 1));
-  let x0 = null;
-  let y0 = null;
-  stage.addEventListener('pointerdown', (e) => { if (e.target.closest('button, a, input, textarea')) { x0 = null; return; } x0 = e.clientX; y0 = e.clientY; });
-  stage.addEventListener('pointerup', (e) => {
-    if (x0 == null) return;
-    const dx = e.clientX - x0;
-    const dy = e.clientY - y0;
-    x0 = null;
-    if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? cur + 1 : cur - 1);
+  // 指の動き: 斜めでも、横が少しでも強ければ「めくる」。たて向きは、自分でページをスクロールする
+  // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
+  let g = null;
+  let moved = false;
+  let raf = 0;
+  const topPage = () => stage.querySelector('.dpage.top');
+  stage.addEventListener('pointerdown', (e) => {
+    cancelAnimationFrame(raf);
+    const pg = topPage();
+    g = { x: e.clientX, y: e.clientY, axis: '', sc: pg ? pg.scrollTop : 0, last: e.clientY, lt: e.timeStamp, v: 0 };
+    moved = false;
   });
-  stage.addEventListener('pointercancel', () => { x0 = null; });
+  stage.addEventListener('pointermove', (e) => {
+    if (!g) return;
+    const dx = e.clientX - g.x;
+    const dy = e.clientY - g.y;
+    if (!g.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      g.axis = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'x' : 'y'; // 横を、少し優先する
+      moved = true;
+    }
+    if (g.axis === 'y') {
+      const pg = topPage();
+      if (pg) pg.scrollTop = g.sc - dy;
+      const dt = e.timeStamp - g.lt;
+      if (dt > 0) g.v = (g.last - e.clientY) / dt; // 上へ動くほど、プラス(px/ms)
+      g.last = e.clientY; g.lt = e.timeStamp;
+    }
+  });
+  const endGesture = (e) => {
+    if (!g) return;
+    const gg = g;
+    g = null;
+    if (!gg.axis) return;
+    if (gg.axis === 'x') {
+      const dx = e.clientX - gg.x;
+      if (Math.abs(dx) > 40) go(dx < 0 ? cur + 1 : cur - 1);
+      return;
+    }
+    const pg = topPage();
+    let v = gg.v * 16; // 1コマ(16ms)あたりのpx。指を離したあと、少しすべる
+    const step = () => { if (!pg || Math.abs(v) < 0.5) return; pg.scrollTop += v; v *= 0.94; raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+  };
+  stage.addEventListener('pointerup', endGesture);
+  stage.addEventListener('pointercancel', () => { g = null; });
+  stage.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // 動かしたあとの、おまけのタップは無視
   monthTabs(keys).forEach(({ ym, index }) => {
     const b = h('button', { type: 'button', 'data-m': ym }, `${Number(ym.slice(5))}月`);
     b.addEventListener('click', () => go(index));
