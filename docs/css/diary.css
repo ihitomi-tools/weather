@@ -105,11 +105,35 @@
 .dspread { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
 .dsheet.right { border-left: 1.5px solid rgba(0, 0, 0, .18); padding-left: 20px; box-shadow: inset 10px 0 12px -10px rgba(0, 0, 0, .25); }
 .ddate.small .d { font-size: 28px; }
-.dsticky { position: relative; display: block; width: 100%; text-align: left; border: 0; margin: 14px 0 12px; padding: 16px 16px 12px; background: #fff1a8; color: #3a3228; font: inherit; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 19px; line-height: 1.5; transform: rotate(-1.2deg); box-shadow: 2px 3px 6px rgba(0, 0, 0, .22); border-radius: 2px 2px 14px 2px; cursor: pointer; }
-.dsticky .tape { position: absolute; top: -9px; left: 50%; width: 64px; height: 18px; margin-left: -32px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(0, 0, 0, .06); transform: rotate(2deg); }
-.dsticky small { display: block; margin-top: 6px; font-size: 12px; color: #7a6a40; font-weight: 700; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dsticky { background: #4a4478; color: #f5f6ff; } :root:not([data-theme="light"]) .dsticky small { color: #cdd2ee; } :root:not([data-theme="light"]) .dnote, :root:not([data-theme="light"]) .dnote-in { color: #f5f6ff; } :root:not([data-theme="light"]) .dnote.empty { color: #9a9ab8; } }
-:root[data-theme="dark"] .dsticky { background: #4a4478; color: #f5f6ff; } :root[data-theme="dark"] .dsticky small { color: #cdd2ee; } :root[data-theme="dark"] .dnote, :root[data-theme="dark"] .dnote-in { color: #f5f6ff; } :root[data-theme="dark"] .dnote.empty { color: #9a9ab8; }
+.dsticky { position: relative; display: block; width: 100%; text-align: left; border: 0; margin: 14px 0 12px; padding: 16px 16px 12px; background: var(--st, #fff1a8); color: var(--st-fg, #3a3228); font: inherit; font-family: 'Klee One', 'M PLUS Rounded 1c', sans-serif; font-weight: 600; font-size: 19px; line-height: 1.5; transform: rotate(-1.2deg); box-shadow: 2px 3px 6px rgba(0, 0, 0, .22); border-radius: 2px 2px 14px 2px; cursor: pointer; }
+.dsticky .tape { position: absolute; top: -10px; left: 50%; width: 70px; height: 20px; margin-left: -35px; background: var(--tp, repeating-linear-gradient(135deg, #ffd76a 0 6px, #fff0b8 6px 12px)); border: 1px solid rgba(0, 0, 0, .06); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); transform: rotate(2deg); opacity: .88; }
+.dsticky small { display: block; margin-top: 5px; font-size: 12px; color: var(--st-sub, rgba(58, 50, 40, .65)); font-weight: 700; }
+/* カテゴリごとの色(付せん)と、マスキングテープの柄 */
+.dsticky.c-fav { --st: #fff1a8; --tp: repeating-linear-gradient(135deg, #ffd76a 0 6px, #fff0b8 6px 12px); }
+.dsticky.c-mem { --st: #ffd9e4; --tp: radial-gradient(circle, #ff9cc4 2px, transparent 2.4px) 0 0 / 10px 10px, #ffe6ee; }
+.dsticky.c-dream { --st: #e6dcff; --tp: repeating-linear-gradient(90deg, #b9a3f5 0 5px, #e8dfff 5px 10px); }
+.dsticky.c-daily { --st: #d6f3e6; --tp: repeating-linear-gradient(0deg, #7fd6b4 0 4px, #d8f5ea 4px 8px); }
+.dsticky.c-us { --st: #ffe2c6; --tp: repeating-linear-gradient(45deg, #ffb273 0 6px, #ffe6d0 6px 12px); }
+.dsticky.c-if { --st: #d8ecff; --tp: radial-gradient(circle, #7fb8f0 2px, transparent 2.4px) 0 0 / 10px 10px, #e4f2ff; }
+.dsticky.c-work { --st: #e2edd2; --tp: repeating-linear-gradient(90deg, #9cc17a 0 6px, #e6f1d8 6px 12px); }
+.dsticky.c-none { --st: #fff6e0; --tp: repeating-linear-gradient(135deg, #d9c9a8 0 6px, #f3ead6 6px 12px); }
+/* 答え: 名前は書かず、答えごと、その人の色の蛍光ペン */
+.dpage .ans:not(.wait) { background: none; box-shadow: none; border-radius: 0; padding: 0 2px; margin: 8px 0; font-family: 'Klee One', 'M PLUS Rounded 1c', 'BIZ UDPGothic', sans-serif; font-size: 18px; font-weight: 600; line-height: 31px; color: #3a3228; }
+.dpage .ans small { display: none; }
+.dpage .ans .mk { padding: 0 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.dpage .ans.me .mk { background: linear-gradient(transparent 52%, #ffb8d4 52%, #ffb8d4 92%, transparent 92%); }
+.dpage .ans.you .mk { background: linear-gradient(transparent 52%, #9be8cc 52%, #9be8cc 92%, transparent 92%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --dkst: 1; }
+  :root:not([data-theme="light"]) .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
+  :root:not([data-theme="light"]) .dsticky.c-fav { --st: #6b6030; } :root:not([data-theme="light"]) .dsticky.c-mem { --st: #6e4458; } :root:not([data-theme="light"]) .dsticky.c-dream { --st: #50467e; } :root:not([data-theme="light"]) .dsticky.c-daily { --st: #3f6a5a; } :root:not([data-theme="light"]) .dsticky.c-us { --st: #7a5a40; } :root:not([data-theme="light"]) .dsticky.c-if { --st: #3f5f80; } :root:not([data-theme="light"]) .dsticky.c-work { --st: #566a40; } :root:not([data-theme="light"]) .dsticky.c-none { --st: #4a4478; }
+  :root:not([data-theme="light"]) .dpage .ans:not(.wait) { color: #f5f6ff; }
+  :root:not([data-theme="light"]) .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
+  :root:not([data-theme="light"]) .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); } }
+:root[data-theme="dark"] .dsticky { --st-fg: #f5f6ff; --st-sub: #cdd2ee; }
+:root[data-theme="dark"] .dsticky.c-fav { --st: #6b6030; } :root[data-theme="dark"] .dsticky.c-mem { --st: #6e4458; } :root[data-theme="dark"] .dsticky.c-dream { --st: #50467e; } :root[data-theme="dark"] .dsticky.c-daily { --st: #3f6a5a; } :root[data-theme="dark"] .dsticky.c-us { --st: #7a5a40; } :root[data-theme="dark"] .dsticky.c-if { --st: #3f5f80; } :root[data-theme="dark"] .dsticky.c-work { --st: #566a40; } :root[data-theme="dark"] .dsticky.c-none { --st: #4a4478; }
+:root[data-theme="dark"] .dpage .ans:not(.wait) { color: #f5f6ff; }
+:root[data-theme="dark"] .dpage .ans.me .mk { background: linear-gradient(transparent 52%, rgba(255, 127, 176, .6) 52%, rgba(255, 127, 176, .6) 92%, transparent 92%); }
+:root[data-theme="dark"] .dpage .ans.you .mk { background: linear-gradient(transparent 52%, rgba(98, 230, 192, .5) 52%, rgba(98, 230, 192, .5) 92%, transparent 92%); }
 /* お題のページは、ドット方眼 */
 .dpage:has(.dsticky) { background-image: radial-gradient(circle, var(--dy-rule) 1.2px, transparent 1.4px); background-size: 22px 22px; background-position: 0 8px; }
 .dpage:has(.dsticky)::before { display: none; }

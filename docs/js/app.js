@@ -1906,13 +1906,22 @@ function diaryEvents(day) {
   return nodes;
 }
 // 右のページ: その日のお題(おまけ)。付せんにお題、答えはふきだし
+// 答えは、名前を書かず、答えごと、その人の色の蛍光ペンで線を引く(ひとみ=ピンク、かずゆき=ミント)
+function markAnswers(nodes) {
+  nodes.forEach((el) => {
+    if (!el.classList || !el.classList.contains('ans') || el.classList.contains('wait')) return;
+    const text = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('');
+    el.replaceChildren(h('span', { class: 'mk' }, text));
+  });
+  return nodes;
+}
 function diaryCardPage(day) {
   const nodes = [diaryHead(day, true)];
   diaryCards(day).forEach((c) => {
     const st = cardStatus(c, state.qcards, state.answers);
-    const q = h('button', { class: 'dsticky', type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
+    const q = h('button', { class: `dsticky c-${c.cat || 'none'}`, type: 'button' }, h('i', { class: 'tape' }), h('span', {}, c.text), h('small', {}, `第${c.n}問${c.cat ? ` ・ ${catLabel(c.cat)}` : ''}${st === 'rest' ? ' ・ お休み' : ''}`));
     q.addEventListener('click', () => openQCardSheet(c.n));
-    nodes.push(q, ...answersBlock(c.n));
+    nodes.push(q, ...markAnswers(answersBlock(c.n)));
   });
   return nodes;
 }

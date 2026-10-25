@@ -988,6 +988,8 @@ await page.waitForTimeout(800);
 await page.click('.dnav button:last-child');
 await page.waitForTimeout(800);
 check('できごとの次は、お題のページ(付せんにお題・ふたりの答え)', (await page.locator('.dpage.cur .dsticky').count()) === 1 && (await page.locator('.dpage.cur .ans').count()) === 2);
+check('答えは、名前なしで、答えごとに蛍光ペン(その人の色)', (await page.locator('.dpage.cur .ans .mk').count()) === 2 && (await page.locator('.dpage.cur .ans.me .mk, .dpage.cur .ans.you .mk').count()) === 2 && (await page.locator('.dpage.cur .ans small').evaluateAll((els) => els.every((e) => getComputedStyle(e).display === 'none'))));
+check('付せんは、カテゴリの色の目印(c-…)がつく', /\bc-[a-z]+\b/.test(await page.getAttribute('.dpage.cur .dsticky', 'class')));
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-card.png` });
 await page.click('.dribbon');
 await page.waitForTimeout(800);
