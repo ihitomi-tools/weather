@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-105';
+const VERSION = '2026.10.26-106';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2099,6 +2099,7 @@ function diaryCover(onOpen, months = [], onPick = () => {}) {
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
   return el;
 }
+let diaryDay = '';
 function renderDiary() {
   const days = diaryKeyList();
   const box = $('#more-oto');
@@ -2107,11 +2108,10 @@ function renderDiary() {
   const sig = JSON.stringify(keys);
   if (!diaryBook || sig !== diarySig) {
     diarySig = sig;
-    const bm = LS.get(K.diaryAt);
-    const at = bm ? keys.indexOf(dayOfPage(bm)) : -1;
+    const at = diaryDay ? keys.indexOf(diaryDay) : -1; // アプリを開いている間だけ、いま見ている日を覚える(開きなおすと、いちばん新しい日から)
     const home = keys.length - 1; // いちばん新しい日(しおりのひもで戻る先)
     const start = at >= 0 ? at : home;
-    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onPage: diaryOnPage, onTurn: (k) => LS.set(K.diaryAt, k), reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onPage: diaryOnPage, onTurn: (k) => { diaryDay = dayOfPage(k); }, reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
     box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ページ`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
     const bk = diaryBook;
     function mountCover() {
