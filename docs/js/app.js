@@ -16,6 +16,7 @@ import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
 import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
+import { annivSticker } from './anniv.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -39,7 +40,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-114';
+const VERSION = '2026.10.26-115';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2121,7 +2122,10 @@ function diaryOnPage(el, stage, key) {
 function diaryPageNodes(key) {
   const day = dayOfPage(key);
   const fresh = diaryIsNew(day) ? [h('span', { class: 'dnew-tag', 'aria-label': '新着' }, 'NEW')] : [];
-  return [...fresh, ...diaryEvents(day), ...diaryCardPage(day)];
+  const nodes = diaryEvents(day);
+  const sk = annivSticker(day); // 記念日の絵は、日付の見出しの、すぐ下に貼る
+  if (sk) nodes.splice(1, 0, h('img', { class: 'dsticker', src: sk, alt: '記念日のステッカー', draggable: 'false' }));
+  return [...fresh, ...nodes, ...diaryCardPage(day)];
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen, months = [], onPick = () => {}, fresh = { ym: new Set(), count: 0, go: () => {} }) {
