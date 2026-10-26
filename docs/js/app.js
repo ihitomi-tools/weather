@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-107';
+const VERSION = '2026.10.26-108';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1867,7 +1867,57 @@ const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !
 function diaryHead(day) {
   const d = parseYmd(day);
   const wd = d.getDay();
-  return h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}` }, h('span', { class: 'd' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('span', { class: 'w' }, `(${WEEK[wd]})`));
+  const el = h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}`, role: 'button', tabindex: '0', 'aria-label': '日付をえらんでジャンプ' }, h('span', { class: 'd' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('span', { class: 'w' }, `(${WEEK[wd]})`), h('span', { class: 'caret', 'aria-hidden': 'true' }, '▾'));
+  const go = () => { if (!el.closest('.insheet')) openDiaryCal(day); };
+  el.addEventListener('click', go);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  return el;
+}
+// 日付をえらぶカレンダー(下から出るシート)。書いた日は色の点(ひとみ=ピンク / ゆうき=ミント)、新着は赤い丸。えらぶと、その日のページへ
+function openDiaryCal(curDay) {
+  if (!diaryBook) return;
+  const keys = diaryKeyList();
+  if (!keys.length) return;
+  const set = new Set(keys);
+  const first = keys[0].slice(0, 7);
+  const last = keys[keys.length - 1].slice(0, 7);
+  let ym = curDay.slice(0, 7);
+  const body = h('div', { class: 'dcal' });
+  const jumpTo = (day) => { closeSheet(); const i = keys.indexOf(day); if (i >= 0) diaryBook.jump(i); };
+  const render = () => {
+    const [Y, M] = ym.split('-').map(Number);
+    const fresh = new Set(diaryNewDays(keys));
+    const prev = h('button', { class: 'ar', type: 'button', 'aria-label': 'まえの月', disabled: ym <= first }, '‹');
+    const next = h('button', { class: 'ar', type: 'button', 'aria-label': 'つぎの月', disabled: ym >= last }, '›');
+    const step = (n) => { const d = new Date(Y, M - 1 + n, 1); ym = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; render(); };
+    prev.addEventListener('click', () => step(-1));
+    next.addEventListener('click', () => step(1));
+    const wk = h('div', { class: 'wk' }, ...[...WEEK].map((w, i) => h('span', { class: i === 0 ? 'u' : i === 6 ? 's' : '' }, w)));
+    const grid = h('div', { class: 'gr' });
+    const lead = new Date(Y, M - 1, 1).getDay();
+    for (let i = 0; i < lead; i += 1) grid.append(h('div', { class: 'blank' }));
+    const todayKey = ymd(new Date());
+    const dim = new Date(Y, M, 0).getDate();
+    for (let d = 1; d <= dim; d += 1) {
+      const day = `${ym}-${pad(d)}`;
+      const ok = set.has(day);
+      const who = peopleOf().filter((u) => { const r = recsOf(u).get(day); return r && hasDiaryRec(r); }).map((u) => h('u', { class: roleOf(u) === 'h' ? 'p' : 'm' }));
+      const cls = ['cell', ok ? 'has' : 'off', day === curDay ? 'cur' : '', day === todayKey ? 'today' : '', fresh.has(day) ? 'nw' : ''].filter(Boolean).join(' ');
+      const c = h(ok ? 'button' : 'div', { class: cls, ...(ok ? { type: 'button', 'aria-label': `${M}月${d}日${fresh.has(day) ? '(新着)' : ''}` } : {}) }, String(d), h('i', {}, ...who));
+      if (ok) c.addEventListener('click', () => jumpTo(day));
+      grid.append(c);
+    }
+    const nd = [...fresh];
+    const legend = h('div', { class: 'lg' }, h('span', {}, h('u', { class: 'p' }), 'ひとみ'), h('span', {}, h('u', { class: 'm' }), 'ゆうき'), h('span', {}, h('u', { class: 'n' }), '新着'));
+    const foot = h('div', { class: 'foot' });
+    if (nd.length) { const b = h('button', { class: 'b1', type: 'button' }, `新着へ ${nd.length}ページ ›`); b.addEventListener('click', () => jumpTo(nd[0])); foot.append(b); }
+    const t = h('button', { class: 'b2', type: 'button' }, '今日へ');
+    t.addEventListener('click', () => jumpTo(keys[keys.length - 1]));
+    foot.append(t);
+    body.replaceChildren(h('div', { class: 'mh' }, prev, h('b', {}, `${Y}年 ${M}月`), next), wk, grid, legend, foot);
+  };
+  render();
+  openSheet(body);
 }
 // 左のページ: できごと(予定・ふたりの調子とタグ・書き込み欄)
 // 調子の電池(5段階。ふつうなら3つ点灯)。色は、持ち主の色(CSSの currentColor)
