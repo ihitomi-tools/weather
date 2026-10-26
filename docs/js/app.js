@@ -15,7 +15,7 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, dayOfPage, monthTabs, createBook } from './diary.js';
+import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-110';
+const VERSION = '2026.10.26-112';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1867,7 +1867,8 @@ const diaryCards = (day) => state.qcards.filter((c) => c.date === day && c.cat !
 function diaryHead(day) {
   const d = parseYmd(day);
   const wd = d.getDay();
-  const el = h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}`, role: 'button', tabindex: '0', 'aria-label': '日付をえらんでジャンプ' }, h('span', { class: 'd' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('span', { class: 'w' }, `(${WEEK[wd]})`), h('span', { class: 'caret', 'aria-hidden': 'true' }, '▾'));
+  const el = h('div', { class: `ddate${wd === 6 ? ' sat' : wd === 0 ? ' sun' : ''}`, role: 'button', tabindex: '0', 'aria-label': '日付をえらんでジャンプ' }, h('span', { class: 'd' }, `${d.getMonth() + 1}月${d.getDate()}日`), h('span', { class: 'w' }, `(${WEEK[wd]})`), h('span', { class: 'dcalbtn', 'aria-hidden': 'true' }));
+  el.querySelector('.dcalbtn').innerHTML = CAL_ICON;
   const go = () => { if (!el.closest('.insheet')) openDiaryCal(day); };
   el.addEventListener('click', go);
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
@@ -2200,7 +2201,7 @@ function renderDiary() {
     const at = diaryDay ? keys.indexOf(diaryDay) : -1; // アプリを開いている間だけ、いま見ている日を覚える(開きなおすと、いちばん新しい日から)
     const home = keys.length - 1; // いちばん新しい日(しおりのひもで戻る先)
     const start = at >= 0 ? at : home;
-    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onPage: diaryOnPage, onTurn: (k) => { diaryDay = dayOfPage(k); }, reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
+    diaryBook = createBook({ h, keys, start, home, renderPage: diaryPageNodes, onPage: diaryOnPage, onJump: (k) => openDiaryCal(dayOfPage(k)), onTurn: (k) => { diaryDay = dayOfPage(k); }, reduce: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches });
     box.replaceChildren(h('div', { class: 'oto-top' }, h('h2', {}, '日記帳'), h('small', {}, `${keys.length} ページ`)), diaryBook.root, h('p', { class: 'dhint' }, '左右にスワイプしても、めくれます'));
     const bk = diaryBook;
     function mountCover() {

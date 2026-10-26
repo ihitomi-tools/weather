@@ -2,6 +2,10 @@
 
 const pad = (n) => String(n).padStart(2, '0');
 const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// カレンダーのマーク(日付のボタンとページ番号で、おそろい)
+export const CAL_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><circle cx="8.5" cy="14.5" r=".9" fill="currentColor"/><circle cx="12" cy="14.5" r=".9" fill="currentColor"/><circle cx="15.5" cy="14.5" r=".9" fill="currentColor"/></svg>';
+// しおりのひも。夜空色のリボンに、金の点と、ぶらさがる金の星
+const RIBBON_SVG = '<svg viewBox="0 0 22 74" width="22" height="74" aria-hidden="true"><rect x="4" y="0" width="14" height="40" fill="#2b2f5e"/><rect x="4" y="0" width="2.5" height="40" fill="#171a40" opacity=".55"/><circle cx="11" cy="9" r="1.1" fill="#f3d77a"/><circle cx="11" cy="19" r="1.1" fill="#f3d77a"/><circle cx="11" cy="29" r="1.1" fill="#f3d77a"/><path d="M11 40V47" stroke="#c79a3a" stroke-width="1.2"/><path transform="translate(11 58) scale(.95)" d="M0 -10 L2.9 -3.4 L10 -3 L4.5 1.6 L6.2 8.5 L0 4.8 L-6.2 8.5 L-4.5 1.6 L-10 -3 L-2.9 -3.4Z" fill="#f3d77a" stroke="#c79a3a" stroke-width="1.2" stroke-linejoin="round"/></svg>';
 const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 
 // cards: [{ date }] / recKeys: 調子・メモが入っている日のキー / events: [{ date, end? }] / todayKey: 今日まで(未来は出さない) / from: この日より前は出さない(日記帳の始まり)
@@ -37,19 +41,23 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onPage, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onPage, onJump, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
   const pageEl = (i, cls) => { const el = h('div', { class: `dpage ${cls}` }); el.append(...renderPage(keys[i])); return el; };
-  const pn = h('span', { class: 'dpn' });
+  // ページ番号。onJump があれば、押せるボタン(カレンダーのマーク + 番号)にする
+  const pnTxt = h('span', {});
+  const pn = onJump ? h('button', { class: 'dpn btn', type: 'button', 'aria-label': '日付をえらんでジャンプ' }, pnTxt) : h('span', { class: 'dpn' }, pnTxt);
+  if (onJump) { pn.insertAdjacentHTML('afterbegin', CAL_ICON); pn.addEventListener('click', () => onJump(keys[cur])); }
   const prev = h('button', { type: 'button' }, '‹ 前の日');
   const next = h('button', { type: 'button' }, '次の日 ›');
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
+  ribbon.innerHTML = RIBBON_SVG;
   function show() {
     stage.replaceChildren(pageEl(cur, 'cur'));
     if (onPage) requestAnimationFrame(() => onPage(stage.querySelector('.dpage.cur'), stage, keys[cur]));
-    pn.textContent = `${cur + 1} / ${keys.length}`;
+    pnTxt.textContent = `${cur + 1} / ${keys.length}`;
     prev.disabled = cur === 0;
     next.disabled = cur === keys.length - 1;
     if (onTurn) onTurn(keys[cur]);
