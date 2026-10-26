@@ -227,3 +227,8 @@
 .ans-mine { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .ans-edit { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; text-decoration: underline; padding: 2px 6px; cursor: pointer; }
 .ans-btns { display: flex; gap: 8px; }
+
+/* ひとこと → 日記へ、うつすボタン */
+.dmove { border: 1.5px solid #e58aae; background: #fff1f6; color: #7a3a52; font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 4px 12px; margin-left: auto; cursor: pointer; }
+.dmove:disabled { opacity: .5; }
+.dmove-note { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-top: 2px; }

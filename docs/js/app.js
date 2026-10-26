@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.25-104';
+const VERSION = '2026.10.26-105';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1961,7 +1961,26 @@ function diaryEvents(day) {
     ta.value = init;
     const save = h('button', { class: 'dsave', type: 'button' }, '書いた');
     const cancel = h('button', { class: 'dcancel', type: 'button' }, 'やめる');
+    const err = h('p', { class: 'error', role: 'alert' });
     cancel.addEventListener('click', () => { editing = ''; render(); });
+    // ひとこと → 日記へ、うつす(日記に、すでに文章があれば、その下に足す)。ひとことの欄は、空になる
+    const move = kind === 'm' ? h('button', { class: 'dmove', type: 'button' }, '日記にうつす') : null;
+    if (move) {
+      move.addEventListener('click', async () => {
+        const text = ta.value.trim();
+        if (!text) return;
+        const prev = myRecs().get(day);
+        const cur = diaryTextOf(prev);
+        const merged = cur ? `${cur}\n${text}` : text;
+        if (merged.length > DIARY_MAX) { err.textContent = `日記が${DIARY_MAX}字をこえるので、うつせません。`; return; }
+        move.disabled = true;
+        save.disabled = true;
+        const next = { p: !!(prev && prev.p), l: (prev && prev.l) || 0, t: (prev && prev.t) || [], m: '', dm: merged, dmt: (prev && prev.dm && prev.dmt) || Date.now() };
+        try { await writeDays([{ date: day, rec: stampRec(prev, next) }]); } catch (e) { move.disabled = false; save.disabled = false; err.textContent = SAVE_ERROR; return; }
+        editing = '';
+        render();
+      });
+    }
     save.addEventListener('click', async () => {
       save.disabled = true;
       const prev = myRecs().get(day);
@@ -1974,7 +1993,7 @@ function diaryEvents(day) {
       editing = '';
       render();
     });
-    return h('div', { class: 'dedit' }, ta, h('div', { class: 'dbtns' }, save, cancel));
+    return h('div', { class: 'dedit' }, ta, h('div', { class: 'dbtns' }, save, cancel, ...(move ? [move] : [])), ...(move ? [h('small', { class: 'dmove-note' }, 'うつすと、カレンダーのひとことメモからは、なくなります')] : []), err);
   };
   const tappable = (el, kind) => {
     const go = () => { editing = kind; render(); };
