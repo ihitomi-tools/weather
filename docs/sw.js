@@ -1,8 +1,8 @@
 // 画面のファイルだけを保存する。通信(天気・Firebase)には触れない。
-const CACHE = 'shell-v104';
+const CACHE = 'shell-v105';
 const FILES = [
   './', 'index.html', 'css/style.css', 'css/moon.css', 'css/shelf.css', 'css/ticket.css', 'css/diary.css', 'manifest.webmanifest',
-  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/anniv.js', 'img/anniv/2026-10-26.webp', 'js/room.js', 'js/config.js', 'js/store.js',
+  'js/app.js', 'js/crypto.js', 'js/cities.js', 'js/weather.js', 'js/emoji.js', 'js/cycle.js', 'js/card.js', 'js/share.js', 'js/qa.js', 'js/dates.js', 'js/export.js', 'js/news.js', 'js/moon.js', 'js/moonlogic.js', 'js/demo-boot.js', 'js/chara.js', 'js/similar.js', 'js/hitorigoto.js', 'js/shelf.js', 'js/ticket.js', 'js/diary.js', 'js/anniv.js', 'img/anniv/2026-10-27.webp', 'js/room.js', 'js/config.js', 'js/store.js',
   'img/leather.webp', 'img/moon1.webp', 'img/moon2.webp', 'img/moon3.webp', 'img/moon4.webp', 'img/moon5.webp', 'img/room/n1.webp', 'img/room/n2.webp', 'img/room/n3.webp', 'img/room/n4.webp', 'img/room/d2.webp', 'img/room/d3.webp', 'img/room/d4.webp', 'img/room/d5.webp', 'img/room/book.webp', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-180.png', 'icons/icon-maskable-192.png', 'icons/icon-maskable-512.png', 'robots.txt',
 ];
 
