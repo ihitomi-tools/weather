@@ -41,25 +41,19 @@ export function startIndex(keys, bookmark) {
 }
 
 // 本。renderPage(key) が、ページの中身(ノード)を返す。めくる動きは、ページが左のとじ目を軸にめくれる
-export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onPage, onJump, reduce = false }) {
+export function createBook({ h, keys, start, home = keys.length - 1, renderPage, onTurn, onPage, reduce = false }) {
   let cur = start;
   let busy = false;
   const stage = h('div', { class: 'dstage' });
   const pageEl = (i, cls) => { const el = h('div', { class: `dpage ${cls}` }); el.append(...renderPage(keys[i])); return el; };
-  // ページ番号。onJump があれば、押せるボタン(カレンダーのマーク + 番号)にする
-  const pnTxt = h('span', {});
-  const pn = onJump ? h('button', { class: 'dpn btn', type: 'button', 'aria-label': '日付をえらんでジャンプ' }, pnTxt) : h('span', { class: 'dpn' }, pnTxt);
-  if (onJump) { pn.insertAdjacentHTML('afterbegin', CAL_ICON); pn.addEventListener('click', () => onJump(keys[cur])); }
-  const prev = h('button', { type: 'button' }, '‹ 前の日');
-  const next = h('button', { type: 'button' }, '次の日 ›');
+  // 「いま何ページ目か」。画面には出さず(めくるのは、スワイプ・しおり・日付のカレンダー)、読み上げとテストのためだけに持つ
+  const pn = h('span', { class: 'dpn', hidden: true });
   const ribbon = h('button', { class: 'dribbon', type: 'button', 'aria-label': 'いちばん新しいページへ' });
   ribbon.innerHTML = RIBBON_SVG;
   function show() {
     stage.replaceChildren(pageEl(cur, 'cur'));
     if (onPage) requestAnimationFrame(() => onPage(stage.querySelector('.dpage.cur'), stage, keys[cur]));
-    pnTxt.textContent = `${cur + 1} / ${keys.length}`;
-    prev.disabled = cur === 0;
-    next.disabled = cur === keys.length - 1;
+    pn.textContent = `${cur + 1} / ${keys.length}`;
     if (onTurn) onTurn(keys[cur]);
   }
   function go(to) {
@@ -72,8 +66,13 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
     if (fwd) { stage.insertBefore(np, old); old.classList.add('flip'); } else stage.append(np);
     setTimeout(() => { cur = to; busy = false; show(); }, 560);
   }
-  prev.addEventListener('click', () => go(cur - 1));
-  next.addEventListener('click', () => go(cur + 1));
+  // パソコンでは、矢印キーでもめくれる(入力中は、動かさない)
+  const onKey = (e) => {
+    if (!root.isConnected) { window.removeEventListener('keydown', onKey); return; }
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') go(cur - 1); else if (e.key === 'ArrowRight') go(cur + 1);
+  };
+  window.addEventListener('keydown', onKey);
   ribbon.addEventListener('click', () => go(home));
   // 指の動き: 斜めでも、横が少しでも強ければ「めくる」。たて向きは、自分でページをスクロールする
   // (ブラウザに任せると、斜めの動きは、たてのスクロールが先に反応して、めくれないため。stage は touch-action: none)
@@ -110,7 +109,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   stage.addEventListener('pointercancel', () => { g = null; });
   stage.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true); // 動かしたあとの、おまけのタップは無視
   const book = h('div', { class: 'dbook' }, ribbon, stage);
-  const root = h('div', { class: 'dwrap' }, book, h('div', { class: 'dnav' }, prev, pn, next));
+  const root = h('div', { class: 'dwrap' }, book, pn);
   show();
   return {
     root,
