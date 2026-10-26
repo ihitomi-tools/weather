@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-112';
+const VERSION = '2026.10.26-113';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2221,10 +2221,16 @@ function renderDiary() {
       mountCover();
     });
     box.append(fab);
-    const chip = h('button', { class: 'dnewgo float', type: 'button', hidden: true });
-    chip.addEventListener('click', () => { const t = diaryNewDays(keys).find((k) => k !== dayOfPage(bk.key())); if (t) bk.jump(keys.indexOf(t)); });
-    box.append(chip);
-    diaryNewChip = () => { const n = diaryNewDays(keys).filter((k) => k !== dayOfPage(bk.key())).length; chip.hidden = !n; chip.textContent = `新着 ${n} ページ ›`; };
+    // 新着の数は、下のページ番号ボタンの角に出す(押すと、カレンダーの「新着へ」から飛べる)
+    diaryNewChip = () => {
+      const pn = bk.root.querySelector('.dpn.btn');
+      if (!pn) return;
+      const n = diaryNewDays(keys).filter((k) => k !== dayOfPage(bk.key())).length;
+      let badge = pn.querySelector('.nbadge');
+      if (!n) { if (badge) badge.remove(); return; }
+      if (!badge) { badge = h('u', { class: 'nbadge', 'aria-label': '新着あり' }); pn.append(badge); }
+      badge.textContent = n > 99 ? '99+' : String(n);
+    };
     return;
   }
   diaryBook.refreshPage();

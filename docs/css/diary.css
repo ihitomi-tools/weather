@@ -239,15 +239,13 @@
 .dnew-tag { position: absolute; top: 2px; left: 22px; z-index: 2; background: var(--pink-deep); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .08em; line-height: 1; padding: 3px 8px 3px; border-radius: 0 0 6px 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
 .dmj .grid button .ndot { position: absolute; top: -4px; right: -4px; width: 11px; height: 11px; border-radius: 50%; background: #ff5a7a; border: 1.5px solid #f4dc94; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
 .dmj .dnewgo { flex: none; display: block; margin: 10px auto 0; padding: 7px 16px; font-size: 13px; font-weight: 800; border-radius: 99px; background: linear-gradient(#ff7d97, #e84f74); color: #fff; border-color: #ffd0da; }
-.dnewgo.float { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 76px); z-index: 15; border: 0; border-radius: 99px; padding: 7px 13px; background: var(--pink-deep); color: #fff; font: inherit; font-size: 12px; font-weight: 800; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); cursor: pointer; }
-.dnewgo.float[hidden] { display: none; }
 
 /* 日付のタップ → カレンダー */
 .ddate { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ddate .dcalbtn { align-self: center; width: 30px; height: 30px; border-radius: 50%; background: #fff; color: var(--dy-cover, #8a5733); box-shadow: inset 0 0 0 2px var(--dy-cover, #8a5733), 0 2px 5px rgba(0, 0, 0, .2); display: grid; place-items: center; flex: none; }
 .ddate .dcalbtn svg, .dpn.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .ddate:active .dcalbtn { filter: brightness(.92); }
-.dpn.btn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #3a3f78; color: #fff; font: inherit; font-size: 14px; font-weight: 800; border-radius: 99px; padding: 8px 14px; box-shadow: inset 0 0 0 1.5px #7e86d8; cursor: pointer; }
+.dpn.btn { position: relative; display: inline-flex; align-items: center; gap: 6px; border: 0; background: #3a3f78; color: #fff; font: inherit; font-size: 14px; font-weight: 800; border-radius: 99px; padding: 8px 14px; box-shadow: inset 0 0 0 1.5px #7e86d8; cursor: pointer; }
 .dpn.btn svg { width: 18px; height: 18px; }
 .dpn.btn::after { content: '▾'; font-size: 12px; }
 .dpn.btn:active { filter: brightness(1.2); }
@@ -273,3 +271,5 @@
 .dcal .foot { display: flex; gap: 10px; margin: 12px 4px 0; }
 .dcal .foot button { flex: 1; border: 0; border-radius: 99px; padding: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; background: rgba(138, 87, 51, .16); color: var(--fg); }
 .dcal .foot .b1 { background: linear-gradient(#ff7d97, #e84f74); color: #fff; }
+
+.dpn.btn .nbadge { position: absolute; top: -7px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 99px; background: #ff5a7a; color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; text-decoration: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
