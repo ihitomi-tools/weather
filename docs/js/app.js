@@ -3,7 +3,7 @@ import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather, isRainy } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
-import { daysSince, nextMilestone, milestonesOn, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
+import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
 import { unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, WHISPER, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
@@ -15,7 +15,8 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON, sealSvg } from './diary.js';
+import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
+import { annivSticker } from './anniv.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -2121,10 +2122,10 @@ function diaryOnPage(el, stage, key) {
 function diaryPageNodes(key) {
   const day = dayOfPage(key);
   const fresh = diaryIsNew(day) ? [h('span', { class: 'dnew-tag', 'aria-label': '新着' }, 'NEW')] : [];
-  const ms = milestonesOn(state.ann, day)[0]; // 記念日から100日ごとの日は、金のシールを貼る
-  const seal = [];
-  if (ms) { const el = h('div', { class: 'dseal', role: 'img', 'aria-label': `${ms.n}日記念日` }); el.innerHTML = sealSvg(ms.n); seal.push(el); }
-  return [...fresh, ...seal, ...diaryEvents(day), ...diaryCardPage(day)];
+  const nodes = diaryEvents(day);
+  const sk = annivSticker(day); // 記念日の絵は、日付の見出しの、すぐ下に貼る
+  if (sk) nodes.splice(1, 0, h('img', { class: 'dsticker', src: sk, alt: '記念日のステッカー', draggable: 'false' }));
+  return [...fresh, ...nodes, ...diaryCardPage(day)];
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen, months = [], onPick = () => {}, fresh = { ym: new Set(), count: 0, go: () => {} }) {
