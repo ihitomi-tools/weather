@@ -232,3 +232,37 @@
 .dmove { border: 1.5px solid #e58aae; background: #fff1f6; color: #7a3a52; font: inherit; font-size: 13px; font-weight: 800; border-radius: 99px; padding: 4px 12px; margin-left: auto; cursor: pointer; }
 .dmove:disabled { opacity: .5; }
 .dmove-note { display: block; color: var(--muted); font-size: 12px; font-weight: 700; margin-top: 2px; }
+
+/* 新着(相手が書いた・直したページ。見ると、この端末では消える) */
+.dnew-tag { position: absolute; top: 2px; left: 22px; z-index: 2; background: var(--pink-deep); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .08em; line-height: 1; padding: 3px 8px 3px; border-radius: 0 0 6px 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.dmj .grid button .ndot { position: absolute; top: -4px; right: -4px; width: 11px; height: 11px; border-radius: 50%; background: #ff5a7a; border: 1.5px solid #f4dc94; box-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+.dmj .dnewgo { flex: none; display: block; margin: 10px auto 0; padding: 7px 16px; font-size: 13px; font-weight: 800; border-radius: 99px; background: linear-gradient(#ff7d97, #e84f74); color: #fff; border-color: #ffd0da; }
+.dnewgo.float { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(max(14px, env(safe-area-inset-bottom, 0px)) + 76px); z-index: 15; border: 0; border-radius: 99px; padding: 7px 13px; background: var(--pink-deep); color: #fff; font: inherit; font-size: 12px; font-weight: 800; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); cursor: pointer; }
+.dnewgo.float[hidden] { display: none; }
+
+/* 日付のタップ → カレンダー */
+.ddate { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ddate .caret { font-size: 14px; color: var(--muted); align-self: center; }
+.ddate:active .d { opacity: .6; }
+.dcal { font-family: 'BIZ UDPGothic', 'M PLUS Rounded 1c', sans-serif; padding: 0 2px 6px; }
+.dcal .mh { display: flex; align-items: center; justify-content: space-between; margin: 2px 4px 10px; }
+.dcal .mh b { font-size: 20px; }
+.dcal .ar { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--surface2, rgba(127, 127, 127, .15)); color: var(--fg); font: inherit; font-size: 22px; font-weight: 800; cursor: pointer; }
+.dcal .ar:disabled { opacity: .3; cursor: default; }
+.dcal .wk, .dcal .gr { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.dcal .wk span { font-size: 12px; font-weight: 800; color: var(--muted); padding: 4px 0; }
+.dcal .wk .s { color: #3f86d6; } .dcal .wk .u { color: var(--pink-deep); }
+.dcal .cell { position: relative; height: 46px; margin: 2px; border: 0; border-radius: 12px; font: inherit; font-size: 16px; font-weight: 800; color: var(--fg); background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+.dcal .cell.off { color: var(--muted); opacity: .45; font-weight: 600; }
+.dcal button.cell { background: rgba(138, 87, 51, .16); cursor: pointer; }
+.dcal .cell.cur { background: var(--dy-cover, #8a5733); color: #fff; }
+.dcal .cell.today { outline: 2px solid var(--pink-deep); outline-offset: -2px; }
+.dcal .cell i { display: flex; gap: 3px; height: 6px; }
+.dcal .cell i u, .dcal .lg u { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
+.dcal .p { background: var(--pink); } .dcal .m { background: var(--mint); } .dcal .lg .n { background: #ff5a7a; }
+.dcal .cell.nw::after { content: ""; position: absolute; top: 2px; right: 2px; width: 9px; height: 9px; border-radius: 50%; background: #ff5a7a; border: 2px solid var(--surface, #fff); }
+.dcal .lg { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin: 10px 6px 0; }
+.dcal .lg u { width: 8px; height: 8px; margin-right: 4px; vertical-align: middle; }
+.dcal .foot { display: flex; gap: 10px; margin: 12px 4px 0; }
+.dcal .foot button { flex: 1; border: 0; border-radius: 99px; padding: 12px; font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; background: rgba(138, 87, 51, .16); color: var(--fg); }
+.dcal .foot .b1 { background: linear-gradient(#ff7d97, #e84f74); color: #fff; }
