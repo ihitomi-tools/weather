@@ -1,13 +1,13 @@
 // 月の舞台(夜空・季節・ブランコ・ふたりの人型・特別な日)をSVGの文字で作る。
 // 外の状態は moonScene(ctx) で受け取り、画面には触らない。
 //   ctx: { pts, sig:{h:ms|null,y:ms|null}, first, resolved, kind, cheerUntil, revisit, variant, special,
-//          season, now, winMs, pop, popUntil, sigAt:{h,y} }   (h=ひとみ=飛ぶ人 / y=ゆうき=受け止める人)
+//          season, now, winMs, pop, popUntil, sigAt:{h,y} }   (h=ひとみ=飛ぶ人 / y=かずゆき=受け止める人)
 const st = {
   pts: 0, sig: { h: null, y: null }, first: null, resolved: false, cheerUntil: 0, kind: null, pop: null, popUntil: 0, sigAt: { h: 0, y: 0 },
   revisit: 0, variant: 'hug', special: 'none', hint: false, season: 'autumn', now: 0, winMs: 600000,
 };
 
-// 舞台の寸法(viewBox 300x182)。ひとみ=左のブランコ、ゆうき=右のブランコ。
+// 舞台の寸法(viewBox 300x182)。ひとみ=左のブランコ、かずゆき=右のブランコ。
 const PIV = { h: [102, 6], y: [198, 6] }, ROPE = 84, MOON = [150, 88], MR = 46;
 
 const STARS = (() => { let x = 7; const r = () => { x = (x * 1103515245 + 12345) & 0x7fffffff; return x / 0x7fffffff; }; return Array.from({ length: 46 }, () => [r() * 300, r() * 184, 0.5 + r() * 1.2, r() * 3]); })();
@@ -146,7 +146,7 @@ function kissScene() {
 function handsScene() {
   return Tg(woman(-14, { head: 6 }) + man(14, { head: -6 }) + armsOf('h', 'M-19.500 -33 Q-24 -28 -27 -22', 'M-9.500 -33.500 Q-5 -30 0 -27') + armsOf('y', 'M21 -37.500 Q25.500 -31 27.500 -24', 'M8 -38 Q4.500 -32 0.500 -27.500') + bigHeart(0, -62, 2.2));
 }
-// ほっぺにちゅ(ゆうきが、照れるひとみのほっぺに)
+// ほっぺにちゅ(かずゆきが、照れるひとみのほっぺに)
 function cheekScene() {
   const legs = '<path d="M-2.500 -17 V-1.500" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round"/><g class="kickback" style="transform-origin:2.500px -17px"><path d="M2.500 -17 L3 -9.500 L9.500 -4.500" fill="none" stroke="currentColor" stroke-width="3.800" stroke-linecap="round" stroke-linejoin="round"/></g>';
   return Tg(woman(-6, { head: 5, legs }) + man(7, { tilt: -7, head: -12 }) + armsOf('h', 'M-11 -33.500 Q-18 -38 -10 -44', 'M-1 -33.500 Q4 -30.500 7.500 -23.500') + armsOf('y', 'M2.500 -38.500 Q-4 -35 -10.500 -31.500') + bigHeart(-1, -58, 1.100));
@@ -161,7 +161,7 @@ function umbrellaScene() {
   const arms = armsOf('h', 'M-3.500 -33.500 Q1 -31.500 5 -28') + armsOf('y', 'M1.500 -38.500 Q-1.500 -43 0 -47.500');
   return `<g class="together rainwalk" transform="translate(150 154) scale(1.45)"><g class="rbob">${woman(-8, { head: 4, legs: legsW })}${man(8, { head: -3, legs: legsM })}${arms}${hairQ.splice(0).join('')}${canopy}</g></g>`;
 }
-// 丘に並んで座って、月を見る(うしろ姿。ひとみはゆうきの肩にもたれる)
+// 丘に並んで座って、月を見る(うしろ姿。ひとみはかずゆきの肩にもたれる)
 function hillScene() {
   const her = `<g class="pic h" transform="translate(-8.500 -1) rotate(9)"><path d="M-4.600 -24.500 Q0 -26 4.600 -24.500 L7.800 -2 L-7.800 -2Z"/><circle cx="0" cy="-32" r="5.300"/><path d="M-5.500 -31 A5.500 5.500 0 0 1 5.500 -31 L5.500 -29.800 Q0 -33.300 -5.500 -29.800Z"/><g transform="scale(-1 1)"><path class="hair" style="transform-origin:3px -28px" d="M3 -28.500 C8.500 -28 10.500 -22.500 9.500 -13.500 C8 -19.500 6.500 -23.500 2.500 -25.500Z"/></g></g>`;
   const him = `<g class="pic y" transform="translate(8.500 -1) rotate(-3)"><rect x="-6.800" y="-31" width="13.600" height="29" rx="4.800"/><circle cx="0" cy="-36.500" r="5.700"/></g>`;
@@ -169,7 +169,7 @@ function hillScene() {
 }
 
 // ---- ふえた場面 ----
-// 後ろからぎゅっ(ゆうきがうしろから、ひとみのおなかに腕をまわす)
+// 後ろからぎゅっ(かずゆきがうしろから、ひとみのおなかに腕をまわす)
 function backhugScene() {
   const him = man(3.500, { head: -8 });
   const her = woman(-3.500, { head: 8 });
@@ -186,19 +186,19 @@ function danceScene() {
   const arms = armsOf('y', 'M8 -38 Q4.500 -32 0.500 -27.500') + armsOf('h', 'M-9.500 -33.500 Q-5 -30 0 -27');
   return Tg(`<g class="bobpair"><g class="spinw">${woman(-14, { head: 0 })}</g>${man(14, { head: -6 })}${arms}</g>`);
 }
-// 頭ぽんぽん(ゆうきが、ひとみの頭をぽんぽん)
+// 頭ぽんぽん(かずゆきが、ひとみの頭をぽんぽん)
 function headpatScene() {
   const arm = `<g class="hpat">${armsOf('y', 'M2 -38.500 Q-5 -42 -8 -47.500')}</g>`;
   return Tg(woman(-9, { head: 6 }) + man(8, { head: -6 }) + arm + floatHeart());
 }
-// おんぶ(ひとみがゆうきの背中に乗る)
+// おんぶ(ひとみがかずゆきの背中に乗る)
 function piggyScene() {
   const her = `<g transform="translate(0 -13)">${woman(0, { head: 0, legs: '' })}</g>`;
   const knees = armsOf('h', 'M-6.500 -26 L-11.500 -19', 'M6.500 -26 L11.500 -19');
   const around = armsOf('h', 'M-5 -43.500 Q0 -39 5 -43.500');
   return `<g class="together" transform="translate(150 154) scale(1.45)"><g class="rbob">${her}${man(0, { head: 0 })}${knees}${around}${hairQ.splice(0).join('')}${bigHeart(15, -60, 0.9)}</g></g>`;
 }
-// お姫さま抱っこ(ひとみが、ゆうきの腕の中で横になる)
+// お姫さま抱っこ(ひとみが、かずゆきの腕の中で横になる)
 function cradleScene() {
   const her = `<g transform="translate(24 -33) rotate(-90)">${woman(0, { head: -10 })}</g>`;
   const arms = armsOf('y', 'M-5 -38 Q-10 -31 -3 -27.500', 'M6 -38 Q13 -30 7 -25.500');

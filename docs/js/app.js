@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-108';
+const VERSION = '2026.10.26-109';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -682,7 +682,7 @@ const diaryTextOf = (r) => (r ? r.dm || (r.md ? r.m || '' : '') : '');
 const hitoOf = (r) => (r && !r.md ? r.m || '' : '');
 const hasDiaryRec = (r) => hasMoodRec(r) || !!(r && r.dm);
 const keepDiary = (r) => (r && r.dm ? { dm: r.dm, ...(r.dmt ? { dmt: r.dmt } : {}) } : {});
-// 記録のある人(ひとみ→ゆうきの順)
+// 記録のある人(ひとみ→かずゆきの順)
 function peopleOf() {
   const ids = new Set([myUid(), partnerUid(), ...state.daysBy.keys()].filter(Boolean));
   return [...ids].sort((a, b) => (roleOf(a) === 'h' ? 0 : 1) - (roleOf(b) === 'h' ? 0 : 1));
@@ -927,7 +927,7 @@ async function sendPat(date) {
 // 調子のポーズ: 1 しんどい=雨雲の下 / 2 いまいち=ため息 / 3 ふつう=立つ / 4 まあまあ=手を振る / 5 元気=ジャンプ
 const MOOD_POSE = [null, 'rain', 'sigh', 'stand', 'wave', 'jump'];
 
-// 選んだ日の、ふたりの記録を、同じ大きさで並べる(ひとみ → ゆうきの順)
+// 選んだ日の、ふたりの記録を、同じ大きさで並べる(ひとみ → かずゆきの順)
 function renderDayDetail(date) {
   const box = $('#day-detail');
   const d = parseYmd(date);
@@ -942,7 +942,7 @@ function renderDayDetail(date) {
     let edit = null;
     if (mine) { edit = h('button', { class: 'ghost sm', type: 'button' }, '編集'); edit.addEventListener('click', () => openDaySheet(date)); }
     let patArea = null;
-    // ひとみ→ゆうきは、ひざまくら。ゆうき→ひとみは、あたまをなでる
+    // ひとみ→かずゆきは、ひざまくら。かずゆき→ひとみは、あたまをなでる
     const patPic = (from) => svgEl(from === 'h' ? Ch.lapPat() : Ch.pair('pat'));
     if (!mine) {
       const sent = pats.find((p) => p.by === myUid());
@@ -1873,7 +1873,8 @@ function diaryHead(day) {
   el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   return el;
 }
-// 日付をえらぶカレンダー(下から出るシート)。書いた日は色の点(ひとみ=ピンク / ゆうき=ミント)、新着は赤い丸。えらぶと、その日のページへ
+// 日付をえらぶカレンダー(下から出るシート)。書いた日は色の点(ひとみ=ピンク / かずゆき=ミント)、新着は赤い丸。えらぶと、その日のページへ
+const nameOfRole = (role) => { const u = peopleOf().find((x) => roleOf(x) === role); return u ? nameOfUid(u) : (role === 'h' ? 'ひとみ' : 'かずゆき'); };
 function openDiaryCal(curDay) {
   if (!diaryBook) return;
   const keys = diaryKeyList();
@@ -1908,7 +1909,7 @@ function openDiaryCal(curDay) {
       grid.append(c);
     }
     const nd = [...fresh];
-    const legend = h('div', { class: 'lg' }, h('span', {}, h('u', { class: 'p' }), 'ひとみ'), h('span', {}, h('u', { class: 'm' }), 'ゆうき'), h('span', {}, h('u', { class: 'n' }), '新着'));
+    const legend = h('div', { class: 'lg' }, h('span', {}, h('u', { class: 'p' }), nameOfRole('h')), h('span', {}, h('u', { class: 'm' }), nameOfRole('y')), h('span', {}, h('u', { class: 'n' }), '新着'));
     const foot = h('div', { class: 'foot' });
     if (nd.length) { const b = h('button', { class: 'b1', type: 'button' }, `新着へ ${nd.length}ページ ›`); b.addEventListener('click', () => jumpTo(nd[0])); foot.append(b); }
     const t = h('button', { class: 'b2', type: 'button' }, '今日へ');
@@ -3069,7 +3070,7 @@ function moonAnalysis(now = Date.now()) {
   const sigs = state.moon.filter((m) => roles[m.from]).map((m) => ({ role: roles[m.from], at: m.at }));
   return { A: analyzeMoon(sigs, now), roles };
 }
-const roleName = (role, roles) => { const u = Object.keys(roles).find((x) => roles[x] === role); return u ? uidName(u) : (role === 'h' ? 'ひとみ' : 'ゆうき'); };
+const roleName = (role, roles) => { const u = Object.keys(roles).find((x) => roles[x] === role); return u ? uidName(u) : (role === 'h' ? 'ひとみ' : 'かずゆき'); };
 const clockText = (ms) => { const d = new Date(ms); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 // 雨の日かどうか。場所は、ふたりにゆかりのある山梨(甲府)で固定。30分ごとに確かめる
