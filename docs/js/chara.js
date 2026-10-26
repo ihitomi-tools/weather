@@ -1,4 +1,4 @@
-// ひとみ(彼女)とゆうき(彼氏)の人型。顔はなく、太い丸みの棒で描く。
+// ひとみ(彼女)とかずゆき(彼氏)の人型。顔はなく、太い丸みの棒で描く。
 // 重なる部分の縁取りの色は、置く場所の背景(--cbg)に合わせる。
 const OUT = 'var(--cbg, var(--surface))';
 const tube = (d, w) => `<path d="${d}" fill="none" stroke="${OUT}" stroke-width="${w + 2.2}" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -69,7 +69,7 @@ export function pair(kind) {
   return `<svg class="chara" viewBox="-34 -68 68 74" aria-hidden="true"><g transform="translate(${hx} 0)">${woman(0, { head: kind === 'pat' ? 4 : 0, arms: a.h, extra: ex.h || '' })}</g><g transform="translate(${yx} 0)">${man(0, { arms: a.y, extra: ex.y || '' })}</g></svg>`;
 }
 
-// ひざまくら(ひとみ→ゆうきのよしよし)
+// ひざまくら(ひとみ→かずゆきのよしよし)
 export const lapPat = () => hiza().replace('<svg', '<svg class="chara"');
 export { bust };
 

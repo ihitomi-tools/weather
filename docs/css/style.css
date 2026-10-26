@@ -336,7 +336,7 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .pat-banner.news { cursor: default; }
 .news-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on-pink); flex: none; }
 
-/* ひとみ・ゆうきの人型を置く場所 */
+/* ひとみ・かずゆきの人型を置く場所 */
 .ask-pic { --cbg: var(--screen); display: flex; justify-content: center; margin: 4px 0 10px; }
 .ask-pic svg { width: 96px; height: 110px; }
 .ask-note { text-align: center; font-weight: 800; color: var(--pink-deep); min-height: 1.4em; margin: 6px 0; }
