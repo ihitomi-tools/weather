@@ -6,6 +6,13 @@ const keyOf = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDat
 export const CAL_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/><circle cx="8.5" cy="14.5" r=".9" fill="currentColor"/><circle cx="12" cy="14.5" r=".9" fill="currentColor"/><circle cx="15.5" cy="14.5" r=".9" fill="currentColor"/></svg>';
 // しおりのひも。夜空色のリボンに、金の点と、ぶらさがる金の星
 const RIBBON_SVG = '<svg viewBox="0 0 22 74" width="22" height="74" aria-hidden="true"><rect x="4" y="0" width="14" height="40" fill="#2b2f5e"/><rect x="4" y="0" width="2.5" height="40" fill="#171a40" opacity=".55"/><circle cx="11" cy="9" r="1.1" fill="#f3d77a"/><circle cx="11" cy="19" r="1.1" fill="#f3d77a"/><circle cx="11" cy="29" r="1.1" fill="#f3d77a"/><path d="M11 40V47" stroke="#c79a3a" stroke-width="1.2"/><path transform="translate(11 58) scale(.95)" d="M0 -10 L2.9 -3.4 L10 -3 L4.5 1.6 L6.2 8.5 L0 4.8 L-6.2 8.5 L-4.5 1.6 L-10 -3 L-2.9 -3.4Z" fill="#f3d77a" stroke="#c79a3a" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+// 記念日の金のシール(100日ごと)。リボンつきのロゼットに、日数
+export function sealSvg(n) {
+  const pts = [];
+  for (let i = 0; i < 24; i += 1) { const a = (i / 24) * Math.PI * 2; const r = i % 2 ? 44 : 50; pts.push(`${(60 + Math.cos(a) * r).toFixed(1)},${(60 + Math.sin(a) * r).toFixed(1)}`); }
+  const fs = String(n).length > 3 ? 24 : String(n).length > 2 ? 30 : 36;
+  return `<svg viewBox="0 0 120 146" aria-hidden="true"><path d="M38 96 L28 140 L44 130 L54 144 L60 100Z" fill="#d9534f"/><path d="M82 96 L92 140 L76 130 L66 144 L60 100Z" fill="#b73a3a"/><polygon points="${pts.join(' ')}" fill="#f3d77a" stroke="#c79a3a" stroke-width="2"/><circle cx="60" cy="60" r="39" fill="#fff6d6" stroke="#c79a3a" stroke-width="1.6"/><circle cx="60" cy="60" r="35" fill="none" stroke="#c79a3a" stroke-width="1" stroke-dasharray="2.5 3"/><path transform="translate(60 31) scale(1.3)" d="M0 5.5 C-7 0 -8 -6 -4 -7 C-2 -7.5 0 -5.5 0 -4.5 C0 -5.5 2 -7.5 4 -7 C8 -6 7 0 0 5.5Z" fill="#d9507f"/><text x="60" y="${60 + fs * 0.34 + 4}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="#d9507f" font-family="'M PLUS Rounded 1c', sans-serif">${n}</text><text x="60" y="85" text-anchor="middle" font-size="11" font-weight="800" fill="#8a5733" font-family="'BIZ UDPGothic', sans-serif">日記念日</text></svg>`;
+}
 const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 
 // cards: [{ date }] / recKeys: 調子・メモが入っている日のキー / events: [{ date, end? }] / todayKey: 今日まで(未来は出さない) / from: この日より前は出さない(日記帳の始まり)

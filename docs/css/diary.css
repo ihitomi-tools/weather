@@ -262,3 +262,7 @@
 .dcal .foot .b1 { background: linear-gradient(#ff7d97, #e84f74); color: #fff; }
 
 .ddate .dcalbtn .nbadge { position: absolute; top: -6px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 99px; background: #ff5a7a; color: #fff; font-size: 10.5px; font-weight: 800; line-height: 18px; text-align: center; text-decoration: none; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+
+/* 記念日(100日ごと)の金のシール。ページの右上あたりに、斜めに貼る */
+.dseal { position: absolute; right: 12px; top: 108px; width: 88px; z-index: 3; transform: rotate(8deg); pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .28)); }
+.dseal svg { display: block; width: 100%; height: auto; }

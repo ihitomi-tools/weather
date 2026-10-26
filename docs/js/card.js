@@ -6,6 +6,17 @@ export const daysSince = (dateKey, todayKey) => dayNum(todayKey) - dayNum(dateKe
 // 100日ごとの節目。ちょうど100日の日は、その日を「次の節目」にする。
 export const nextMilestone = (n) => Math.max(100, Math.ceil(Math.max(n, 0) / 100) * 100);
 
+// その日が、記念日(ホームのカードの日付)から、ちょうど100日ごとの日なら、その日数。日記帳の「金のシール」に使う
+export function milestonesOn(anns, dayKey) {
+  const out = [];
+  (anns || []).forEach((a) => {
+    if (!a || !a.d || !dayKey) return;
+    const n = daysSince(a.d, dayKey);
+    if (n > 0 && n % 100 === 0) out.push({ n, label: a.l || '' });
+  });
+  return out;
+}
+
 // 予定の種類: date(デート・お泊まり) / meal(ごはん) / work(いっしょの仕事) / other。
 // 種類を持たない昔の予定は、名前が「デート」「お泊まりデート」のものだけ、デートとして扱う。
 export const EV_TYPES = ['date', 'meal', 'work', 'train', 'car', 'trip', 'clinic', 'drink', 'shop', 'study', 'star'];

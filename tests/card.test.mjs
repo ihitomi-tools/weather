@@ -56,3 +56,12 @@ test('いっしょの仕事は、次のデートの予定に入らない(ごは�
   const ev = [{ date: '2026-02-01', who: 'both', kind: 'work', title: 'いっしょの仕事' }, { date: '2026-02-05', who: 'both', kind: 'meal', title: 'ごはん' }];
   assert.equal(nextJoint(ev, '2026-01-31').title, 'ごはん');
 });
+
+test('milestonesOn: 100日ごとの日だけ、日数を返す', async () => {
+  const { milestonesOn } = await import('../docs/js/card.js');
+  const anns = [{ l: 'ふたり', d: '2025-06-13' }, { l: '', d: '' }];
+  assert.deepEqual(milestonesOn(anns, '2026-10-26'), [{ n: 500, label: 'ふたり' }]);
+  assert.deepEqual(milestonesOn(anns, '2026-10-25'), []);
+  assert.deepEqual(milestonesOn(anns, '2025-06-13'), []);
+  assert.deepEqual(milestonesOn(null, '2026-10-26'), []);
+});

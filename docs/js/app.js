@@ -3,7 +3,7 @@ import { CITIES, SEQUENCE_LENGTH } from './cities.js';
 import { loadWeather, isRainy } from './weather.js';
 import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
-import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
+import { daysSince, nextMilestone, milestonesOn, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
 import { unseenPats } from './share.js';
 import { answerKey, nextAction, cardStatus, availableStock, pickStock, WHISPER, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
@@ -15,7 +15,7 @@ import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene } from './room.js';
-import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
+import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON, sealSvg } from './diary.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -39,7 +39,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-114';
+const VERSION = '2026.10.26-115';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2121,7 +2121,10 @@ function diaryOnPage(el, stage, key) {
 function diaryPageNodes(key) {
   const day = dayOfPage(key);
   const fresh = diaryIsNew(day) ? [h('span', { class: 'dnew-tag', 'aria-label': '新着' }, 'NEW')] : [];
-  return [...fresh, ...diaryEvents(day), ...diaryCardPage(day)];
+  const ms = milestonesOn(state.ann, day)[0]; // 記念日から100日ごとの日は、金のシールを貼る
+  const seal = [];
+  if (ms) { const el = h('div', { class: 'dseal', role: 'img', 'aria-label': `${ms.n}日記念日` }); el.innerHTML = sealSvg(ms.n); seal.push(el); }
+  return [...fresh, ...seal, ...diaryEvents(day), ...diaryCardPage(day)];
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen, months = [], onPick = () => {}, fresh = { ym: new Set(), count: 0, go: () => {} }) {
