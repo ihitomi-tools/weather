@@ -79,7 +79,6 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
   let g = null;
   let moved = false;
   stage.addEventListener('pointerdown', (e) => {
-    try { stage.setPointerCapture(e.pointerId); } catch (err) { /* 古いブラウザ */ }
     g = { x: e.clientX, y: e.clientY, axis: '' };
     moved = false;
   });
@@ -91,6 +90,7 @@ export function createBook({ h, keys, start, home = keys.length - 1, renderPage,
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
       g.axis = Math.abs(dx) >= Math.abs(dy) * 0.6 ? 'x' : 'y'; // 横を、しっかり優先する
       moved = true;
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* 古いブラウザ */ } // 動きはじめてから捕まえる(はじめから捕まえると、Chrome では、ページの中のボタンへのタップが、本のほうに届いてしまう)
     }
   });
   const endGesture = (e) => {
