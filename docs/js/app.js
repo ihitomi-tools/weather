@@ -3352,7 +3352,7 @@ function init() {
 
   // アプリを離れたら最初の画面に戻す
   const away = () => { if (LS.get(K.auto) !== '0' && $('#cover').hidden) lock(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { state.hiddenAt = Date.now(); away(); } else { markRead(); renderBadges(); if (state.hiddenAt && Date.now() - state.hiddenAt > 30 * 60 * 1000) state.sayDone = false; }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { state.hiddenAt = Date.now(); away(); } else { markRead(); renderBadges(); maybeAdvance(); renderTalk(); if (state.hiddenAt && Date.now() - state.hiddenAt > 30 * 60 * 1000) state.sayDone = false; }
     moonPause();
   });
   window.addEventListener('pagehide', away);
