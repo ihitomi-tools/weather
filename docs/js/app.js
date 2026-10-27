@@ -5,7 +5,7 @@ import { isEmojiOnly } from './emoji.js';
 import { predict, runsOf, dayNum, keyOf } from './cycle.js';
 import { daysSince, nextMilestone, nextJoint, normalizeShared, buildSharedPayload, evType, EV_TYPES } from './card.js';
 import { unseenPats } from './share.js';
-import { answerKey, nextAction, cardStatus, availableStock, pickStock, WHISPER, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
+import { answerKey, nextAction, cardStatus, availableStock, pickStock, orderReserved, WHISPER, describeAnswer, guessOf, otherGuessOf, guessPhase, partnerGuessView, isRate } from './qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, POP_DAYS } from './dates.js';
 import { buildExport } from './export.js';
 import { sectionKeys, newFlags } from './news.js';
@@ -41,7 +41,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.27-120';
+const VERSION = '2026.10.27-121';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2766,8 +2766,10 @@ function renderQuestion() {
   if (ready && state.needInput != null && (!last || state.needInput === last.n + 1)) nodes.push(forcedForm(state.needInput));
   const rs = ready ? validRsv() : [];
   if (rs.length) { // 予約が入っているときだけ、小さく知らせる(ひみつの予約は、予約した本人にだけ、中身を出す)
-    const st = state.stock.find((x) => x.id === rs[0].id);
-    nodes.push(h('div', { class: 'rsv-note' }, h('span', { 'aria-hidden': 'true' }, '📌'), h('span', {}, h('b', {}, '次のお題は、予約がはいっています'), h('br'), rsvHidden(rs[0]) ? 'ひみつの予約です。出るときのお楽しみ' : st ? st.text : '', rs.length > 1 ? h('small', {}, `(あと${rs.length - 1}件)`) : null)));
+    const ord = orderReserved(rs, availableStock(state.stock, cards), last && last.by); // 実際に出る順
+    const st = ord[0];
+    const first = rs.find((x) => st && x.id === st.id) || rs[0];
+    nodes.push(h('div', { class: 'rsv-note' }, h('span', { 'aria-hidden': 'true' }, '📌'), h('span', {}, h('b', {}, '次のお題は、予約がはいっています'), h('br'), rsvHidden(first) ? 'ひみつの予約です。出るときのお楽しみ' : st ? st.text : '', rs.length > 1 ? h('small', {}, `(あと${rs.length - 1}件)`) : null)));
   }
   area.replaceChildren(...nodes);
 }
@@ -2838,7 +2840,8 @@ function openStockSheet() {
       return b;
     }));
     const shown = state.stock.filter((s) => catFilter === 'all' || (catFilter === 'none' ? !s.cat : s.cat === catFilter));
-    const rsvIds = validRsv().map((r) => r.id);
+    const lastCard = state.qcards[state.qcards.length - 1];
+    const rsvIds = orderReserved(validRsv(), availableStock(state.stock, state.qcards), lastCard && lastCard.by).map((x) => x.id); // 実際に出る順(ふたりが交互になるように、ならべかえたもの)
     const left = shown.filter((s) => !used.has(s.id) && !rsvIds.includes(s.id));
     const reserved = rsvIds.map((id) => state.stock.find((x) => x.id === id)).filter(Boolean); // 予約した順(カテゴリで絞っても、いつも上に出す)
     const done = shown.filter((s) => used.has(s.id));
@@ -2871,8 +2874,8 @@ function openStockSheet() {
         return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), '🩷 おやすみ前', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
       }
       const rs = validRsv();
-      const ri = rs.findIndex((r) => r.id === s.id);
-      const r = ri >= 0 ? rs[ri] : null;
+      const ri = rsvIds.indexOf(s.id);
+      const r = rs.find((x) => x.id === s.id) || null;
       const hidden = rsvHidden(r);
       const btns = [];
       if (!isUsed && r) { // 予約中: 取り消す(予約した本人には、ひみつの切りかえも)
@@ -2961,7 +2964,7 @@ function openStockSheet() {
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。「📌 次に出す」を押すと、そのお題が、次に出ます(予約は、ふたりで共有。順番待ちにもできます)。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, whisperNote, one, oneHint, addOne, bulk, bulkHint, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。「📌 次に出す」を押すと、そのお題が、次に出ます(予約は、ふたりで共有。2件以上のときは、前のお題を足した人と、ちがう人のお題が先に出ます)。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, whisperNote, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 
