@@ -52,7 +52,15 @@ export function availableStock(stock, cards) {
 export const WHISPER = 'whisper'; // 「おやすみ前」: デートの前の日にだけ出る。それまで、中身は画面に出さない
 
 // whisperOk: 明日がデートの日(=今日が、デートの前日)。その日は「おやすみ前」だけから選び(100%)、ほかの日は、おやすみ前を除いて選ぶ。
-export function pickStock(avail, n, lastCat = null, lastBy = null, whisperOk = false) {
+// rsv: 予約のリスト(予約した順)。おやすみ前の日(whisperOk)は、おやすみ前を優先するので、予約は、次の日まで待つ。
+// 予約が、まだ使っていないストックにあれば、いちばん先の予約を、そのまま選ぶ(ふたりの端末で、同じ結果になる)
+export function pickStock(avail, n, lastCat = null, lastBy = null, whisperOk = false, rsv = []) {
+  if (!whisperOk) {
+    for (const r of rsv) {
+      const hit = avail.find((s) => s.id === r.id && s.cat !== WHISPER);
+      if (hit) return hit;
+    }
+  }
   const whispers = avail.filter((s) => s.cat === WHISPER);
   const base = whisperOk && whispers.length ? whispers : avail.filter((s) => s.cat !== WHISPER);
   if (!base.length) return null;

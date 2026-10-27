@@ -24,6 +24,20 @@ export function nextJoint(events, todayKey) {
 const EMPTY = () => [{ l: '', d: '' }, { l: '', d: '' }];
 
 // 保存された形(古い版の since だけのものも含む)を、カード用に整える
+// 予約(お題ストックの「次に出す」): [{ id: ストックのid, by: 予約した人のuid, secret: ひみつか, at }] を、予約した順に
+const RSV_MAX = 20;
+export function normalizeRsv(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const out = [];
+  list.forEach((x) => {
+    if (!x || typeof x.id !== 'string' || !x.id || seen.has(x.id)) return;
+    seen.add(x.id);
+    out.push({ id: x.id, by: String(x.by || ''), secret: !!x.secret, at: Number(x.at) || 0 });
+  });
+  return out.slice(0, RSV_MAX);
+}
+
 export function normalizeShared(p) {
   const ann = EMPTY();
   if (p && Array.isArray(p.ann)) {
@@ -31,12 +45,14 @@ export function normalizeShared(p) {
   } else if (p && p.since) {
     ann[0].d = String(p.since);
   }
-  return { ann, nl: String((p && p.nl) || '') };
+  return { ann, nl: String((p && p.nl) || ''), rsv: normalizeRsv(p && p.rsv) };
 }
 
-// 古い版でも日数が読めるように、since も一緒に入れる
-export function buildSharedPayload({ ann, nl }) {
+// 古い版でも日数が読めるように、since も一緒に入れる。rsv(お題の予約)は、カードの設定を保存しても、消えないように、いつも一緒に書く
+export function buildSharedPayload({ ann, nl, rsv = [] }) {
   const payload = { ann, nl };
   if (ann[0].d) payload.since = ann[0].d;
+  const r = normalizeRsv(rsv);
+  if (r.length) payload.rsv = r;
   return payload;
 }

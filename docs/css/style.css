@@ -647,3 +647,20 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 .tags button { display: inline-flex; align-items: center; gap: 6px; }
 .tags button:has(em) { padding-left: 4px; }
 .tg-pain .tags { margin-top: 2px; }
+
+/* お題の予約(ストックの「次に出す」)。金色 */
+:root { --rsv: #c58a00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --rsv: #ffd966; } }
+:root[data-theme="dark"] { --rsv: #ffd966; }
+.rsv-head { list-style: none; font-size: 12px; font-weight: 800; color: var(--rsv); margin: 8px 2px 2px; }
+.rsv-head.quiet { color: var(--muted); }
+.sitem.rsv { border: 2px solid var(--rsv); }
+.sitem.rsv, .sitem:has(.rsv-bar) { flex-wrap: wrap; }
+.sitem > span:first-child { flex-basis: 100%; }
+.rsv-bar { flex-basis: 100%; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.sitem .rsv-btn, .sitem .rsv-sec { border: 2px solid var(--rsv); color: var(--rsv); background: none; border-radius: 99px; padding: 3px 11px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.sitem .rsv-btn.on { background: var(--rsv); color: #3a2d00; }
+.sitem .rsv-sec[aria-pressed="true"] { background: rgba(255, 217, 102, .2); }
+.rsv-blur { filter: blur(5px); user-select: none; }
+.rsv-note { display: flex; gap: 8px; align-items: center; border: 1.5px dashed var(--rsv); border-radius: 12px; padding: 8px 12px; font-size: 14px; line-height: 1.6; }
+.rsv-note small { color: var(--muted); margin-left: 6px; }
