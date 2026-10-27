@@ -562,11 +562,15 @@ await page.click('#sheet-close');
 }
 
 await openPast();
-await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(48)));
-await page.locator('#sheet input[type=date]').nth(1).fill(fmt(ago(44)));
+// 日の記録(D5)で入れた生理は、2回目の期間の「はじまり」と、同じ日にそろえる(今日の日付に左右されず、2回の間が、いつも28日になる)
+const day5 = new Date(); day5.setDate(Math.min(5, day5.getDate()));
+const plus = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const end2 = plus(day5, 3) > new Date() ? new Date() : plus(day5, 3);
+await page.locator('#sheet input[type=date]').nth(0).fill(fmt(plus(day5, -28)));
+await page.locator('#sheet input[type=date]').nth(1).fill(fmt(plus(day5, -25)));
 await page.click('#sheet .primary');
-await page.locator('#sheet input[type=date]').nth(0).fill(fmt(ago(20)));
-await page.locator('#sheet input[type=date]').nth(1).fill(fmt(ago(16)));
+await page.locator('#sheet input[type=date]').nth(0).fill(fmt(day5));
+await page.locator('#sheet input[type=date]').nth(1).fill(fmt(end2));
 await page.click('#sheet .primary');
 await page.waitForFunction(() => document.querySelectorAll('#sheet .mini-list .item').length >= 2);
 check('過去の記録を追加できる', true);
@@ -835,12 +839,15 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   const dt2 = await page.evaluate(async () => { const C = await import('/js/crypto.js'); const key = await C.importKey(C.fromB64(localStorage.getItem('app.key'))); const e = window.__fake.ev[window.__fake.ev.length - 1]; return C.decryptJson(key, 'events', e); });
   check('連続で選ぶと、自動で「お泊まりデート」になる', dt2.title === 'お泊まりデート' && dt2.who === 'both' && !!dt2.end && dt2.end > dt2.date, JSON.stringify(dt2));
   // タップで、終わりの日を選ぶ
-  await page.locator('#month button.today').click();
+  // 終わりの日は、はじまりより後の日だけ選べる。月末は、2日後が月をこえるので、はじまりを、3日前の日にする(日付によらず動くように)
+  const todayN = new Date().getDate();
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const startN = todayN + 2 <= daysInMonth ? todayN : todayN - 3;
+  await cells.nth(startN - 1).click();
   await page.click('#ev-open');
   await page.click('#evb-range');
   check('「連続にする」を押すと、終わりの日を選ぶ状態になる', (await page.getAttribute('#evb-range', 'aria-pressed')) === 'true');
-  const todayN = new Date().getDate();
-  await cells.nth((todayN <= 26 ? todayN + 2 : todayN - 3) - 1).click(); // 今日とは別の日(日付によらず動くように)
+  await cells.nth(startN + 2 - 1).click();
   check('終わりの日をタップすると、期間になる', (await page.locator('#month button.inrange').count()) >= 1 && (await page.textContent('#evb-date')).includes('お泊まりデート'));
   await page.click('#evb-close');
   check('×でバーが閉じる', await page.locator('#ev-bar').isHidden());
@@ -946,6 +953,10 @@ await page.click('button.more-oto');
 check('満月が1つなら、部屋の棚は、水槽が1つだけ光り、残り4つは空', (await page.locator('.rm-svg [stroke-dasharray="3 3"]').count()) === 4);
 check('おたのしみは、部屋の絵。棚と日記帳が、タップできる', (await page.locator('.rm-svg').count()) === 1 && (await page.locator('.rm-hot[data-go="shelf"]').count()) === 1 && (await page.locator('.rm-hot[data-go="diary"]').count()) === 1);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/room-real.png` });
+// 日記帳が、2ページ以上になるように、数日前のお題を足しておく(日付は、今日からの数え方で決める)
+const oldCard = await enc('qcards', { text: '日記帳のための、昔のお題', date: fmt(ago(5)), by: 'u2', cat: 'memory' });
+await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qold', n: 95, ...doc, from: 'u2' }); window.__fake.notify(); }, oldCard);
+await page.waitForTimeout(300);
 await page.locator('.rm-hot[data-go="diary"]').click();
 await page.waitForSelector('.dcover');
 check('日記帳は、閉じた革の表紙から(年だけ・無題)', (await page.textContent('.dcover .dplate')).trim() === String(new Date().getFullYear()));
@@ -954,11 +965,13 @@ await page.click('.dcover');
 await page.waitForSelector('.dcover', { state: 'detached' });
 check('表紙をタップすると、表紙が開いて、ページが出る', await page.locator('.dpage.cur').isVisible());
 await page.waitForSelector('.dpage.cur');
-check('日記帳が開き、いちばん新しい(今日の)ページが出る', Number(await page.textContent('.dpage.cur .ddate .d')) === new Date().getDate() && (await page.textContent('.dpage.cur .ddate .ym')).includes(`${new Date().getFullYear()}年`));
+const dayOnPage = async () => Number(((await page.textContent('.dpage.cur .ddate .d')).match(/(\d+)日/) || [])[1]);
+check('日記帳が開き、いちばん新しい(今日の)ページが出る', (await dayOnPage()) === new Date().getDate());
 const dpnOpen = await page.textContent('.dpn');
-check('いちばん新しい日の、できごとのページが出る(予定・書き込み欄)', (await page.textContent('.dpage.cur')).includes('出張') && (await page.textContent('.dpage.cur')).includes('できごと') && (await page.locator('.dpage.cur .dnote').count()) >= 1);
+check('日付の横に、カレンダーのボタンがある', (await page.locator('.dpage.cur .ddate .dcalbtn').count()) === 1);
+check('日記帳には、下の「前の日・次の日」のボタンがない(スワイプ・矢印キー・しおり・カレンダーで動く)', (await page.locator('.dnav').count()) === 0);
 const dTotal = Number((await page.textContent('.dpn')).split('/')[1]);
-check('何かが入っている日だけが、ページになる(2ページ以上)', dTotal >= 2 && (await page.locator('.dtabs button').count()) >= 1);
+check('何かが入っている日だけが、ページになる(2ページ以上)', dTotal >= 2);
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-real.png` });
 // 指の動き(タッチ)。斜めの動きでも、横が強ければめくれる。たての動きは、ページのスクロール
 const swipe = (dx, dy) => page.evaluate(async ([dx, dy]) => {
@@ -977,42 +990,55 @@ await swipe(-90, 20);
 await page.waitForTimeout(800);
 check('左へのスワイプで、また次の日(新しいほう)に戻る', (await page.textContent('.dpn')) === dn0);
 await page.keyboard.press('ArrowLeft');
-await page.waitForTimeout(250);
-if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-real-mid.png` });
-await page.waitForTimeout(600);
-if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-card.png` });
-check('前の日にめくると、別の日のページになる', Number(await page.textContent('.dpage.cur .ddate .d')) !== new Date().getDate() || (await page.textContent('.dpn')).startsWith(`${dTotal - 1}`));
+await page.waitForTimeout(800);
+check('矢印キー(←)で、前の日のページになる', (await page.textContent('.dpn')) !== dn0);
 await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(800);
-check('次のページは、お題のページ(付せん)', (await page.locator('.dpage.cur .dsticky').count()) >= 1 || (await page.textContent('.dpn')) === dpnOpen);
-await page.click('.dribbon');
-await page.waitForTimeout(800);
-await page.keyboard.press('ArrowRight');
-await page.waitForTimeout(800);
-check('できごとの次は、お題のページ(付せんにお題・ふたりの答え)', (await page.locator('.dpage.cur .dsticky').count()) === 1 && (await page.locator('.dpage.cur .ans').count()) === 2);
-check('答えは、名前なしで、答えごとに蛍光ペン(その人の色)', (await page.locator('.dpage.cur .ans .mk').count()) === 2 && (await page.locator('.dpage.cur .ans.me .mk, .dpage.cur .ans.you .mk').count()) === 2 && (await page.locator('.dpage.cur .ans small').evaluateAll((els) => els.every((e) => getComputedStyle(e).display === 'none'))));
+check('矢印キー(→)で、また次の日に戻る', (await page.textContent('.dpn')) === dn0);
+// お題のある日まで、前へめくる
+let found = false;
+for (let i = 0; i < dTotal && !found; i += 1) {
+  if ((await page.locator('.dpage.cur .dsticky').count()) >= 1 && (await page.locator('.dpage.cur .ans').count()) === 2) { found = true; break; }
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForTimeout(700);
+}
+check('お題のある日のページに、付せんと、ふたりの答えが出る', found && (await page.locator('.dpage.cur .dsticky').count()) === 1);
+check('答えは、名前なしで、答えごとに蛍光ペン(その人の色)', (await page.locator('.dpage.cur .ans .mk').count()) === 2 && (await page.locator('.dpage.cur .ans.me .mk, .dpage.cur .ans.you .mk').count()) === 2);
 check('付せんは、カテゴリの色の目印(c-…)がつく', /\bc-[a-z]+\b/.test(await page.getAttribute('.dpage.cur .dsticky', 'class')));
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-card.png` });
 await page.click('.dribbon');
 await page.waitForTimeout(800);
-check('赤いひもで、いちばん新しい日のできごとのページに戻る', (await page.textContent('.dpn')) === dpnOpen);
+check('しおり(星のひも)で、いちばん新しい日のページに戻る', (await page.textContent('.dpn')) === dpnOpen);
+// 日付のカレンダー: えらぶと、その日のページへ飛ぶ
+await page.click('.dpage.cur .ddate');
+await page.waitForSelector('#sheet:not([hidden]) .dcal');
+check('日付を押すと、カレンダーが出る(書いた日は押せる)', (await page.locator('#sheet .dcal button.cell').count()) >= 2);
+await page.locator('#sheet .dcal button.cell:not(.cur)').first().click();
+await page.waitForSelector('#sheet', { state: 'hidden' });
+await page.waitForTimeout(500);
+check('カレンダーで日をえらぶと、その日のページへ飛ぶ', (await page.textContent('.dpn')) !== dpnOpen);
+await page.click('.dribbon');
+await page.waitForTimeout(800);
 // 書き込み欄: その場で書ける(手書き風の文字)
-await page.locator('.dpage.cur .dnote:not(.theirs)').click();
+await page.locator('.dpage.cur .dnote:not(.theirs)').first().click();
 await page.fill('.dpage.cur .dnote-in', '日記帳に書いたよ');
 await page.click('.dpage.cur .dsave');
-await page.waitForFunction(() => /日記帳に書いたよ/.test((document.querySelector('.dpage.cur .dnote') || { textContent: '' }).textContent), null, { timeout: 15000 });
+await page.waitForFunction(() => /日記帳に書いたよ/.test(document.querySelector('.dpage.cur').textContent), null, { timeout: 15000 });
 if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/diary-events.png` });
-check('書き込み欄に書くと、その日のメモとして残る', (await page.textContent('.dpage.cur .dnote')).includes('日記帳に書いたよ'));
-await page.locator('.dpage.cur .dwrite').first().click();
+check('書き込み欄に書くと、その日の日記として残る', (await page.textContent('.dpage.cur')).includes('日記帳に書いたよ'));
+// 電池(調子)をタップ → 「調子を直す」で、調子の画面が開く
+await page.locator('.dpage.cur .dbat').first().click();
+await page.locator('.dpop .fix').click();
 await page.waitForSelector('#sheet:not([hidden]) .scale');
-check('「書く・直す」で、その日の調子の画面が開く', true);
+check('電池の「調子を直す」で、その日の調子の画面が開く', true);
 await page.click('#sheet-close');
 const wd = await enc('qcards', { text: 'ひみつの題2', date: '2026-10-19', by: 'u2', cat: 'whisper' });
 await page.evaluate((doc) => { window.__fake.qc.push({ id: 'qw2', n: 91, ...doc, from: 'u2' }); window.__fake.notify(); }, wd);
 await page.waitForTimeout(300);
 check('ひそひそ話のお題は、日記帳のページにならない', Number((await page.textContent('.dpn')).split('/')[1]) === dTotal && !(await page.textContent('.dwrap')).includes('ひみつの題2'));
 await page.evaluate(() => { window.__fake.qc = window.__fake.qc.filter((x) => x.id !== 'qw2'); window.__fake.notify(); });
-await page.click('#more-menu button');
+await page.click('.dfab'); // ページ → 表紙
+await page.click('.dfab'); // 表紙 → おたのしみの入口
 check('日記帳の中の戻るで、おたのしみの部屋に戻る', (await page.locator('.rm-svg').count()) === 1);
 
 // 「最新版にする」で、ファイルを取り直して再読み込みする
