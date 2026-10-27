@@ -7,8 +7,8 @@ export const KOKORO = ['うれしい', 'たのしい', 'おだやか', 'わく�
 export const KARADA = ['眠い', 'だるい', '食欲がない', 'からだの疲れ'];
 export const PAIN = ['頭が痛い', 'おなかが痛い', '腰が痛い', '肩こり', '筋肉痛']; // からだの中の「いたいところ」
 export const SEIRI = ['生理痛', '量が多い', '量が少ない', '胸が張る']; // 生理のスイッチを入れた日の、ひとみの画面だけ
-const LEGACY_MARU = ['疲れた']; // 「疲れてる」に変えた。昔の記録に入っていれば、同じ場所に出す
-const LEGACY = ['むくみ']; // 選べなくした。昔の記録に入っていれば、からだとして出す
+export const LEGACY_MARU = ['疲れた']; // 「疲れてる」に変えた。昔の記録に入っていれば、同じ場所に出す
+export const LEGACY = ['むくみ']; // 選べなくした。昔の記録に入っていれば、からだとして出す
 
 export const PRESET_TAGS = new Set([...MARU, ...KOKORO, ...KARADA, ...PAIN, ...SEIRI, ...LEGACY_MARU, ...LEGACY]);
 

@@ -17,7 +17,7 @@ import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf
 import { roomSvg, pickScene } from './room.js';
 import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
 import { annivSticker } from './anniv.js';
-import { MARU, KOKORO, KARADA, PAIN, SEIRI, PRESET_TAGS, groupTags, painBadge, isPain, tagKind } from './tags.js';
+import { MARU, KOKORO, KARADA, PAIN, SEIRI, LEGACY_MARU, LEGACY, PRESET_TAGS, groupTags, painBadge, isPain, tagKind } from './tags.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -1635,9 +1635,9 @@ function openDaySheet(date) {
     const painBox = h('div', { class: 'tg-pain' }, h('p', { class: 'lab tg-h pain' }, 'いたいところ', customPain.length ? h('small', { class: 'tag-hint' }, '  長押しで、足したものを消せます') : null), h('div', { class: 'tags' }, [...PAIN, ...customPain].map((t) => chip(t, customPain.includes(t)))));
     painBox.querySelector('.lab').insertAdjacentHTML('afterbegin', TG_ICON.pain);
     tags.replaceChildren(...[
-      h('div', { class: 'tags' }, MARU.map((t) => chip(t))),
+      h('div', { class: 'tags' }, [...MARU, ...LEGACY_MARU.filter((t) => draft.t.includes(t))].map((t) => chip(t))), // 昔の「疲れた」は、その日に入っているときだけ、並べる(外せるように)
       iconHead('kokoro', group('こころ', KOKORO, false, 'kokoro')),
-      h('div', {}, iconHead('karada', group('からだ', KARADA, false, 'karada')), painBox),
+      h('div', {}, iconHead('karada', group('からだ', [...KARADA, ...LEGACY.filter((t) => draft.t.includes(t))], false, 'karada')), painBox),
       showPeriod ? iconHead('seiri', group('生理のこと', SEIRI, false, 'seiri')) : null,
       customOther.length ? group('よく使うタグ', customOther, true) : null,
       h('div', { class: 'tagadd' }, customInput, customAdd),
