@@ -60,8 +60,44 @@ const S={
 const HOT = `<g class="rm-hot" data-go="shelf" role="button" tabindex="0" aria-label="月の棚"><rect x="6" y="112" width="104" height="132" rx="8" fill="transparent"/></g>
 <g class="rm-hot" data-go="diary" role="button" tabindex="0" aria-label="日記帳"><rect x="113" y="172" width="91" height="94" rx="8" fill="transparent"/></g>`;
 
+// 昼の部屋: 時間で、背景の色と、窓の外が変わる(朝 / 昼 / 午後〜夕方)。夜は、いまの夜の部屋のまま
+export const toneOf = (hour) => (isNight(hour) ? 'night' : hour < 10 ? 'morning' : hour < 15 ? 'noon' : 'evening');
+const TONES = {
+  morning: { wall: ['#eefaf6', '#d3efe6'], floor: ['#cfe3ec', '#b4cfdc'], glow: '#ffffff', sky: ['#7fc8ff', '#d9f0ff'], frame: '#8fb8c8', sill: '#b2d2de', shelf: '#bcdbe6', shelfIn: '#eef8fb', line: '#e8f7f6', line2: '#a8ccd8', sun: '#fff0a0', ray: '#ffffff', rayOp: 0.55, shadow: '#5a7a8a', vig: '#5a8aa0', vigOp: 0.12 },
+  noon: { wall: ['#f1e8ff', '#dccdf3'], floor: ['#e8cfae', '#d4b48c'], glow: '#ffffff', sky: ['#a9dcff', '#e3f4ff'], frame: '#a98fd6', sill: '#c8b0ec', shelf: '#d2bdea', shelfIn: '#f4eafa', line: '#ece0fb', line2: '#cdb9ee', sun: '#ffd95a', ray: '#fff7d6', rayOp: 0.5, shadow: '#7a6a9a', vig: '#8a6aa8', vigOp: 0.14 },
+  evening: { wall: ['#fff0dc', '#f6d9bd'], floor: ['#e6bb85', '#cf9a60'], glow: '#fff3c8', sky: ['#ffd9a8', '#fff1d4'], frame: '#c79a78', sill: '#e0b894', shelf: '#e8c4a0', shelfIn: '#fff3e4', line: '#fff0e0', line2: '#e0b48c', sun: '#ffc94a', ray: '#fff0b8', rayOp: 0.55, shadow: '#8a5a3a', vig: '#b0703a', vigOp: 0.16 },
+};
+// 夜の背景の色を、昼の色に入れかえる(背景だけ。ふたりの絵は、そのまま)。月と星は消して、太陽と雲に、窓から床へ日ざしを入れる
+function dayify(svg, tone) {
+  const c = TONES[tone];
+  if (!c) return svg;
+  let s = svg;
+  const swap = (a, b) => { s = s.split(a).join(b); };
+  swap('stop-color="#2a2a66"', `stop-color="${c.wall[0]}"`); swap('stop-color="#171646"', `stop-color="${c.wall[1]}"`);
+  swap('stop-color="#2c2468"', `stop-color="${c.floor[0]}"`); swap('stop-color="#150f3a"', `stop-color="${c.floor[1]}"`);
+  swap('stop-color="#5a5ab8" stop-opacity=".35"', `stop-color="${c.glow}" stop-opacity=".8"`); swap('stop-color="#5a5ab8" stop-opacity="0"', `stop-color="${c.glow}" stop-opacity="0"`);
+  swap('stop-color="#05051a" stop-opacity=".3"', `stop-color="${c.vig}" stop-opacity="${c.vigOp}"`); swap('stop-color="#05051a" stop-opacity="0"', `stop-color="${c.vig}" stop-opacity="0"`);
+  swap('fill="#16143e"', 'fill="url(#rmsky)"');
+  swap('#7e6eb4', c.frame); swap('#7a64a8', c.sill); swap('#a592d0', c.line); swap('#b8a6e0', c.line2); swap('#6e5a9e', c.shelf); swap('#5e4c92', c.shelf); swap('#4e3e82', c.shelf); swap('#8a76b8', c.line2);
+  swap('#2a1830', c.shelfIn); swap('#3a3180', c.shelf); swap('#6a5cb4', c.line2); swap('#5a4ca8', c.line2); swap('#5a3d8a', c.shelf);
+  swap('#0a0620', c.shadow);
+  s = s.replace(/<g fill="#ffe9a8">.*?<\/g>/s, ''); // 星
+  s = s.replace(/<g class="rmfl">.*?<\/g>/s, ''); // 夜に飛ぶ光
+  s = s.replace(/<circle cx="188" cy="62"[^>]*\/>/g, '').replace(/<path d="M188 46[^>]*\/>/g, '').replace(/<circle cx="182"[^>]*\/>/g, '').replace(/<circle cx="193"[^>]*\/>/g, ''); // 窓の月
+  const defs = `<linearGradient id="rmsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.sky[0]}"/><stop offset="1" stop-color="${c.sky[1]}"/></linearGradient><radialGradient id="rmsun"><stop offset="0" stop-color="${c.sun}" stop-opacity=".95"/><stop offset=".45" stop-color="${c.sun}" stop-opacity=".5"/><stop offset="1" stop-color="${c.sun}" stop-opacity="0"/></radialGradient><linearGradient id="rmray" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.ray}" stop-opacity="${c.rayOp}"/><stop offset="1" stop-color="${c.ray}" stop-opacity="0"/></linearGradient>`;
+  s = s.replace('</defs>', `${defs}</defs>`);
+  const sun = `<circle cx="150" cy="64" r="30" fill="url(#rmsun)"/><circle cx="150" cy="64" r="11" fill="${c.sun}"/><g fill="#fff" opacity=".92"><ellipse cx="196" cy="52" rx="14" ry="5"/><ellipse cx="204" cy="48" rx="9" ry="5"/><ellipse cx="136" cy="100" rx="12" ry="4.500"/><ellipse cx="144" cy="97" rx="7" ry="4"/></g>`;
+  s = s.replace('<rect x="113" y="122" width="104" height="7"', `<clipPath id="rmwc"><path d="M120 122V81a45 45 0 0 1 90 0V122z"/></clipPath><g clip-path="url(#rmwc)">${sun}</g><rect x="113" y="122" width="104" height="7"`);
+  const rays = '<g><path d="M126 129L214 129L262 250L120 250Z" fill="url(#rmray)"/><path d="M150 129L172 129L196 250L150 250Z" fill="#fff" opacity=".18"/></g>';
+  s = s.replace('fill="url(#rmv)"/>', `fill="url(#rmv)"/>${rays}`);
+  return s;
+}
+
+// opts.tone: 昼の絵(d…)のとき、'morning' | 'noon' | 'evening' を渡すと、昼の部屋の色になる。渡さなければ、これまでの(夜の)背景
 export function roomSvg(key, opts = {}) {
   const k = PICS[key] || S[key] ? key : 'd1';
   const scene = PICS[k] ? () => pic(k, ...PICS[k]) : S[k];
-  return `<svg viewBox="0 0 360 340" class="rm-svg" role="group" aria-label="おたのしみの部屋">${base(opts)}${scene()}${HOT}</svg>`;
+  const body = `${base(opts)}${scene()}${HOT}`;
+  const tone = opts.tone && k.startsWith('d') ? opts.tone : '';
+  return `<svg viewBox="0 0 360 340" class="rm-svg" role="group" aria-label="おたのしみの部屋">${tone ? dayify(body, tone) : body}</svg>`;
 }

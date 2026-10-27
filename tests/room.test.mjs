@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SCENES, PICS, DAY_READY, isNight, pickScene, roomSvg } from '../docs/js/room.js';
+import { SCENES, PICS, DAY_READY, isNight, pickScene, roomSvg, toneOf } from '../docs/js/room.js';
 
 test('夜は21時から朝5時まで', () => {
   assert.equal(isNight(20), false); assert.equal(isNight(21), true); assert.equal(isNight(2), true); assert.equal(isNight(4), true); assert.equal(isNight(5), false);
@@ -54,4 +54,23 @@ test('DAY_READY が false の間は、昼間も夜の場面。true なら、昼�
 test('机の本の絵がある(sw.js にも書いてある)', () => {
   assert.ok(fs.existsSync(new URL('../docs/img/room/book.webp', import.meta.url)));
   assert.ok(fs.readFileSync(new URL('../docs/sw.js', import.meta.url), 'utf8').includes("'img/room/book.webp'"));
+});
+
+test('時間の色: 朝 5〜10時 / 昼 10〜15時 / 午後〜夕方 15〜21時 / 夜 21〜5時', () => {
+  const t = (h) => toneOf(h);
+  assert.deepEqual([4, 5, 9, 10, 14, 15, 20, 21, 23, 0].map(t), ['night', 'morning', 'morning', 'noon', 'noon', 'evening', 'evening', 'night', 'night', 'night']);
+});
+
+test('昼の部屋: toneを渡すと、昼の色(窓は空と太陽、月と星は消える)。渡さなければ、これまでの背景', () => {
+  const plain = roomSvg('d2', { pts: 100 });
+  assert.ok(plain.includes('fill="#16143e"') && plain.includes('<circle cx="188" cy="62" r="16" fill="#ffe08a"/>'));
+  ['morning', 'noon', 'evening'].forEach((tone) => {
+    const s = roomSvg('d2', { pts: 100, tone });
+    assert.ok(s.includes('id="rmsky"') && s.includes('fill="url(#rmsky)"'), tone);
+    assert.ok(!s.includes('fill="#16143e"') && !s.includes('class="rmtw"') && !s.includes('<circle cx="188" cy="62"'), tone);
+    assert.ok(s.includes('img/room/d2.webp') && s.includes('class="rm-hot"'), tone); // ふたりの絵と、タップできる場所は、そのまま
+    assert.notEqual(s, plain);
+  });
+  assert.notEqual(roomSvg('d2', { tone: 'morning' }), roomSvg('d2', { tone: 'evening' }));
+  assert.equal(roomSvg('n1', { pts: 100, tone: 'noon' }), roomSvg('n1', { pts: 100 })); // 夜の絵(n…)には、昼の色をつけない
 });
