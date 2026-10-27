@@ -52,14 +52,34 @@ export function availableStock(stock, cards) {
 export const WHISPER = 'whisper'; // 「おやすみ前」: デートの前の日にだけ出る。それまで、中身は画面に出さない
 
 // whisperOk: 明日がデートの日(=今日が、デートの前日)。その日は「おやすみ前」だけから選び(100%)、ほかの日は、おやすみ前を除いて選ぶ。
+// 予約を出す順番。予約した順が基本だが、2件以上あるときは、前のお題を足した人(lastBy)と、ちがう人が足したお題を先にする(ふたりが交互になるように)。
+// 1件ずつ決めては、その人を「前の人」にして、次を決める。ちがう人のものが無ければ、予約した順のまま。
+// 使用済み・消えたもの・おやすみ前は、とばす。ふたりの端末で、同じ結果になる。
+export function orderReserved(rsv, avail, lastBy = null) {
+  const seen = new Set();
+  const rest = [];
+  rsv.forEach((r) => {
+    const hit = avail.find((s) => s.id === r.id && s.cat !== WHISPER);
+    if (hit && !seen.has(hit.id)) { seen.add(hit.id); rest.push(hit); }
+  });
+  const out = [];
+  let by = lastBy;
+  while (rest.length) {
+    let i = by ? rest.findIndex((s) => s.from !== by) : 0;
+    if (i < 0) i = 0;
+    const [x] = rest.splice(i, 1);
+    out.push(x);
+    by = x.from;
+  }
+  return out;
+}
+
 // rsv: 予約のリスト(予約した順)。おやすみ前の日(whisperOk)は、おやすみ前を優先するので、予約は、次の日まで待つ。
-// 予約が、まだ使っていないストックにあれば、いちばん先の予約を、そのまま選ぶ(ふたりの端末で、同じ結果になる)
+// 予約があれば、上の順番の、いちばん先を、そのまま選ぶ(前と同じカテゴリでも、予約が先)
 export function pickStock(avail, n, lastCat = null, lastBy = null, whisperOk = false, rsv = []) {
   if (!whisperOk) {
-    for (const r of rsv) {
-      const hit = avail.find((s) => s.id === r.id && s.cat !== WHISPER);
-      if (hit) return hit;
-    }
+    const o = orderReserved(rsv, avail, lastBy);
+    if (o.length) return o[0];
   }
   const whispers = avail.filter((s) => s.cat === WHISPER);
   const base = whisperOk && whispers.length ? whispers : avail.filter((s) => s.cat !== WHISPER);

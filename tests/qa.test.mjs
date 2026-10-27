@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { nextAction, cardStatus, availableStock, pickStock, WHISPER, isComplete, describeAnswer, fmtDuration, answerKey, localKey } from '../docs/js/qa.js';
+import { nextAction, cardStatus, availableStock, pickStock, orderReserved, WHISPER, isComplete, describeAnswer, fmtDuration, answerKey, localKey } from '../docs/js/qa.js';
 import { nextBirthday, nextGiftBirthday, isBirthdayOn, midnightMs, birthdayDate } from '../docs/js/dates.js';
 
 const at = (key, hh = 12) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d, hh).getTime(); };
@@ -167,4 +167,28 @@ test('予約: デートの前日(おやすみ前の日)は、おやすみ前が�
   const avail = [{ id: 'a', text: 'A', from: 'u1' }, { id: 'w', text: 'W', from: 'u1', cat: WHISPER }];
   assert.equal(pickStock(avail, 1, null, null, true, [{ id: 'a' }]).id, 'w');
   assert.equal(pickStock(avail.filter((x) => x.id === 'a'), 1, null, null, true, [{ id: 'a' }]).id, 'a'); // おやすみ前が無ければ、予約を出す
+});
+
+test('予約の順番: 2件以上のときは、前のお題を足した人と、ちがう人のお題が先(ふたりが交互)', () => {
+  const avail = [
+    { id: 'a', text: 'A', from: 'u1' }, { id: 'b', text: 'B', from: 'u1' }, { id: 'c', text: 'C', from: 'u2' }, { id: 'd', text: 'D', from: 'u2' },
+  ];
+  const ids = (l) => l.map((x) => x.id).join('');
+  const r = (...x) => x.map((id) => ({ id }));
+  // 前のお題が u1 → u2 のお題が先。そのあとは、また u1、…と交互
+  assert.equal(ids(orderReserved(r('a', 'b', 'c', 'd'), avail, 'u1')), 'cadb');
+  // 前のお題が u2 → u1 のお題が先
+  assert.equal(ids(orderReserved(r('c', 'a', 'd', 'b'), avail, 'u2')), 'acbd');
+  // 前の人が分からない(はじめて)ときは、予約した順
+  assert.equal(ids(orderReserved(r('b', 'c', 'a'), avail, null)), 'bca'); // b(u1) → 次は違う人 c(u2) → a(u1)
+  // 片方の人のお題しかないときは、予約した順のまま
+  assert.equal(ids(orderReserved(r('b', 'a'), avail, 'u2')), 'ba');
+  assert.equal(ids(orderReserved(r('b', 'a'), avail, 'u1')), 'ba');
+  // 予約が1件のときは、前の人と同じでも、その1件が出る(予約が先)
+  assert.equal(ids(orderReserved(r('a'), avail, 'u1')), 'a');
+  assert.equal(pickStock(avail, 1, null, 'u1', false, r('a', 'c')).id, 'c');
+  assert.equal(pickStock(avail, 1, null, 'u2', false, r('c', 'a')).id, 'a');
+  // 使用済み・消えた・おやすみ前は、とばす。同じidが重なっても、1つ
+  const w = [...avail, { id: 'w', text: 'W', from: 'u2', cat: WHISPER }];
+  assert.equal(ids(orderReserved(r('w', 'gone', 'a', 'a'), w, 'u2')), 'a');
 });
