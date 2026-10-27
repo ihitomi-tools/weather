@@ -256,8 +256,6 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .dd-patpic.lap svg { width: 76px; height: 41px; } /* ひざまくらは横に長いので、ふたり立ちの絵と見た目の大きさをそろえる */
 .dd-level b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dd-level span { font-size: 18px; font-weight: 800; }
-.dd-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.dd-tags span { background: var(--pink); color: var(--on-pink); border-radius: 99px; padding: 7px 14px; font-size: 15px; font-weight: 700; }
 .dd-memo { margin: 0; font-size: 18px; line-height: 1.75; overflow-wrap: anywhere; white-space: pre-wrap; }
 .pat-banner { margin: 0 18px 12px; width: calc(100% - 36px); border: 0; border-radius: 18px; padding: 13px 16px; background: var(--pink); color: var(--on-pink); font: inherit; font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; }
 .pat-banner svg, .pat svg, .dd-pat svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
@@ -394,10 +392,6 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 .lv { display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 1px 10px 1px 6px; font-size: 13px; font-weight: 800; color: var(--lc, var(--muted)); box-shadow: inset 0 0 0 1.5px var(--lc, var(--line)); white-space: nowrap; }
 .lv svg { width: 14px; height: 14px; flex: none; }
 .lv.none { padding-left: 10px; }
-.chips2 { display: flex; flex-wrap: wrap; gap: 5px; }
-.chip2 { border-radius: 99px; padding: 1px 10px; font-size: 13px; font-weight: 700; }
-.chip2.h, .dd-tags span.h { background: var(--pink); color: var(--on-pink); }
-.chip2.y, .dd-tags span.y { background: var(--mint); color: var(--on-mint); }
 .mi-memo { font-size: 13.5px; line-height: 1.6; overflow-wrap: anywhere; }
 
 /* よしよしが届いたとき */
@@ -445,7 +439,6 @@ textarea { resize: none; font-family: ui-monospace, Menlo, monospace; font-size:
 
 /* 記録の時刻 */
 .dd-time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dd-tags span small, .chip2 small { font-weight: 800; opacity: .8; font-size: 13px; }
 
 /* ---- お題の予想 ---- */
 .guess textarea { min-height: 0; }
@@ -623,3 +616,34 @@ html, body, button, a, label, input, select, textarea { touch-action: manipulati
 .catit .cdot { width: 10px; height: 10px; border-radius: 50%; margin-top: 8px; background: var(--muted); }
 .catit .cdot.complete { background: var(--mint-deep); }
 .catit .cdot.rest { background: transparent; box-shadow: inset 0 0 0 2px var(--muted); }
+
+/* 気分のタグ(こころ・からだ・いたいところ・生理のこと)。色は、種類で決める */
+:root { --tg-kokoro: #7a66e0; --tg-karada: #c77a0a; --tg-maru: #1f9e92; --tg-seiri: #d94b83; --tg-pain: #e23b4e; --tg-other: #7b86a8; --tg-on: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --tg-kokoro: #a79bff; --tg-karada: #ffb44d; --tg-maru: #4fd1c5; --tg-seiri: #ff7fb0; --tg-pain: #ff6b7a; --tg-other: #aab1d8; --tg-on: #1a1d3a; } }
+:root[data-theme="dark"] { --tg-kokoro: #a79bff; --tg-karada: #ffb44d; --tg-maru: #4fd1c5; --tg-seiri: #ff7fb0; --tg-pain: #ff6b7a; --tg-other: #aab1d8; --tg-on: #1a1d3a; }
+.pc-head { --pc: #b9a4ff; } .pc-stomach { --pc: #ffb44d; } .pc-waist { --pc: #5fb4ff; } .pc-shoulder { --pc: #ff8fa8; } .pc-chest { --pc: #ff9bd0; }
+.pc-muscle { --pc: #7ddc8a; } .pc-period { --pc: #ff7fb0; } .pc-tooth { --pc: #c9d1e8; } .pc-eye { --pc: #6fd0e0; } .pc-throat { --pc: #f2c46d; } .pc-other { --pc: #ff8d99; }
+.tg-h { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 800; margin: 0 0 5px; color: var(--c, var(--muted)); }
+.tg-h svg { width: 15px; height: 15px; flex: none; }
+.tg-h.kokoro { --c: var(--tg-kokoro); } .tg-h.karada { --c: var(--tg-karada); } .tg-h.seiri { --c: var(--tg-seiri); } .tg-h.pain { --c: var(--tg-pain); }
+.tg-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tg-wrap.lg { gap: 9px; }
+.tg-sec { display: flex; flex-direction: column; gap: 5px; }
+.tg-row { display: flex; flex-wrap: wrap; gap: 5px; }
+.tg { border: 2px solid var(--tgc, var(--tg-other)); border-radius: 99px; padding: 1px 10px; font-size: 13px; font-weight: 700; color: var(--fg); background: var(--surface); }
+.tg.kokoro { --tgc: var(--tg-kokoro); } .tg.karada { --tgc: var(--tg-karada); } .tg.maru { --tgc: var(--tg-maru); } .tg.seiri { --tgc: var(--tg-seiri); } .tg.pain { --tgc: var(--tg-pain); }
+.tg-wrap.lg .tg { font-size: 15px; padding: 3px 12px; }
+.tg small, .tg-tile small { font-weight: 800; opacity: .8; font-size: 12px; }
+.tg-pain { border: 2px solid var(--tg-pain); border-radius: 14px; padding: 6px 7px; background: rgba(226, 59, 78, .07); }
+.tg-pain .tg-h { color: var(--tg-pain); }
+.tg-tile { display: inline-flex; align-items: center; gap: 6px; border: 2.5px solid var(--pc, var(--tg-pain)); border-radius: 12px; padding: 2px 10px 2px 3px; font-size: 14px; font-weight: 800; color: var(--fg); background: var(--surface); }
+.tg-tile em, .tags button em { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--pc, var(--tg-pain)); color: #1a1d3a; display: grid; place-items: center; font-style: normal; font-size: 14px; font-weight: 900; line-height: 1; }
+.tg-wrap.lg .tg-tile { font-size: 16px; } .tg-wrap.lg .tg-tile em { width: 28px; height: 28px; font-size: 16px; }
+/* えらぶ画面 */
+.tags button { border: 2px solid var(--bc, transparent); padding: 6px 12px; }
+.tags button.k-kokoro { --bc: var(--tg-kokoro); } .tags button.k-karada { --bc: var(--tg-karada); } .tags button.k-maru { --bc: var(--tg-maru); } .tags button.k-seiri { --bc: var(--tg-seiri); } .tags button.k-pain { --bc: var(--tg-pain); }
+.tags button[aria-pressed="true"] { background: var(--bc, var(--pink)); color: var(--tg-on); }
+.tags button[aria-pressed="true"] em { box-shadow: 0 0 0 2px var(--tg-on); }
+.tags button { display: inline-flex; align-items: center; gap: 6px; }
+.tags button:has(em) { padding-left: 4px; }
+.tg-pain .tags { margin-top: 2px; }
