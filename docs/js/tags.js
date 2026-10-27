@@ -2,14 +2,15 @@
 // どこに入るか・どんな色か・漢字の丸は何かは、表示のときに、文字から決める。
 
 // えらぶ画面に並べる、決まったタグ
-export const MARU = ['元気', 'よく眠れた', '疲れた']; // こころともからだとも言い切れない。見出しなしで、いちばん上
-export const KOKORO = ['うれしい', 'たのしい', 'おだやか', 'わくわく', 'さみしい', 'イライラ', '不安', '落ち込み', 'こころが疲れた'];
-export const KARADA = ['眠い', 'だるい', '食欲がない', 'からだが疲れた'];
+export const MARU = ['元気', 'よく眠れた', '疲れてる']; // こころともからだとも言い切れない。見出しなしで、いちばん上
+export const KOKORO = ['うれしい', 'たのしい', 'おだやか', 'わくわく', 'さみしい', 'イライラ', '不安', '落ち込み', 'こころの疲れ'];
+export const KARADA = ['眠い', 'だるい', '食欲がない', 'からだの疲れ'];
 export const PAIN = ['頭が痛い', 'おなかが痛い', '腰が痛い', '肩こり', '筋肉痛']; // からだの中の「いたいところ」
 export const SEIRI = ['生理痛', '量が多い', '量が少ない', '胸が張る']; // 生理のスイッチを入れた日の、ひとみの画面だけ
+const LEGACY_MARU = ['疲れた']; // 「疲れてる」に変えた。昔の記録に入っていれば、同じ場所に出す
 const LEGACY = ['むくみ']; // 選べなくした。昔の記録に入っていれば、からだとして出す
 
-export const PRESET_TAGS = new Set([...MARU, ...KOKORO, ...KARADA, ...PAIN, ...SEIRI, ...LEGACY]);
+export const PRESET_TAGS = new Set([...MARU, ...KOKORO, ...KARADA, ...PAIN, ...SEIRI, ...LEGACY_MARU, ...LEGACY]);
 
 // 「痛い」「痛み」「〇痛」で終わる言葉(自分で足したタグも)。「痛くない」は、終わりが違うので入らない
 const PAIN_END = /(痛い|痛み|痛)$/;
@@ -18,7 +19,7 @@ export const isPain = (t) => PAIN.includes(t) || t === '生理痛' || PAIN_END.t
 // 'pain' | 'maru' | 'kokoro' | 'karada' | 'seiri' | 'other'
 export function tagKind(t) {
   if (isPain(t)) return 'pain';
-  if (MARU.includes(t)) return 'maru';
+  if (MARU.includes(t) || LEGACY_MARU.includes(t)) return 'maru';
   if (KOKORO.includes(t)) return 'kokoro';
   if (KARADA.includes(t) || LEGACY.includes(t)) return 'karada';
   if (SEIRI.includes(t)) return 'seiri';
