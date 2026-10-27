@@ -14,8 +14,7 @@ test('仕分け', () => {
   assert.equal(tagKind('胸が張る'), 'seiri');
   assert.equal(tagKind('量が多い'), 'seiri');
   assert.equal(tagKind('元気'), 'maru');
-  assert.equal(tagKind('疲れた'), 'maru'); // 昔の記録
-  assert.equal(tagKind('疲れてる'), 'maru');
+  assert.equal(tagKind('疲れた'), 'maru');
   assert.equal(tagKind('よく眠れた'), 'maru');
   assert.equal(tagKind('こころの疲れ'), 'kokoro');
   assert.equal(tagKind('不安'), 'kokoro');
@@ -48,5 +47,5 @@ test('groupTags: 順番はえらんだ順、昔の記録の言葉も落とさな
 });
 
 test('決めたタグは、全部、PRESET に入っている(自分で足したタグとして、数えない)', () => {
-  [...PAIN, ...SEIRI, 'むくみ', '元気', '疲れた', '疲れてる'].forEach((t) => assert.ok(PRESET_TAGS.has(t), t));
+  [...PAIN, ...SEIRI, 'むくみ', '元気', '疲れた'].forEach((t) => assert.ok(PRESET_TAGS.has(t), t));
 });
