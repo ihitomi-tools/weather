@@ -23,10 +23,6 @@
 .ddate.sun .w { color: var(--pink-deep); }
 .dpage .ans { box-shadow: 0 1px 3px rgba(0, 0, 0, .08); margin-bottom: 7px; font-size: 16px; }
 .dpage .flip-in { animation: none; }
-.dtags { display: flex; flex-wrap: wrap; gap: 5px; font-size: 14px; font-weight: 700; margin: 2px 0; }
-.dtags span { border-radius: 99px; padding: 1px 10px; }
-.dtags .me { background: var(--pink); color: var(--on-pink); }
-.dtags .you { background: var(--mint); color: var(--on-mint); }
 .dribbon { position: absolute; top: -6px; right: 7px; width: 22px; height: 74px; z-index: 5; background: none; border: 0; padding: 0; line-height: 0; cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)); }
 .dribbon svg { display: block; }
 .dribbon:active { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .3)) brightness(1.3); }
@@ -145,7 +141,7 @@
 .dbat.on { background: rgba(60, 40, 10, .08); }
 .dpop { position: absolute; right: -4px; top: 38px; z-index: 9; width: min(240px, 80vw); background: #fffdf5; border: 1.5px solid #e0d2b0; border-radius: 14px; padding: 10px 12px 12px; box-shadow: 0 8px 20px rgba(60, 40, 10, .28); line-height: 1.4; }
 .dpop .lv { font-size: 12px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
-.dpop .dtags { margin: 0; }
+.dpop .tg-wrap { margin: 0; }
 .dpop .fix { margin-top: 10px; display: inline-block; border: 1.5px solid var(--line); border-radius: 99px; padding: 3px 12px; font: inherit; font-size: 12px; font-weight: 800; color: var(--muted); background: none; cursor: pointer; }
 .dodai { margin-top: auto; padding-top: 8px; }
 .dpage.clipped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(transparent, var(--dy-paper) 75%); pointer-events: none; border-radius: 0 0 14px 6px; }

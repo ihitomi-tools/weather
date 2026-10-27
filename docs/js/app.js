@@ -17,6 +17,7 @@ import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf
 import { roomSvg, pickScene } from './room.js';
 import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
 import { annivSticker } from './anniv.js';
+import { MARU, KOKORO, KARADA, PAIN, SEIRI, LEGACY, PRESET_TAGS, groupTags, painBadge, isPain, tagKind } from './tags.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
 import { findSimilar } from './similar.js';
@@ -40,17 +41,11 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.26-116';
+const VERSION = '2026.10.27-117';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
-// 気分のタグ。気持ち・からだ・(生理のスイッチを入れた日だけ)生理まわり。ほかに、自分で足せる
-const TAG_GROUPS = [
-  ['気持ち', ['うれしい', 'たのしい', 'おだやか', 'わくわく', '元気', 'さみしい', 'イライラ', '不安', '落ち込み', '疲れた']],
-  ['からだ', ['眠い', 'だるい', '頭が痛い', 'おなかが痛い', '肩こり', '食欲がない', 'よく眠れた']],
-];
-const PERIOD_TAGS = ['生理痛', '量が多い', '量が少ない', '腰が痛い', '胸が張る', 'むくみ'];
-const PRESET_TAGS = new Set([...TAG_GROUPS.flatMap((g) => g[1]), ...PERIOD_TAGS]);
+// 気分のタグの仕分けは、tags.js(こころ・からだ・いたいところ・生理のこと。どちらとも言えないものは、見出しなしで、いちばん上)
 const LIT = ['', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 1 12 3Z', 'M12 3A9 9 0 0 0 12 21Z', 'M12 3A9 9 0 0 0 12 21A4 9 0 0 0 12 3Z', 'M12 3A9 9 0 1 0 12 21A9 9 0 1 0 12 3Z'];
 
 function moonIcon(level) {
@@ -713,6 +708,34 @@ function recTimeLine(rec) {
   return h('div', { class: 'dd-time' }, parts.join(' ・ '));
 }
 
+// タグの見せかた。いたいところは赤い枠に(漢字1文字の色の丸つき)、そのほかは、種類の色の枠のタグ。
+// labels: こころ/からだ の見出しを付ける(日の詳細)。times: あとから足した時刻(＋時刻)を付ける
+const TG_ICON = {
+  kokoro: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14C2 10 1 6.500 3 4.800 5 3.200 7 4.500 8 6c1-1.500 3-2.800 5-1.200 2 1.700 1 5.200-5 9.200z" fill="currentColor"/></svg>',
+  karada: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="3.500" r="2.500" fill="currentColor"/><path d="M3.500 14V8.500a4.500 3 0 0 1 9 0V14z" fill="currentColor"/></svg>',
+  pain: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 1 3 9h4l-1 6 7-9H9z" fill="currentColor"/></svg>',
+  seiri: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.500C5 6 3.500 8 3.500 10.500a4.500 4.500 0 0 0 9 0C12.500 8 11 6 8 1.500z" fill="currentColor"/></svg>',
+};
+const tgHead = (kind, text) => { const el = h('p', { class: `tg-h ${kind}` }, text); el.insertAdjacentHTML('afterbegin', TG_ICON[kind]); return el; };
+const tgTile = (t, tt) => { const b = painBadge(t); return h('span', { class: `tg-tile pc-${b.color}` }, h('em', {}, b.ch), t, tt && tt[t] ? h('small', {}, ` ＋${clockOf(tt[t])}`) : null); };
+const tgChip = (t, tt) => h('span', { class: `tg ${tagKind(t)}` }, t, tt && tt[t] ? h('small', {}, ` ＋${clockOf(tt[t])}`) : null);
+function tagView(tags, tt, { labels = false } = {}) {
+  const g = groupTags(tags);
+  const row = (list) => (list.length ? h('div', { class: 'tg-row' }, list.map((t) => tgChip(t, tt))) : null);
+  const painBox = g.pain.length ? h('div', { class: 'tg-pain' }, tgHead('pain', 'いたいところ'), h('div', { class: 'tg-row' }, g.pain.map((t) => tgTile(t, tt)))) : null;
+  const sec = (kind, text, list, extra) => (list.length || extra ? h('div', { class: 'tg-sec' }, tgHead(kind, text), row(list), extra) : null);
+  if (!labels) { // 小さな場所(ホーム・日記の電池): 見出しなしで、ふつうのタグを1つの流れに。いたいところは、その下の枠
+    return h('div', { class: 'tg-wrap' }, ...[row([...g.maru, ...g.kokoro, ...g.karada, ...g.seiri, ...g.other]), painBox].filter(Boolean));
+  }
+  return h('div', { class: 'tg-wrap lg' }, ...[
+    row(g.maru),
+    sec('kokoro', 'こころ', g.kokoro),
+    sec('karada', 'からだ', g.karada, painBox),
+    sec('seiri', '生理のこと', g.seiri),
+    row(g.other),
+  ].filter(Boolean));
+}
+
 // ホームの「最近の気分」: 調子は丸い枠、気分(タグ)は色つきの丸。ひとことメモは、その下の行に分ける
 function moodItem(r) {
   const d = parseYmd(r.d);
@@ -722,7 +745,7 @@ function moodItem(r) {
     h('span', { class: 'mi-av' }, svgEl(Ch.bust(role, 34))),
     h('div', { class: 'mi-body' },
       h('div', { class: 'mi-top' }, nameOfUid(r.u), lv, h('time', {}, `${d.getMonth() + 1}/${d.getDate()}`)),
-      r.t && r.t.length ? h('div', { class: 'chips2' }, r.t.map((t) => h('span', { class: `chip2 ${role}` }, t, r.tt && r.tt[t] ? h('small', {}, ` ＋${clockOf(r.tt[t])}`) : null))) : null,
+      r.t && r.t.length ? tagView(r.t, r.tt) : null,
       r.m ? h('div', { class: 'mi-memo' }, r.m) : null));
 }
 
@@ -963,7 +986,7 @@ function renderDayDetail(date) {
     nodes.push(h('div', { class: 'dd-p' },
       h('div', { class: 'dd-head' }, h('span', { class: 'dd-who' }, svgEl(Ch.bust(role, 28)), nameOfUid(u)), rec.p ? h('span', { class: 'dd-badge' }, '生理') : null, edit),
       level ? h('div', { class: 'dd-level', style: `color:var(--m${level[1]})` }, h('span', { class: 'pose' }, svgEl(Ch.figure(role, MOOD_POSE[level[1]]))), h('div', { class: 'lvtxt' }, h('b', {}, `調子 ${level[1]}/5`), h('span', {}, level[0]))) : null,
-      rec.t && rec.t.length ? h('div', { class: 'dd-tags' }, rec.t.map((t) => h('span', { class: role }, t, rec.tt && rec.tt[t] ? h('small', {}, ` ＋${clockOf(rec.tt[t])}`) : null))) : null,
+      rec.t && rec.t.length ? tagView(rec.t, rec.tt, { labels: true }) : null,
       recTimeLine(rec),
       rec.m ? h('p', { class: 'dd-memo' }, rec.m) : null,
       patArea));
@@ -1552,14 +1575,15 @@ function openDaySheet(date) {
     scale.append(b);
   });
 
-  // 気分のタグ: 気持ち・からだ・(生理の日だけ)生理まわり・よく使うタグ・自分で足す
+  // 気分のタグ: いちばん上(どちらとも言えない)・こころ・からだ(+いたいところ)・(生理の日だけ)生理のこと・よく使うタグ・自分で足す
   const tags = h('div', { class: 'stack' });
   const MAX_TAGS = 12;
   const freq = new Map();
   [...myRecs().values()].forEach((r) => (r.t || []).forEach((t) => { if (!PRESET_TAGS.has(t)) freq.set(t, (freq.get(t) || 0) + 1); }));
   const hiddenTags = () => { try { return new Set(JSON.parse(LS.get(K.tagHide) || '[]')); } catch (e) { return new Set(); } };
   const chip = (t, removable = false) => {
-    const b = h('button', { type: 'button', 'aria-pressed': String(draft.t.includes(t)) }, t);
+    const badge = isPain(t) ? painBadge(t) : null; // いたいところは、漢字1文字の丸つき
+    const b = h('button', { type: 'button', class: `k-${tagKind(t)}`, 'aria-pressed': String(draft.t.includes(t)) }, ...(badge ? [h('em', { class: `pc-${badge.color}` }, badge.ch)] : []), t);
     let hold = null;
     let held = false;
     if (removable) { // 長押しで、「よく使うタグ」の候補から外す(過去の記録は、そのまま)
@@ -1587,7 +1611,8 @@ function openDaySheet(date) {
     });
     return b;
   };
-  const group = (title, list, removable = false) => h('div', {}, h('p', { class: 'lab' }, title, removable ? h('small', { class: 'tag-hint' }, '  長押しで、候補から消せます') : null), h('div', { class: 'tags' }, list.map((t) => chip(t, removable))));
+  const group = (title, list, removable = false, kind = '') => h('div', {}, h('p', { class: `lab${kind ? ` tg-h ${kind}` : ''}` }, title, removable ? h('small', { class: 'tag-hint' }, '  長押しで、候補から消せます') : null), h('div', { class: 'tags' }, list.map((t) => chip(t, removable))));
+  const iconHead = (kind, el) => { if (TG_ICON[kind]) el.querySelector('.lab').insertAdjacentHTML('afterbegin', TG_ICON[kind]); return el; };
   const customInput = h('input', { type: 'text', maxlength: '10', placeholder: '自分のタグを足す(10文字まで)', 'aria-label': '自分のタグを足す' });
   const customAdd = h('button', { class: 'ghost sm', type: 'button' }, '足す');
   const addCustom = () => {
@@ -1603,12 +1628,18 @@ function openDaySheet(date) {
   customInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } });
   function renderTags() {
     const hid = hiddenTags();
-    const usedCustom = [...new Set([...[...freq.entries()].filter((x) => !hid.has(x[0])).sort((x, y) => y[1] - x[1]).map((x) => x[0]).slice(0, 12), ...draft.t.filter((t) => !PRESET_TAGS.has(t))])];
-    const showPeriod = isHer() && (draft.p || draft.t.some((t) => PERIOD_TAGS.includes(t)));
+    const customs = [...new Set([...[...freq.entries()].filter((x) => !hid.has(x[0])).sort((x, y) => y[1] - x[1]).map((x) => x[0]).slice(0, 12), ...draft.t.filter((t) => !PRESET_TAGS.has(t))])];
+    const customPain = customs.filter(isPain); // 「胃が痛い」など、自分で足した痛いタグも、いたいところへ
+    const customOther = customs.filter((t) => !isPain(t));
+    const showPeriod = isHer() && (draft.p || draft.t.some((t) => SEIRI.includes(t)));
+    const painBox = h('div', { class: 'tg-pain' }, h('p', { class: 'lab tg-h pain' }, 'いたいところ', customPain.length ? h('small', { class: 'tag-hint' }, '  長押しで、足したものを消せます') : null), h('div', { class: 'tags' }, [...PAIN, ...customPain].map((t) => chip(t, customPain.includes(t)))));
+    painBox.querySelector('.lab').insertAdjacentHTML('afterbegin', TG_ICON.pain);
     tags.replaceChildren(...[
-      ...TAG_GROUPS.map(([title, list]) => group(title, list)),
-      showPeriod ? group('生理まわり', PERIOD_TAGS) : null,
-      usedCustom.length ? group('よく使うタグ', usedCustom, true) : null,
+      h('div', { class: 'tags' }, MARU.map((t) => chip(t))),
+      iconHead('kokoro', group('こころ', KOKORO, false, 'kokoro')),
+      h('div', {}, iconHead('karada', group('からだ', [...KARADA, ...LEGACY.filter((t) => draft.t.includes(t))] /* 昔のむくみは、その日に入っているときだけ並べる(外せるように) */, false, 'karada')), painBox),
+      showPeriod ? iconHead('seiri', group('生理のこと', SEIRI, false, 'seiri')) : null,
+      customOther.length ? group('よく使うタグ', customOther, true) : null,
       h('div', { class: 'tagadd' }, customInput, customAdd),
     ].filter(Boolean));
   }
@@ -1964,7 +1995,7 @@ function diaryTop(day) {
       if (same) return;
       btn.classList.add('on');
       const tags = (rec && rec.t) || [];
-      pop = h('div', { class: 'dpop' }, h('div', { class: 'lv' }, lv ? `調子: ${lv[0]}` : '調子: まだ'), tags.length ? h('div', { class: 'dtags' }, tags.map((x) => h('span', { class: whoClass(u) }, x))) : null);
+      pop = h('div', { class: 'dpop' }, h('div', { class: 'lv' }, lv ? `調子: ${lv[0]}` : '調子: まだ'), tags.length ? tagView(tags) : null);
       if (u === myUid()) {
         const fix = h('button', { class: 'fix', type: 'button' }, lv || tags.length ? '調子を直す' : '＋ 調子・気分');
         fix.addEventListener('click', () => { closePop(); openDaySheet(day); });
