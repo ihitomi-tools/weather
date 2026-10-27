@@ -41,7 +41,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.27-118';
+const VERSION = '2026.10.27-119';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -93,7 +93,7 @@ const WEEK = '日月火水木金土';
 
 const state = {
   store: null, authReady: null, user: null, key: null, keyBytes: null,
-  profiles: {}, messages: [], events: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), say: null, sayDone: false, sayTimer: 0, hiddenAt: 0, boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
+  profiles: {}, messages: [], events: [], rsv: [], daysBy: new Map(), dayDocs: new Map(), moodChecked: false, moodMore: false, rain: false, rainAt: 0, pats: new Map(), stock: [], qcards: [], answers: new Map(), guesses: new Map(), say: null, sayDone: false, sayTimer: 0, hiddenAt: 0, boxes: [], marks: new Map(), items: new Map(), itemsDone: new Set(), needInput: null, moon: [], moonCheerUntil: 0, moonPop: { w: null, until: 0 }, moonPanel: false, moonVisit: 0, moonVariant: 'hug', moonDay: '', delId: null, readAt: 0, readSent: 0, talk: 'q', cfilter: 'all', loaded: {}, sheetRender: null, ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', card: 0, pastRender: null,
   unsubs: [], view: 'home', pendingKey: null,
   cal: { y: new Date().getFullYear(), m: new Date().getMonth(), sel: ymd(new Date()) },
 };
@@ -370,6 +370,7 @@ function startWatching() {
     const shared = normalizeShared(p);
     state.ann = shared.ann;
     state.nl = shared.nl;
+    state.rsv = shared.rsv;
     renderAll();
   }));
 
@@ -1751,6 +1752,7 @@ function openCardSheet() {
     const payload = buildSharedPayload({
       ann: [{ l: a.l.value.trim(), d: a.d.value }, { l: b.l.value.trim(), d: b.d.value }],
       nl: n.value.trim(),
+      rsv: state.rsv, // お題の予約は、そのまま残す
     });
     try {
       await withTimeout(state.store.saveShared(await C.encryptJson(state.key, 'shared', payload)), 5000);
@@ -2515,12 +2517,40 @@ async function createCard(n, text, stockId, by, cat) {
   await state.store.createQCard(`q${n}`, n, payload);
 }
 
+// ---- お題の予約(ストックの「次に出す」)。ふたりで共有(共有の設定に、一緒に保存する) ----
+// まだ使っていない・おやすみ前でない・まだ残っているお題の予約だけ。予約した順
+function validRsv() {
+  const used = new Set(state.qcards.map((c) => c.stockId).filter(Boolean));
+  return state.rsv.filter((r) => state.stock.some((x) => x.id === r.id && x.cat !== WHISPER) && !used.has(r.id));
+}
+async function saveRsv(next) {
+  const prev = state.rsv;
+  state.rsv = next;
+  renderAll();
+  try {
+    const payload = buildSharedPayload({ ann: state.ann, nl: state.nl, rsv: next });
+    await withTimeout(state.store.saveShared(await C.encryptJson(state.key, 'shared', payload)), 5000);
+  } catch (e) {
+    state.rsv = prev; // 保存できなかったら、もとに戻す
+    renderAll();
+    throw e;
+  }
+}
+const rsvToggle = (id) => {
+  const cur = validRsv();
+  const next = cur.some((r) => r.id === id) ? cur.filter((r) => r.id !== id) : [...cur, { id, by: myUid(), secret: false, at: Date.now() }];
+  return saveRsv(next);
+};
+const rsvSecret = (id) => saveRsv(validRsv().map((r) => (r.id === id ? { ...r, secret: !r.secret } : r)));
+// ひみつの予約は、予約した本人にだけ中身が見える(相手には、ぼかして出す。見た目だけで、しくみの上では、隠しきれない)
+const rsvHidden = (r) => !!r && r.secret && r.by !== myUid();
+
 async function makeNextCard(n) {
   const prev = state.qcards.find((c) => c.n === n - 1);
   // 明日がデートの日(=今日がデートの前日)なら、「おやすみ前」を優先して出す。ほかの日は、おやすみ前は出さない
   const tomorrow = keyOf(dayNum(ymd(new Date())) + 1);
   const whisperOk = state.events.some((e) => evType(e) === 'date' && e.date === tomorrow);
-  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by, whisperOk); // ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
+  const pick = pickStock(availableStock(state.stock, state.qcards), n, prev && prev.cat, prev && prev.by, whisperOk, validRsv()); // 予約が先。そのあとは、ふたりのお題が交互に出るように(足した人を優先)、同じカテゴリが続かないように
   if (!pick) { state.needInput = n; renderTalk(); return; }
   await createCard(n, pick.text, pick.id, pick.from, pick.cat);
 }
@@ -2708,7 +2738,7 @@ function renderQuestion() {
   const avail = availableStock(state.stock, cards).length;
   $('#stock-n').textContent = String(avail);
   const act = ready ? nextAction(cards, state.answers, ymd(new Date())) : null;
-  const sig = JSON.stringify([ready, last && last.id, last && [!!myAnswer(last.n), !!otherAnswer(last.n), guessSig(last.n)], act && act.type, state.needInput, partnerName()]);
+  const sig = JSON.stringify([ready, last && last.id, last && [!!myAnswer(last.n), !!otherAnswer(last.n), guessSig(last.n)], act && act.type, state.needInput, partnerName(), validRsv().map((r) => [r.id, r.secret, r.by])]);
   if (sig === qSig) return;
   qSig = sig;
   const area = $('#q-area');
@@ -2734,6 +2764,11 @@ function renderQuestion() {
     }
   }
   if (ready && state.needInput != null && (!last || state.needInput === last.n + 1)) nodes.push(forcedForm(state.needInput));
+  const rs = ready ? validRsv() : [];
+  if (rs.length) { // 予約が入っているときだけ、小さく知らせる(ひみつの予約は、予約した本人にだけ、中身を出す)
+    const st = state.stock.find((x) => x.id === rs[0].id);
+    nodes.push(h('div', { class: 'rsv-note' }, h('span', { 'aria-hidden': 'true' }, '📌'), h('span', {}, h('b', {}, '次のお題は、予約がはいっています'), h('br'), rsvHidden(rs[0]) ? 'ひみつの予約です。出るときのお楽しみ' : st ? st.text : '', rs.length > 1 ? h('small', {}, `(あと${rs.length - 1}件)`) : null)));
+  }
   area.replaceChildren(...nodes);
 }
 
@@ -2803,7 +2838,9 @@ function openStockSheet() {
       return b;
     }));
     const shown = state.stock.filter((s) => catFilter === 'all' || (catFilter === 'none' ? !s.cat : s.cat === catFilter));
-    const left = shown.filter((s) => !used.has(s.id));
+    const rsvIds = validRsv().map((r) => r.id);
+    const left = shown.filter((s) => !used.has(s.id) && !rsvIds.includes(s.id));
+    const reserved = rsvIds.map((id) => state.stock.find((x) => x.id === id)).filter(Boolean); // 予約した順(カテゴリで絞っても、いつも上に出す)
     const done = shown.filter((s) => used.has(s.id));
     // 使用済みは下にまとめて、ふだんはたたんでおく(押すと出る)
     const rowOf = (s) => {
@@ -2833,9 +2870,31 @@ function openStockSheet() {
         }
         return h('li', { class: 'sitem lockrow', 'data-by': whoClass(s.from) }, h('span', {}, lockIcon(), '🩷 おやすみ前', h('small', { class: 'catname' }, ' デートの前日に鍵が開きます')), del);
       }
-      return h('li', { class: 'sitem', 'data-by': whoClass(s.from) }, h('span', {}, s.text, s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), del);
+      const rs = validRsv();
+      const ri = rs.findIndex((r) => r.id === s.id);
+      const r = ri >= 0 ? rs[ri] : null;
+      const hidden = rsvHidden(r);
+      const btns = [];
+      if (!isUsed && r) { // 予約中: 取り消す(予約した本人には、ひみつの切りかえも)
+        if (r.by === myUid()) {
+          const sec = h('button', { type: 'button', class: 'rsv-sec', 'aria-pressed': String(r.secret) }, r.secret ? '🔒 ひみつ' : 'ひみつにする');
+          sec.addEventListener('click', () => rsvSecret(s.id).catch(() => {}));
+          btns.push(sec);
+        }
+        const un = h('button', { type: 'button', class: 'rsv-btn on' }, `予約${ri + 1}・取り消す`);
+        un.addEventListener('click', () => rsvToggle(s.id).catch(() => {}));
+        btns.push(un);
+      } else if (!isUsed) {
+        const go = h('button', { type: 'button', class: 'rsv-btn' }, '📌 次に出す');
+        go.addEventListener('click', () => rsvToggle(s.id).catch(() => {}));
+        btns.push(go);
+      }
+      const li = h('li', { class: `sitem${r ? ' rsv' : ''}`, 'data-by': whoClass(s.from), 'data-id': s.id }, h('span', {}, hidden ? h('span', { class: 'rsv-blur', 'aria-label': 'ひみつの予約' }, s.text) : s.text, hidden ? h('small', { class: 'catname' }, ' ひみつの予約(出るときのお楽しみ)') : s.cat ? h('small', { class: 'catname' }, ` ${catLabel(s.cat)}`) : null, isUsed ? h('small', { style: 'color:var(--muted)' }, ' (使用済み)') : null), ...(btns.length || del ? [h('div', { class: 'rsv-bar' }, ...btns, del)] : []));
+      return li;
     };
-    const rows = left.map(rowOf);
+    const rows = [];
+    if (reserved.length) rows.push(h('li', { class: 'rsv-head' }, '👑 次に出るお題(予約順)'), ...reserved.map(rowOf), ...(left.length ? [h('li', { class: 'rsv-head quiet' }, 'そのほか')] : []));
+    rows.push(...left.map(rowOf));
     if (!rows.length) rows.push(h('li', { class: 'empty' }, done.length ? 'つかっていないお題は、ありません' : 'まだありません'));
     if (done.length) {
       const toggle = h('button', { class: 'ghost sm', type: 'button', 'aria-expanded': String(showUsed) }, showUsed ? '使用済みをとじる' : `使用済みを見る(${done.length}個)`);
@@ -2902,7 +2961,7 @@ function openStockSheet() {
   });
   state.sheetRender = fill;
   fill();
-  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, whisperNote, one, oneHint, addOne, bulk, bulkHint, addBulk);
+  openSheet(h('h2', {}, 'お題ストック'), h('p', { class: 'lead' }, '毎日のお題は、ここから選ばれます。ふたりが足したお題が、できるだけ交互に出ます(前と同じカテゴリも続きません)。ふたりとも足せます。角の色は、足した人です。「📌 次に出す」を押すと、そのお題が、次に出ます(予約は、ふたりで共有。順番待ちにもできます)。'), filterRow, list, h('p', { class: 'lab' }, '足すお題のカテゴリ'), catSel, whisperNote, one, oneHint, addOne, bulk, bulkHint, addBulk);
   state.sheetRender = fill;
 }
 

@@ -147,3 +147,24 @@ test('おやすみ前: 前日でも、ストックがなければ、ふつうの
   assert.equal(pickStock(normal, 3, null, null, true).id, 'a');
   assert.equal(pickStock([{ id: 'b', from: 'u2', cat: WHISPER }], 3, null, null, false), null);
 });
+
+test('予約: 予約があれば、いちばん先の予約を選ぶ(使用済み・おやすみ前・ないものは、とばす)', () => {
+  const avail = [
+    { id: 'a', text: 'A', from: 'u1' }, { id: 'b', text: 'B', from: 'u2' }, { id: 'c', text: 'C', from: 'u1' },
+    { id: 'w', text: 'W', from: 'u1', cat: WHISPER },
+  ];
+  assert.equal(pickStock(avail, 1, null, null, false, [{ id: 'b' }, { id: 'a' }]).id, 'b'); // 先の予約が先
+  assert.equal(pickStock(avail, 1, null, null, false, [{ id: 'gone' }, { id: 'c' }]).id, 'c'); // 使用済み・消えたものは、とばす
+  assert.equal(pickStock(avail, 1, null, null, false, [{ id: 'w' }, { id: 'a' }]).id, 'a'); // おやすみ前は、予約でも、出さない
+  // 前と同じカテゴリでも、予約が先
+  const cat = [{ id: 'x', text: 'X', from: 'u1', cat: 'memory' }, { id: 'y', text: 'Y', from: 'u2', cat: 'future' }];
+  assert.equal(pickStock(cat, 3, 'memory', 'u2', false, [{ id: 'x' }]).id, 'x');
+  // 予約がなければ、これまでどおり(2台の端末で、同じ結果)
+  assert.equal(pickStock(avail, 7).id, pickStock(avail, 7, null, null, false, []).id);
+});
+
+test('予約: デートの前日(おやすみ前の日)は、おやすみ前が先。予約は、次の日まで待つ', () => {
+  const avail = [{ id: 'a', text: 'A', from: 'u1' }, { id: 'w', text: 'W', from: 'u1', cat: WHISPER }];
+  assert.equal(pickStock(avail, 1, null, null, true, [{ id: 'a' }]).id, 'w');
+  assert.equal(pickStock(avail.filter((x) => x.id === 'a'), 1, null, null, true, [{ id: 'a' }]).id, 'a'); // おやすみ前が無ければ、予約を出す
+});

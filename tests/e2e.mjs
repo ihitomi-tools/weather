@@ -291,6 +291,36 @@ check('使用済みは、ふだんはたたまれていて、「使用済みを�
 await page.locator('#sheet-body .used-toggle button').click();
 check('押すと、使用済みが一覧の下に出る', (await page.locator('#sheet-body .sitem').count()) === 5 && (await page.locator('#sheet-body .sitem').last().textContent()).includes('使用済み'));
 await page.locator('#sheet-body .used-toggle button').click();
+// 予約(次に出す): 予約順に上へ。ひみつの予約は、相手にはぼかして出す。お題の画面にも、小さく知らせる
+const pickRow = (t) => page.locator('#sheet-body .sitem', { hasText: t });
+await pickRow('行ってみたい場所は?').locator('.rsv-btn').click();
+await page.waitForSelector('#sheet-body .rsv-head');
+check('「次に出す」を押すと、「次に出るお題」に、予約1で並ぶ', (await page.locator('#sheet-body .sitem.rsv').count()) === 1 && (await page.locator('#sheet-body .sitem.rsv').first().textContent()).includes('予約1'));
+check('予約も、暗号文だけで保存される(中身の字が入っていない)', !JSON.stringify(await page.evaluate(() => window.__fake.sh)).includes('場所'));
+await pickRow('好きな色は?').locator('.rsv-btn').click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem.rsv').length === 2);
+check('2つ目の予約は、予約2になる', (await page.locator('#sheet-body .sitem.rsv').nth(1).textContent()).includes('予約2'));
+await page.locator('#sheet-body .sitem.rsv').first().locator('.rsv-btn.on').click();
+await page.waitForFunction(() => document.querySelectorAll('#sheet-body .sitem.rsv').length === 1);
+check('取り消すと、残りの予約が、予約1になる', (await page.locator('#sheet-body .sitem.rsv').first().textContent()).includes('予約1') && (await page.locator('#sheet-body .sitem.rsv').first().textContent()).includes('好きな色は?'));
+await page.locator('#sheet-body .sitem.rsv').first().locator('.rsv-sec').click();
+await page.waitForFunction(() => document.querySelector('#sheet-body .sitem.rsv .rsv-sec[aria-pressed="true"]'));
+check('自分の予約は、「ひみつ」にしても、自分には、中身が見える(ぼかさない)', (await page.locator('#sheet-body .rsv-blur').count()) === 0);
+// 相手が入れた、ひみつの予約: 中身は、ぼかして出る。お題の画面でも、中身は出さない
+const rsvId = await page.locator('#sheet-body .sitem', { hasText: '最近ハマってることは?' }).getAttribute('data-id');
+const secretShared = await enc('shared', { ann: [{ l: '', d: '' }, { l: '', d: '' }], nl: '', rsv: [{ id: rsvId, by: 'u2', secret: true, at: 1 }] });
+await page.evaluate((doc) => { window.__fake.sh = [{ id: 'main', ...doc }]; window.__fake.notify(); }, secretShared);
+await page.waitForSelector('#sheet-body .rsv-blur');
+check('相手のひみつの予約は、ぼかして出て、「ひみつの予約」と分かる', (await page.locator('#sheet-body .sitem.rsv').first().textContent()).includes('ひみつの予約') && (await page.locator('#sheet-body .rsv-blur').count()) === 1);
+check('相手のひみつの予約には、「ひみつにする」の切りかえが出ない(予約した本人だけ)', (await page.locator('#sheet-body .sitem.rsv .rsv-sec').count()) === 0);
+await page.click('#sheet-close');
+await page.waitForFunction(() => /ひみつの予約です/.test(document.querySelector('#q-area').textContent));
+check('お題の画面に、予約があることだけ知らせる(ひみつは、中身を出さない)', !(await page.textContent('#q-area')).includes('ハマってる'));
+await page.evaluate(() => { window.__fake.sh = []; window.__fake.notify(); });
+await page.waitForFunction(() => !/予約がはいっています/.test(document.querySelector('#q-area').textContent));
+check('予約がなくなると、お知らせも消える', true);
+await page.click('#stock-open');
+await page.waitForSelector('#sheet-body .sitem');
 // おやすみ前: 自分が足したものは、自分には中身が見える。相手が足したものは、鍵だけ。似たお題の知らせも、相手のものは中身を出さない
 await page.selectOption('#sheet-body select[aria-label="足すお題のカテゴリ"]', 'whisper');
 check('おやすみ前を選ぶと、出題のタイミングの説明が出る', (await page.locator('#sheet-body .whisper-note').isVisible()) && (await page.textContent('#sheet-body .whisper-note')).includes('特別な夜に出題されます'));
