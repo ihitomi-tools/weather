@@ -19,5 +19,6 @@ test('記念日ステッカーの日付と絵', () => {
 
 test('annivSticker: 絵がある日だけ、パスを返す', () => {
   assert.equal(annivSticker('2026-10-27'), 'img/anniv/2026-10-27.webp');
-  assert.equal(annivSticker('2026-10-28'), null);
+  assert.equal(annivSticker('2026-10-28'), 'img/anniv/2026-10-28.webp');
+  assert.equal(annivSticker('2026-10-29'), null);
 });

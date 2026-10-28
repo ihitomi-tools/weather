@@ -14,7 +14,7 @@ import { dayKey4, analyzeMoon, fullStats, rolesOf, seasonOf, specialOf, workOn, 
 import * as C from './crypto.js';
 import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
-import { roomSvg, pickScene } from './room.js';
+import { roomSvg, pickScene, toneOf } from './room.js';
 import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
 import { annivSticker } from './anniv.js';
 import { MARU, KOKORO, KARADA, PAIN, SEIRI, LEGACY, PRESET_TAGS, groupTags, painBadge, isPain, tagKind } from './tags.js';
@@ -41,7 +41,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.27-123';
+const VERSION = '2026.10.28-124';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -1858,7 +1858,7 @@ function renderOto(A) {
   if (box.dataset.room === sig && box.querySelector('.rm-wrap')) return; // 変わらないときは、描き直さない(星のまたたきを止めない)
   box.dataset.room = sig;
   const room = h('div', { class: 'rm-wrap' });
-  room.innerHTML = roomSvg(state.roomScene, { pts: A.pts, full: A.fulls.length });
+  room.innerHTML = roomSvg(state.roomScene, { pts: A.pts, full: A.fulls.length, tone: toneOf(new Date().getHours()) }); // 昼の絵のときは、朝・昼・夕方で、部屋の色が変わる
   const note = h('div', { class: 'rm-note', hidden: true, role: 'status' }, 'ふたりの月が満月になったら、あらたな機能が解放されます');
   let noteTimer = 0;
   const go = (el) => {
