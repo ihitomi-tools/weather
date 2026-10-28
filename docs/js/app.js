@@ -41,7 +41,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.28-124';
+const VERSION = '2026.10.28-125';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -546,6 +546,7 @@ function startWatching() {
     state.events = out;
     state.loaded.ev = true;
     renderAll();
+    maybeAdvance(); // 予定(デートの日)は、お題を選ぶのに要る。いちばん最後に届いても、すぐ次のお題を出す
   }));
 
   state.unsubs.push(s.watchMessages(async (list) => {
@@ -2560,7 +2561,7 @@ async function maybeAdvance() {
   const act = nextAction(state.qcards, state.answers, ymd(new Date()));
   if (act.type !== 'create' || state.needInput === act.n) return;
   advancing = true;
-  try { await makeNextCard(act.n); } catch (e) { /* 相手が先に出したとき。次の更新で表示される */ } finally { advancing = false; }
+  try { await withTimeout(makeNextCard(act.n), 15000); } catch (e) { /* 相手が先に出したとき。次の更新で表示される */ } finally { advancing = false; }
 }
 
 function answerForm(card) {
