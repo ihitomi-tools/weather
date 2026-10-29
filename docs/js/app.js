@@ -16,7 +16,7 @@ import * as Ch from './chara.js';
 import { SHELF_DEFS, shelfSvg, tankSvg, persOf, MAX as SHELF_MAX } from './shelf.js';
 import { roomSvg, pickScene, toneOf } from './room.js';
 import { diaryKeys, dayOfPage, monthTabs, createBook, CAL_ICON } from './diary.js';
-import { annivSticker } from './anniv.js';
+import { annivSticker, dayPhoto } from './anniv.js';
 import { MARU, KOKORO, KARADA, PAIN, SEIRI, LEGACY, PRESET_TAGS, groupTags, painBadge, isPain, tagKind } from './tags.js';
 import { parseTrip, ticketsOn, ticketCard, ticketRoute } from './ticket.js';
 import { pickLine, pickGreeting, isMorning, bumpOpens, pickOpenLine } from './hitorigoto.js';
@@ -41,7 +41,7 @@ const K = {
   key: 'app.key', name: 'app.name', seq: 'app.seq', salt: 'app.salt',
   auto: 'app.auto', expire: 'app.expire', city: 'app.city', card: 'app.card', theme: 'app.theme', patSeen: 'app.patSeen', patShown: 'app.patShown', bd: 'app.bd', talk: 'app.talk', rcpt: 'app.rcpt', seen: 'app.seen', role: 'app.role', moonSeen: 'app.moonSeen', moodAsk: 'app.moodAsk', sayLast: 'app.sayLast', sayMorning: 'app.sayMorning', fullSeen: 'app.fullSeen', roomLast: 'app.roomLast', diaryAt: 'app.diaryAt', opens: 'app.opens', tagHide: 'app.tagHide',
 };
-const VERSION = '2026.10.28-125';
+const VERSION = '2026.10.29-126';
 
 // 調子(新月 → 満月)と気分のタグ
 const LEVELS = [['しんどい', 1], ['いまいち', 2], ['ふつう', 3], ['まあまあ', 4], ['元気', 5]];
@@ -2144,6 +2144,8 @@ function diaryOnPage(el, stage, key) {
   if (diaryBook && !diaryBook.root.querySelector('.dcover')) { diaryMarkSeen(dayOfPage(key)); } // 表紙が閉じているあいだは、見たことにしない
   stage.querySelectorAll(':scope > .dmore').forEach((n) => n.remove());
   el.classList.remove('clipped');
+  const photo = el.querySelector(':scope > .dphoto');
+  if (photo) { photo.hidden = false; if (el.scrollHeight > el.clientHeight + 2) photo.hidden = true; } // 写真は、あきがあるときだけ
   if (el.scrollHeight <= el.clientHeight + 2) return;
   el.classList.add('clipped');
   const more = h('button', { class: 'dmore', type: 'button' }, 'すべて見る ▾');
@@ -2159,7 +2161,9 @@ function diaryPageNodes(key) {
   const nodes = diaryEvents(day);
   const sk = annivSticker(day); // 記念日の絵は、日付の見出しの、すぐ下に貼る
   if (sk) nodes.splice(1, 0, h('img', { class: 'dsticker', src: sk, alt: '記念日のステッカー', draggable: 'false' }));
-  return [...fresh, ...nodes, ...diaryCardPage(day)];
+  const ph = dayPhoto(day); // 写真風の絵は、いちばん下(あきがあれば、そこに)
+  const photo = ph ? [h('div', { class: 'dphoto' }, h('img', { src: ph.src, width: String(ph.w), height: String(ph.h), alt: 'この日の絵', draggable: 'false' }))] : [];
+  return [...fresh, ...nodes, ...diaryCardPage(day), ...photo];
 }
 // 閉じた革の日記帳の表紙(無題。年だけ)。タップで、左のとじ目で開く
 function diaryCover(onOpen, months = [], onPick = () => {}, fresh = { ym: new Set(), count: 0, go: () => {} }) {

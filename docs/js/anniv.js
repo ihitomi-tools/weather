@@ -5,4 +5,11 @@ export const ANNIV_STICKERS = {
   '2026-10-28': '2026-10-28.webp', // Stay with you(ハグ)
 };
 
+// 写真風の絵: ページの下の、あいている所に貼る(あきが足りない日は、ページには出さず、「すべて見る」で出す)
+export const DAY_PHOTOS = {
+  '2026-10-29': { file: '2026-10-29.webp', w: 750, h: 420 }, // みんなでごはん
+};
+
+export const dayPhoto = (day) => (DAY_PHOTOS[day] ? { src: `img/anniv/${DAY_PHOTOS[day].file}`, w: DAY_PHOTOS[day].w, h: DAY_PHOTOS[day].h } : null);
+
 export const annivSticker = (day) => (ANNIV_STICKERS[day] ? `img/anniv/${ANNIV_STICKERS[day]}` : null);
