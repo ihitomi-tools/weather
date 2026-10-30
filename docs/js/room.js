@@ -74,7 +74,7 @@ const shadowOf = (k, x, y, w, h) => {
 const pic=(k,x,y,w,h)=>`<filter id="rmsh" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="1.3"/></filter>${shadowOf(k, x, y, w, h)}<image href="img/room/${k}.webp" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
 // 絵のファイルで出す場面: 名前 → [x, y, 幅, 高さ](画面360x340のなか。足元が床になるように)。
 // 足すとき: docs/img/room/<名前>.webp を置く → ここに1行 → sw.js の FILES にも書く(tests/room.test.mjs が、そろっているか見張る)
-export const PICS = { n1: [202, 206, 155, 130], n2: [228, 241, 108, 95], n3: [224, 268, 111, 68], n4: [224, 240, 116, 96], d2: [190, 172, 168, 165], d3: [180, 226, 178, 111], d4: [180, 213, 178, 122], d5: [180, 230, 178, 106], d6: [215, 211, 124, 126], d8: [226, 242, 103, 95], d9: [234, 219, 92, 118], d10: [222, 240, 109, 97], d11: [245, 213, 86, 124], d12: [224, 231, 107, 106] };
+export const PICS = { n1: [176, 181, 184, 155], n2: [218, 223, 128, 113], n3: [214, 255, 132, 81], n4: [212, 222, 139, 114], d2: [160, 141, 200, 196], d3: [155, 209, 205, 128], d4: [155, 195, 205, 140], d5: [155, 214, 205, 122], d6: [204, 188, 147, 149], d8: [216, 223, 123, 114], d9: [226, 197, 109, 140], d10: [212, 221, 130, 116], d11: [236, 189, 103, 148], d12: [214, 211, 127, 126] };
 const S={
  // 昼の d1(SVG)。PICS に d1 を足せば、絵のほうが優先される
  d1:()=>`<g transform="translate(150 196)"><rect x="-12" y="-8" width="26" height="30" rx="10" fill="${PK}"/>${face(1,-24,'h',-10,'open')}<path d="M10 4l12 14" stroke="${PK}" stroke-width="5" stroke-linecap="round"/></g>${sofaBack(206,290)}<rect x="270" y="252" width="40" height="46" rx="12" fill="${MN}"/>${face(290,240,'y',4,'open')}<rect x="276" y="270" width="30" height="20" rx="3" fill="#fff7e6" stroke="#caa"/><path d="M291 270v20" stroke="#caa"/>${sofaFront(206,290)}`,
