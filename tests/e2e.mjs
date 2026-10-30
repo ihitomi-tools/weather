@@ -882,6 +882,8 @@ check('カード3: 次の「両方」の予定まで、あと1日', (await page.
   await page.click('#evb-close');
   check('×でバーが閉じる', await page.locator('#ev-bar').isHidden());
   // 予定の詳細(思い出など)を、あとから書ける
+  // 月末は、予定が今日ではない日にあるので、「デート」の予定がある日が出るまで、日を開いていく
+  for (let i = 0; i < daysInMonth && !(await page.locator('#cal-events .item', { hasText: 'デート' }).count()); i += 1) await cells.nth(i).click();
   await page.locator('#cal-events .item', { hasText: 'デート' }).first().locator('button', { hasText: '詳細' }).click();
   await page.fill('#sheet textarea[aria-label="詳細"]', '山中湖でごはん。\n夕焼けがきれいだった');
   await page.click('#sheet form button[type=submit]');
